@@ -2,6 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
 const llm     = require('../services/llm');
+const game    = require('../services/game');
 const { notify } = require('../services/notifications');
 
 // ── User locale helper ───────────────────────────────────────────────────────
@@ -547,13 +548,14 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       );
       const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-      // Per-knobit notification (first-ever gets a special message)
       const userId = req.user?.id;
       const [[{ totalEver }]] = await db.execute(
         `SELECT COUNT(*) AS totalEver FROM knobit_progress
          WHERE passport_id = ? AND phase_reached = 'done'`,
         [passportId]
       );
+
+      // Per-knobit notification
       if (totalEver === 1) {
         notify(userId, 'knobit_complete', 'First knobit mastered!',
           `You completed your very first learning step: "${knobitTitle}". An exciting journey begins!`);
@@ -573,7 +575,6 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       updateAncestorKnowledge(passportId, nodeExtId).catch(() => {});
 
       if (pct === 100) {
-        // Check if credential already exists
         const credTitle = `${nodeLabel} — Completed`;
         const [[existing]] = await db.execute(
           `SELECT id FROM passport_credentials
@@ -593,7 +594,6 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
              VALUES (?, 'platform', ?, 'Map of Knowledge · KaiQ Platform', CURDATE(), 100, 80, ?, 0)`,
             [passportId, credTitle, '0x' + hash]
           );
-          // Also add a learning event
           await db.execute(
             `INSERT INTO passport_events
                (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
@@ -606,6 +606,13 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
             `A platform credential has been added to your Learner Passport.`);
         }
       }
+
+      // ── Gamification ───────────────────────────────────────────────────────
+      game.awardLumens(passportId, userId, 10, 'knobit_complete', knobitId).catch(() => {});
+      if (done >= total && total > 0) {
+        game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => {});
+      }
+      game.checkAchievements(passportId, userId, 'knobit_complete', { totalEver }).catch(() => {});
     }
 
     res.json({ ok: true });
@@ -1221,6 +1228,12 @@ router.post('/test/evaluate', async (req, res) => {
             );
             notify(req.user?.id, 'test_result', `Test result: ${label}`,
               `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+            // ── Gamification ─────────────────────────────────────────────────
+            const score = evaluation.finalScore;
+            const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
+            const reason     = score === 100 ? 'test_perfect' : 'test_complete';
+            game.awardLumens(passportId, req.user?.id, lumensBase, reason, nodeId).catch(() => {});
+            game.checkAchievements(passportId, req.user?.id, 'test_complete', { score }).catch(() => {});
           }
         } catch (e) {
           console.error('[api/test/evaluate] Q4 post-stream error', e.message);
@@ -1251,6 +1264,12 @@ router.post('/test/evaluate', async (req, res) => {
       );
       notify(req.user?.id, 'test_result', `Test result: ${label}`,
         `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+      // ── Gamification ───────────────────────────────────────────────────────
+      const score      = evaluation.finalScore;
+      const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
+      const reason     = score === 100 ? 'test_perfect' : 'test_complete';
+      game.awardLumens(passportId, req.user?.id, lumensBase, reason, nodeId).catch(() => {});
+      game.checkAchievements(passportId, req.user?.id, 'test_complete', { score }).catch(() => {});
     }
 
     res.json(evaluation);
@@ -1291,6 +1310,77 @@ router.get('/admin/token-usage', async (req, res) => {
   } catch (err) {
     console.error('[api/admin/token-usage]', err.message);
     res.status(500).json({ error: 'Failed to fetch token usage' });
+  }
+});
+
+// ── Game state ───────────────────────────────────────────────────────────────
+router.get('/game/state', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.json(null);
+  const state = await game.getGameState(passportId);
+  res.json(state);
+});
+
+// ── Game mode toggle ─────────────────────────────────────────────────────────
+router.post('/game/settings', async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  const { enabled } = req.body;
+  try {
+    await db.execute(
+      `INSERT INTO user_settings (user_id, key_name, value) VALUES (?, 'game_mode', ?)
+       ON DUPLICATE KEY UPDATE value = VALUES(value)`,
+      [userId, enabled ? 'on' : 'off']
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save setting' });
+  }
+});
+
+// ── Achievements list ────────────────────────────────────────────────────────
+router.get('/game/achievements', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  const all = game.getAllAchievements();
+  if (!passportId) return res.json(all.map(a => ({ ...a, unlocked: false })));
+  try {
+    const [unlocked] = await db.execute(
+      'SELECT achievement_key, unlocked_at FROM user_achievements WHERE passport_id = ?',
+      [passportId]
+    );
+    const unlockedMap = Object.fromEntries(unlocked.map(r => [r.achievement_key, r.unlocked_at]));
+    res.json(all.map(a => ({
+      ...a,
+      unlocked: !!unlockedMap[a.key],
+      unlocked_at: unlockedMap[a.key] || null,
+    })));
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load achievements' });
+  }
+});
+
+// ── Leaderboard ──────────────────────────────────────────────────────────────
+router.get('/game/leaderboard', async (req, res) => {
+  try {
+    const [weekly] = await db.execute(
+      `SELECT lp.display_name, SUM(lt.amount) AS lumens_this_week
+       FROM lumen_transactions lt
+       JOIN learner_passports lp ON lt.passport_id = lp.id
+       WHERE lt.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+       GROUP BY lt.passport_id
+       ORDER BY lumens_this_week DESC
+       LIMIT 20`
+    );
+    const [territory] = await db.execute(
+      `SELECT lp.display_name, lp.lumen_total
+       FROM learner_passports lp
+       WHERE lp.lumen_total > 0
+       ORDER BY lp.lumen_total DESC
+       LIMIT 20`
+    );
+    res.json({ weekly, territory });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load leaderboard' });
   }
 });
 
