@@ -223,6 +223,7 @@
 
   /* ── Filter settings ── */
   var COLOR_DOT = { terra: 'rgba(196,130,106,0.70)', sage: 'rgba(139,173,126,0.70)', amber: 'rgba(196,165,90,0.70)', lavender: 'rgba(155,143,181,0.70)' };
+  function resolveDot(iconColor) { return COLOR_DOT[iconColor] || (iconColor && iconColor[0] === '#' ? iconColor : COLOR_DOT.terra); }
   var _isAdmin = false;
 
   function sfGetHidden() { try { return JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); } catch(e) { return []; } }
@@ -289,7 +290,7 @@
       var row  = document.createElement('div');
       row.className = 'sf-filter-row';
       row.innerHTML =
-        '<span class="sf-color-dot" style="background:' + (COLOR_DOT[s.icon_color] || COLOR_DOT.terra) + '"></span>' +
+        '<span class="sf-color-dot" style="background:' + resolveDot(s.icon_color) + '"></span>' +
         '<span class="sf-filter-label">' + s.name + '</span>' +
         '<span class="sf-node-count">' + s.node_count + ' ' + t('label.nodes') + '</span>' +
         (_isAdmin ? _adminBtn(s.id, true) : '') +
@@ -311,7 +312,7 @@
       var row = document.createElement('div');
       row.className = 'sf-filter-row';
       row.innerHTML =
-        '<span class="sf-color-dot" style="background:' + (COLOR_DOT[s.icon_color] || COLOR_DOT.terra) + '"></span>' +
+        '<span class="sf-color-dot" style="background:' + resolveDot(s.icon_color) + '"></span>' +
         '<span class="sf-filter-label">' + s.name + '</span>' +
         '<span class="sf-node-count">' + s.node_count + ' ' + t('label.nodes') + '</span>' +
         (_isAdmin ? _adminBtn(s.id, false) : '') +

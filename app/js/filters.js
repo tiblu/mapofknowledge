@@ -29,6 +29,9 @@
 
   /* ─── DB-backed subsets ──────────────────────────────────────────────── */
   var COLOR_HEX = { terra: '#C4826A', sage: '#8BAD7E', amber: '#C4A55A', lavender: '#9B8FB5' };
+  function resolveColor(iconColor) {
+    return COLOR_HEX[iconColor] || (iconColor && iconColor[0] === '#' ? iconColor : COLOR_HEX.terra);
+  }
 
   function getRingColorOverride(filterId) {
     try { return localStorage.getItem('kq_ring_color_' + filterId) || null; }
@@ -49,7 +52,7 @@
         var list = document.querySelector('#filter-panel .fp-list');
         subsets.forEach(function(s) {
           var filterId = 'db-' + s.id;
-          var color    = COLOR_HEX[s.icon_color] || COLOR_HEX.terra;
+          var color    = resolveColor(s.icon_color);
           var ringOverride = getRingColorOverride(filterId);
           FILTERS[filterId] = {
             label:           s.name,
