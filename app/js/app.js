@@ -194,9 +194,19 @@ function init(data, emergentData) {
   const w = window.innerWidth, h = window.innerHeight - TOP_BAR_H;
   const svg      = d3.select("#canvas").attr("width", w).attr("height", h);
   const labelSvg = d3.select("#label-layer").attr("width", w).attr("height", h);
+
+  // SVG defs: glow filter for rings
+  svg.append("defs").html(
+    '<filter id="ring-glow" x="-80%" y="-80%" width="260%" height="260%">' +
+      '<feGaussianBlur stdDeviation="3" result="blur"/>' +
+      '<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+    '</filter>'
+  );
+
   const g        = svg.append("g");
   const gLinks          = g.append("g").attr("class", "links");
   const gNodes          = g.append("g").attr("class", "nodes");
+  const gRings          = g.append("g").attr("class", "filter-rings");
   const gExpand         = g.append("g").attr("class", "expanders");
   const gConnectors     = g.append("g").attr("class", "connectors");
   const gEmergentLinks  = g.append("g").attr("class", "emergent-links");
@@ -838,6 +848,9 @@ function init(data, emergentData) {
       .attr("x", d => d.x)
       .attr("y", d => projectY(d.y, 0))
       .text(d => d.expanded ? "−" : "+");
+    gRings.selectAll('circle.filter-ring')
+      .attr('cx', d => d.x)
+      .attr('cy', d => projectY(d.y, 0));
     updateConnectorPositions();
     repositionLabels();
   }
@@ -928,62 +941,158 @@ function init(data, emergentData) {
   resetIdleTimer();
 
   // ── Filter ─────────────────────────────────────────────────────────────────
-  let activeFilterSet = null;
+  // activeFilterDescriptors: array of { id, labelSet, color, ringColor,
+  //   displayMode, backgroundHidden, isOverlay }
+  let activeFilterDescriptors = [];
 
-  function nodePassesFilter(nodeId) {
+  function nodePassesLabelSet(nodeId, labelSet) {
+    if (!labelSet) return false;
     let cur = nodeId;
     while (cur !== undefined) {
-      if (allNodes[cur] && activeFilterSet.has(allNodes[cur].label)) return true;
+      if (allNodes[cur] && labelSet.has(allNodes[cur].label)) return true;
       cur = parentOf[cur];
     }
     return false;
   }
 
-  function nodePassesActive(nodeId) {
-    // Label-based curriculum filter
-    if (activeFilterSet && !nodePassesFilter(nodeId)) return false;
-    // ID-based knowledge filter
-    if (knowledgeFilterIds && !knowledgeFilterIds.has(String(nodeId))) return false;
-    return true;
+  // Returns the color a node should be filled with given active descriptors,
+  // or null if only ring filters cover it (keep base color), or false if excluded.
+  function nodeFilterResult(nodeId) {
+    if (!activeFilterDescriptors.length && !knowledgeFilterIds) return null; // no filter active
+
+    const colorDescs = activeFilterDescriptors.filter(d => d.displayMode === 'color');
+    const anyBgHidden = activeFilterDescriptors.some(d => d.backgroundHidden);
+
+    // Check if node is in any active filter
+    let inColor = false;
+    let topColor = null; // color from highest-dbId color filter that covers this node
+    for (const desc of colorDescs) {
+      const inThis = desc.id === 'my-knowledge'
+        ? (knowledgeFilterIds && knowledgeFilterIds.has(String(nodeId)))
+        : nodePassesLabelSet(nodeId, desc.labelSet);
+      if (inThis) {
+        inColor = true;
+        topColor = desc.color; // later entries (higher id) win since we iterate in order
+      }
+    }
+
+    const inKnowledge = knowledgeFilterIds && knowledgeFilterIds.has(String(nodeId));
+    const mkIsRing = activeFilterDescriptors.some(d => d.id === 'my-knowledge' && d.displayMode === 'ring');
+
+    // Check ring descriptors for coverage (rings don't change fill, but affect bg-hidden logic)
+    let inRing = false;
+    for (const desc of activeFilterDescriptors.filter(d => d.displayMode === 'ring')) {
+      const inThis = desc.id === 'my-knowledge'
+        ? (knowledgeFilterIds && knowledgeFilterIds.has(String(nodeId)))
+        : nodePassesLabelSet(nodeId, desc.labelSet);
+      if (inThis) { inRing = true; break; }
+    }
+
+    const inAny = inColor || inRing || (mkIsRing && inKnowledge);
+
+    if (!inAny && anyBgHidden) return 'hidden'; // black out
+    if (!inAny && activeFilterDescriptors.length) return 'dim';  // grey out (existing behavior)
+    if (inColor) return topColor;
+    return null; // in filter but only via ring mode — keep base color
   }
 
   function refreshNodeColors() {
     if (!node) return;
+    const hasDescriptors = activeFilterDescriptors.length > 0;
+    const mkRingMode = activeFilterDescriptors.some(d => d.id === 'my-knowledge' && d.displayMode === 'ring');
+
     node
-      .attr('fill', d => nodePassesActive(d.id) ? d.color : '#585858')
+      .attr('fill', d => {
+        const result = nodeFilterResult(d.id);
+        if (result === 'hidden') return '#000000';
+        if (result === 'dim')    return '#585858';
+        if (result && result !== null) return result; // specific color
+        return d.color; // base map color
+      })
       .attr('fill-opacity', d => {
         const base = d.level === 1 ? 1 : d.level === 2 ? 0.85 : 0.7;
-        if (!nodePassesActive(d.id)) return 0.18;
-        // Proportional opacity when My Knowledge filter is active
-        if (knowledgePropMap) {
+        const result = nodeFilterResult(d.id);
+        if (result === 'hidden') return 1;
+        if (result === 'dim')    return 0.18;
+        // Proportional opacity for My Knowledge in color mode only
+        if (!mkRingMode && knowledgePropMap) {
           const pct = knowledgePropMap[String(d.id)] || 0;
-          // Scale: 0%→0.18 (dim), 1-99%→0.3–0.85, 100%→full
           if (pct <= 0) return 0.18;
           return Math.min(base, 0.25 + (pct / 100) * (base - 0.25));
         }
         return base;
+      })
+      .attr('pointer-events', d => {
+        const result = nodeFilterResult(d.id);
+        return result === 'hidden' ? 'none' : null;
       });
+
     if (!link) return;
     link
       .attr('stroke', d => {
         const srcId = typeof d.source === 'object' ? d.source.id : d.source;
         const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
-        if (!nodePassesActive(srcId) || !nodePassesActive(tgtId)) return '#585858';
+        const rs = nodeFilterResult(srcId);
+        const rt = nodeFilterResult(tgtId);
+        if (rs === 'hidden' || rt === 'hidden') return '#000000';
+        if (rs === 'dim'    || rt === 'dim')    return '#585858';
         const src = allNodes[srcId];
         return src ? (CONTINENTS[src.continentId] || '#444') : '#444';
       })
       .attr('stroke-opacity', d => {
         const srcId = typeof d.source === 'object' ? d.source.id : d.source;
         const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
-        if (!nodePassesActive(srcId) || !nodePassesActive(tgtId)) return 0.06;
+        const rs = nodeFilterResult(srcId);
+        const rt = nodeFilterResult(tgtId);
+        if (rs === 'hidden' || rt === 'hidden') return 0;
+        if (rs === 'dim'    || rt === 'dim')    return 0.06;
         const src = allNodes[srcId];
         return src?.level === 1 ? 0.5 : src?.level === 2 ? 0.35 : src?.level === 3 ? 0.2 : 0.12;
       });
   }
 
-  window.setMapFilter = function(labelSet) {
-    activeFilterSet = labelSet;
+  function refreshFilterRings() {
+    gRings.selectAll('circle').remove();
+    const ringDescs = activeFilterDescriptors.filter(d => d.displayMode === 'ring');
+    if (!ringDescs.length) return;
+
+    ringDescs.forEach(function(desc) {
+      const mkMode = desc.id === 'my-knowledge';
+      simNodes.forEach(function(d) {
+        const inThis = mkMode
+          ? (knowledgeFilterIds && knowledgeFilterIds.has(String(d.id)))
+          : nodePassesLabelSet(d.id, desc.labelSet);
+        if (!inThis) return;
+
+        const opacity = (mkMode && knowledgePropMap)
+          ? Math.max(0.3, Math.min(1, (knowledgePropMap[String(d.id)] || 0) / 100))
+          : 0.85;
+
+        gRings.append('circle')
+          .datum(d)
+          .attr('cx', d.x)
+          .attr('cy', projectY(d.y, 0))
+          .attr('r', nodeRadius(d) * 1.7)
+          .attr('fill', 'none')
+          .attr('stroke', desc.ringColor || '#9B8FB5')
+          .attr('stroke-width', 2)
+          .attr('stroke-opacity', opacity)
+          .attr('pointer-events', 'none')
+          .attr('filter', 'url(#ring-glow)')
+          .attr('class', 'filter-ring');
+      });
+    });
+  }
+
+  window.setMapFilter = function(descriptors) {
+    activeFilterDescriptors = descriptors || [];
     refreshNodeColors();
+    refreshFilterRings();
+  };
+
+  window.updateRingColor = function(filterId, color) {
+    const desc = activeFilterDescriptors.find(d => d.id === filterId);
+    if (desc) { desc.ringColor = color; refreshFilterRings(); }
   };
 
   function applyProgressOverlay() {
@@ -1209,25 +1318,22 @@ function init(data, emergentData) {
   }
 
   window.setKnowledgeFilter = function (progressMap, threshold) {
-    // Compute proportional knowledge for every node
     const propMap = computeProportionalKnowledge(progressMap);
-
-    // Include nodes with at least 1% proportional knowledge (any source)
     knowledgeFilterIds = new Set(
       Object.entries(propMap)
         .filter(([, pct]) => pct > 0)
         .map(([id]) => String(id))
     );
-    // Store proportional percentages for use in refreshNodeColors
     knowledgePropMap = propMap;
-
     refreshNodeColors();
+    refreshFilterRings();
   };
 
   window.clearKnowledgeFilter = function () {
     knowledgeFilterIds = null;
     knowledgePropMap   = null;
     refreshNodeColors();
+    refreshFilterRings();
   };
 
   // ── Tilt API (called by tilt.js) ──────────────────────────────────────────
@@ -1241,9 +1347,10 @@ function init(data, emergentData) {
 
   // ── Public MapView namespace (avoid 'Map' — that's a JS built-in) ────────────
   window.MapView = {
-    setFilter:            function(labelSet) { window.setMapFilter(labelSet); },
+    setFilter:            function(descs)    { window.setMapFilter(descs); },
     setKnowledgeFilter:   function(pm, t)   { window.setKnowledgeFilter(pm, t); },
     clearKnowledgeFilter: function()         { window.clearKnowledgeFilter(); },
+    updateRingColor:      function(fid, c)  { window.updateRingColor(fid, c); },
     resetZoom:            function()         { window.resetMapZoom(); },
     refreshProgress:      function()         { loadProgress(); },
     setTilt:              function(angle)    { window.setTilt(angle); },

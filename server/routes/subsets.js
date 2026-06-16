@@ -67,6 +67,7 @@ router.get('/', async (req, res) => {
     const [rows] = await db.execute(
       `SELECT s.id, s.name, s.description, s.icon_color, s.type, s.created_by,
               s.version, s.source_url,
+              s.background_hidden, s.display_mode, s.is_overlay, s.ring_color,
               (SELECT COUNT(*) FROM knowledge_subset_nodes ksn WHERE ksn.subset_id = s.id) AS node_count
        FROM knowledge_subsets s
        WHERE s.is_active = 1
@@ -224,6 +225,33 @@ router.post('/:id/commit', async (req, res) => {
   } catch (err) {
     console.error('[subsets POST commit]', err.message);
     res.status(500).json({ error: 'Commit failed' });
+  }
+});
+
+// ── Update filter display settings ───────────────────────────────────────────
+router.patch('/:id/settings', async (req, res) => {
+  const subsetId = parseInt(req.params.id);
+  const [subs] = await db.execute(
+    'SELECT created_by FROM knowledge_subsets WHERE id = ? AND is_active = 1', [subsetId]
+  );
+  if (!subs.length || (subs[0].created_by !== req.user.id && !isAdmin(req.user))) {
+    return res.status(403).json({ error: 'Not authorized' });
+  }
+  const { background_hidden, display_mode, is_overlay, ring_color } = req.body;
+  const updates = [];
+  const vals    = [];
+  if (background_hidden !== undefined) { updates.push('background_hidden = ?'); vals.push(background_hidden ? 1 : 0); }
+  if (display_mode      !== undefined) { updates.push('display_mode = ?');      vals.push(display_mode); }
+  if (is_overlay        !== undefined) { updates.push('is_overlay = ?');        vals.push(is_overlay ? 1 : 0); }
+  if (ring_color        !== undefined) { updates.push('ring_color = ?');        vals.push(ring_color); }
+  if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+  try {
+    vals.push(subsetId);
+    await db.execute(`UPDATE knowledge_subsets SET ${updates.join(', ')} WHERE id = ?`, vals);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[subsets PATCH settings]', err.message);
+    res.status(500).json({ error: 'Failed to update settings' });
   }
 });
 

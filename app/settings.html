@@ -200,7 +200,7 @@
       <div id="sf-personal-list"></div>
     </div>
 
-    <button class="sf-add-btn" onclick="window.location.href='custom-map.html'" data-i18n="btn.add_custom_map">+ Add custom map</button>
+    <button class="sf-add-btn" onclick="window.location.href='custom-map.html'" data-i18n="btn.add_custom_filter">+ Add custom filter</button>
 
   </div>
 
@@ -234,6 +234,47 @@
     return '<button class="sf-publish-btn" data-subset-id="' + sid + '" data-public="' + isPublic + '" style="background:' + bg + ';color:' + col + '">' + (isPublic ? t('label.public') : t('label.private')) + '</button>';
   }
 
+  function _filterOptionsHtml(s, editable) {
+    var bgVisible  = !s.background_hidden;
+    var isColor    = (s.display_mode || 'color') === 'color';
+    var isRing     = !isColor;
+    var isOverlay  = !!s.is_overlay;
+    var ringColor  = s.ring_color || '#9B8FB5';
+
+    if (!editable) {
+      // read-only display for non-admin public filters
+      return '<div class="sf-filter-opts sf-filter-opts-readonly">' +
+        '<span class="sf-opt-chip">' + t('filter.bg_label') + ': ' + (bgVisible ? t('filter.bg_visible') : t('filter.bg_hidden')) + '</span>' +
+        '<span class="sf-opt-chip">' + t('filter.display_label') + ': ' + (isColor ? t('filter.display_color') : t('filter.display_ring')) + '</span>' +
+        (isOverlay ? '<span class="sf-opt-chip">' + t('filter.overlay_label') + '</span>' : '') +
+        '</div>';
+    }
+
+    return '<div class="sf-filter-opts" data-subset-id="' + s.id + '">' +
+      '<div class="sf-opt-row">' +
+        '<span class="sf-opt-label" data-i18n="filter.bg_label">' + t('filter.bg_label') + '</span>' +
+        '<div class="st-picker sf-opt-picker">' +
+          '<button class="st-picker-btn' + (bgVisible ? ' active' : '') + '" data-opt="background_hidden" data-val="0">' + t('filter.bg_visible') + '</button>' +
+          '<button class="st-picker-btn' + (!bgVisible ? ' active' : '') + '" data-opt="background_hidden" data-val="1">' + t('filter.bg_hidden') + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="sf-opt-row">' +
+        '<span class="sf-opt-label" data-i18n="filter.display_label">' + t('filter.display_label') + '</span>' +
+        '<div class="st-picker sf-opt-picker">' +
+          '<button class="st-picker-btn' + (isColor ? ' active' : '') + '" data-opt="display_mode" data-val="color">' + t('filter.display_color') + '</button>' +
+          '<button class="st-picker-btn' + (isRing  ? ' active' : '') + '" data-opt="display_mode" data-val="ring">'  + t('filter.display_ring')  + '</button>' +
+        '</div>' +
+        '<label class="sf-ring-color-wrap' + (isRing ? '' : ' hidden') + '" title="' + t('filter.ring_color_label') + '">' +
+          '<input type="color" class="sf-ring-color-input" value="' + ringColor + '" data-opt="ring_color">' +
+        '</label>' +
+      '</div>' +
+      '<div class="sf-opt-row">' +
+        '<span class="sf-opt-label" data-i18n="filter.overlay_label">' + t('filter.overlay_label') + '</span>' +
+        '<button class="st-toggle' + (isOverlay ? ' on' : '') + '" data-opt="is_overlay"><div class="st-toggle-thumb"></div></button>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderPublicMaps(maps) {
     var section = document.getElementById('sf-public-section');
     var list    = document.getElementById('sf-public-list');
@@ -243,6 +284,8 @@
     maps.forEach(function(s) {
       var fid  = 'db-' + s.id;
       var isOn = hidden.indexOf(fid) === -1;
+      var wrap = document.createElement('div');
+      wrap.className = 'sf-filter-wrap';
       var row  = document.createElement('div');
       row.className = 'sf-filter-row';
       row.innerHTML =
@@ -251,7 +294,9 @@
         '<span class="sf-node-count">' + s.node_count + ' ' + t('label.nodes') + '</span>' +
         (_isAdmin ? _adminBtn(s.id, true) : '') +
         '<button class="st-toggle' + (isOn ? ' on' : '') + '" data-filter-id="' + fid + '"><div class="st-toggle-thumb"></div></button>';
-      list.appendChild(row);
+      wrap.appendChild(row);
+      wrap.insertAdjacentHTML('beforeend', _filterOptionsHtml(s, _isAdmin));
+      list.appendChild(wrap);
     });
   }
 
@@ -261,6 +306,8 @@
     list.innerHTML = '';
     section.style.display = maps.length ? '' : 'none';
     maps.forEach(function(s) {
+      var wrap = document.createElement('div');
+      wrap.className = 'sf-filter-wrap';
       var row = document.createElement('div');
       row.className = 'sf-filter-row';
       row.innerHTML =
@@ -269,7 +316,9 @@
         '<span class="sf-node-count">' + s.node_count + ' ' + t('label.nodes') + '</span>' +
         (_isAdmin ? _adminBtn(s.id, false) : '') +
         '<button class="sf-delete-btn" data-subset-id="' + s.id + '" title="Delete">✕</button>';
-      list.appendChild(row);
+      wrap.appendChild(row);
+      wrap.insertAdjacentHTML('beforeend', _filterOptionsHtml(s, true));
+      list.appendChild(wrap);
     });
   }
 
@@ -318,6 +367,66 @@
   }
   document.getElementById('sf-public-list').addEventListener('click', handleMapClick);
   document.getElementById('sf-personal-list').addEventListener('click', handleMapClick);
+
+  // Filter display options (picker buttons + overlay toggle)
+  function handleOptClick(e) {
+    var btn = e.target.closest('[data-opt]');
+    if (!btn) return;
+    var opt   = btn.dataset.opt;
+    var wrap  = btn.closest('.sf-filter-opts');
+    if (!wrap) return;
+    var sid   = wrap.dataset.subsetId;
+
+    if (opt === 'is_overlay') {
+      // toggle button
+      var isOn = btn.classList.toggle('on');
+      patchFilterSettings(sid, { is_overlay: isOn ? 1 : 0 });
+      return;
+    }
+
+    // picker button
+    if (!btn.classList.contains('st-picker-btn')) return;
+    var val = btn.dataset.val;
+    wrap.querySelectorAll('[data-opt="' + opt + '"].st-picker-btn').forEach(function(b) {
+      b.classList.toggle('active', b === btn);
+    });
+
+    var payload = {};
+    payload[opt] = (opt === 'background_hidden') ? parseInt(val) : val;
+    patchFilterSettings(sid, payload);
+
+    // show/hide ring color input when display_mode changes
+    if (opt === 'display_mode') {
+      var colorWrap = wrap.querySelector('.sf-ring-color-wrap');
+      if (colorWrap) colorWrap.classList.toggle('hidden', val !== 'ring');
+    }
+  }
+
+  // Ring color swatch change
+  function handleOptChange(e) {
+    var inp = e.target.closest('.sf-ring-color-input');
+    if (!inp) return;
+    var wrap = inp.closest('.sf-filter-opts');
+    if (!wrap) return;
+    patchFilterSettings(wrap.dataset.subsetId, { ring_color: inp.value });
+  }
+
+  function patchFilterSettings(subsetId, settings) {
+    fetch('/api/subsets/' + subsetId + '/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    }).then(function() {
+      if (typeof window.parent !== 'undefined' && window.parent.updateFilterSettings) {
+        window.parent.updateFilterSettings(parseInt(subsetId), settings);
+      }
+    }).catch(function() { alert(t('msg.could_not_update')); });
+  }
+
+  document.getElementById('sf-public-list').addEventListener('click',  handleOptClick);
+  document.getElementById('sf-personal-list').addEventListener('click', handleOptClick);
+  document.getElementById('sf-public-list').addEventListener('change',  handleOptChange);
+  document.getElementById('sf-personal-list').addEventListener('change', handleOptChange);
 
   /* ── Palette picker ── */
   const palettePicker = document.getElementById('palette-picker');

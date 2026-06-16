@@ -1,30 +1,42 @@
 /* ═══════════════════════════════════════════════════════════════
    FILTERS  —  filters.js  (Map View sub-module)
    ───────────────────────────────────────────────────────────────
-   Owns  : filter panel UI, filter set definitions
-   Calls : window.MapView.setFilter(), window.MapView.setKnowledgeFilter(),
-           window.MapView.clearKnowledgeFilter()
+   Owns  : filter panel UI, filter set definitions, active state
+   Calls : window.setMapFilter(descriptors[])
+           window.setKnowledgeFilter(progress, threshold)
+           window.clearKnowledgeFilter()
+           window.updateRingColor(filterId, color)
    Never : touch D3 internals, learning.js, test.js
    ═══════════════════════════════════════════════════════════════ */
 
 (function () {
 
-  /* ─── Filter definitions ─────────────────────────────────────────────
-   Each filter specifies a Set of node LABEL strings at any level.
-   The ancestry-chain walk in app.js means matching any ancestor
-   also colours all its descendants.
-   ──────────────────────────────────────────────────────────────────── */
+  /* ─── Built-in filter definitions ───────────────────────────────────────
+     My Knowledge is hardcoded here; DB-backed subsets are loaded below.
+  ──────────────────────────────────────────────────────────────────────── */
   var FILTERS = {
     'my-knowledge': {
-      label: 'My Knowledge',
-      color: '#9B8FB5',
-      dynamic: true,
-      labels: new Set()
+      label:           'My Knowledge',
+      color:           '#9B8FB5',
+      dynamic:         true,
+      isOverlay:       true,
+      displayMode:     'ring',
+      backgroundHidden: false,
+      ringColor:       '#9B8FB5',
+      labels:          new Set()
     }
   };
 
-  /* ─── DB-backed subsets (personal + public) ─────────────────────── */
+  /* ─── DB-backed subsets ──────────────────────────────────────────────── */
   var COLOR_HEX = { terra: '#C4826A', sage: '#8BAD7E', amber: '#C4A55A', lavender: '#9B8FB5' };
+
+  function getRingColorOverride(filterId) {
+    try { return localStorage.getItem('kq_ring_color_' + filterId) || null; }
+    catch(e) { return null; }
+  }
+  function setRingColorOverride(filterId, color) {
+    try { localStorage.setItem('kq_ring_color_' + filterId, color); } catch(e) {}
+  }
 
   (function loadDBSubsets() {
     var hidden;
@@ -37,8 +49,18 @@
         var list = document.querySelector('#filter-panel .fp-list');
         subsets.forEach(function(s) {
           var filterId = 'db-' + s.id;
-          var color = COLOR_HEX[s.icon_color] || COLOR_HEX.terra;
-          FILTERS[filterId] = { label: s.name, color: color, dbId: s.id, labels: null };
+          var color    = COLOR_HEX[s.icon_color] || COLOR_HEX.terra;
+          var ringOverride = getRingColorOverride(filterId);
+          FILTERS[filterId] = {
+            label:           s.name,
+            color:           color,
+            dbId:            s.id,
+            labels:          null,
+            isOverlay:       !!s.is_overlay,
+            displayMode:     s.display_mode || 'color',
+            backgroundHidden: !!s.background_hidden,
+            ringColor:       ringOverride || s.ring_color || color
+          };
           var div = document.createElement('div');
           div.className = 'fp-item';
           div.dataset.filterId = filterId;
@@ -52,7 +74,7 @@
       .catch(function() {});
   })();
 
-  /* ─── Apply visibility from localStorage ────────────────────────── */
+  /* ─── Apply visibility from localStorage ────────────────────────────── */
   (function applyVisibility() {
     var hidden;
     try { hidden = JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); }
@@ -65,19 +87,19 @@
     });
   })();
 
-  /* ─── State ──────────────────────────────────────────────────────── */
-  var activeFilterId = null;
+  /* ─── State ──────────────────────────────────────────────────────────── */
+  var baseFilterId     = null;       // one non-overlay active filter or null
+  var overlayFilterIds = new Set();  // active overlay filters (any number)
 
-  /* ─── DOM refs ───────────────────────────────────────────────────── */
+  /* ─── DOM refs ───────────────────────────────────────────────────────── */
   var panel     = document.getElementById('filter-panel');
   var filterBtn = document.getElementById('filter-btn');
   var clearBtn  = document.getElementById('fp-clear');
   var list      = document.querySelector('#filter-panel .fp-list');
 
-  /* ─── Filter panel toggle ────────────────────────────────────────── */
+  /* ─── Filter panel toggle ────────────────────────────────────────────── */
   filterBtn.addEventListener('click', function (e) {
     e.stopPropagation();
-    // close Layer Panel if open
     var lp = document.getElementById('layer-panel');
     var lb = document.getElementById('layers-btn');
     if (lp) lp.classList.remove('open');
@@ -93,79 +115,184 @@
     }
   });
 
-  /* ─── Filter item clicks (delegated) ────────────────────────────── */
+  /* ─── Filter item clicks (delegated) ────────────────────────────────── */
   list.addEventListener('click', function (e) {
+    // ring color picker clicks are handled separately — don't treat as filter toggle
+    if (e.target.closest('.fp-ring-swatch')) return;
+
     var item = e.target.closest('.fp-item');
     if (!item) return;
     e.stopPropagation();
-    var fid = item.dataset.filterId;
+    var fid    = item.dataset.filterId;
+    var filter = FILTERS[fid];
+    if (!filter) return;
 
-    if (activeFilterId === fid) {
-      deactivate();
-    } else {
-      activeFilterId = fid;
-      document.querySelectorAll('.fp-item').forEach(function (el) {
-        el.classList.toggle('active', el.dataset.filterId === fid);
-      });
-      if (clearBtn) clearBtn.classList.remove('hidden');
-
-      var filter = FILTERS[fid];
-      if (filter && filter.dynamic) {
-        // "My Knowledge" — use ID-based filter, not label-based
-        fetch('/api/map/progress')
-          .then(function (r) { return r.json(); })
-          .then(function (progress) {
-            if (typeof window.setKnowledgeFilter === 'function') {
-              window.setKnowledgeFilter(progress, 50);
-            }
-          })
-          .catch(function () {});
-      } else if (filter && filter.dbId) {
-        // DB-backed subset — fetch node labels on first activation
-        if (filter.labels) {
-          applyToMap(filter.labels);
-        } else {
-          fetch('/api/subsets/' + filter.dbId + '/nodes')
-            .then(function (r) { return r.json(); })
-            .then(function (labels) {
-              filter.labels = new Set(labels);
-              applyToMap(filter.labels);
-            })
-            .catch(function () {});
-        }
+    if (filter.isOverlay) {
+      if (overlayFilterIds.has(fid)) {
+        overlayFilterIds.delete(fid);
       } else {
-        applyToMap(filter ? filter.labels : null);
+        overlayFilterIds.add(fid);
+        ensureFilterLabels(fid, filter);
+      }
+    } else {
+      if (baseFilterId === fid) {
+        baseFilterId = null;
+      } else {
+        baseFilterId = fid;
+        ensureFilterLabels(fid, filter);
       }
     }
+
+    updateActiveUI();
+    pushToMap();
   });
 
-  /* ─── Clear button ───────────────────────────────────────────────── */
+  /* ─── Clear button ───────────────────────────────────────────────────── */
   if (clearBtn) {
     clearBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      deactivate();
+      deactivateAll();
     });
   }
 
-  /* ─── Helpers ────────────────────────────────────────────────────── */
-  function deactivate() {
-    activeFilterId = null;
-    document.querySelectorAll('.fp-item').forEach(function (el) {
-      el.classList.remove('active');
-    });
-    if (clearBtn) clearBtn.classList.add('hidden');
-    applyToMap(null);
+  /* ─── Ring color swatch (delegated, filter panel) ────────────────────── */
+  list.addEventListener('change', function (e) {
+    var swatch = e.target.closest('.fp-ring-swatch');
+    if (!swatch) return;
+    var fid = swatch.dataset.filterId;
+    var color = e.target.value;
+    if (FILTERS[fid]) FILTERS[fid].ringColor = color;
+    setRingColorOverride(fid, color);
+    if (typeof window.updateRingColor === 'function') window.updateRingColor(fid, color);
+  });
+
+  /* ─── Helpers ────────────────────────────────────────────────────────── */
+  function ensureFilterLabels(fid, filter) {
+    if (filter.dynamic || filter.labels) return; // already loaded or dynamic
+    if (!filter.dbId) return;
+    fetch('/api/subsets/' + filter.dbId + '/nodes')
+      .then(function(r) { return r.json(); })
+      .then(function(labels) {
+        filter.labels = new Set(labels);
+        pushToMap();
+      })
+      .catch(function() {});
+  }
+
+  function deactivateAll() {
+    baseFilterId = null;
+    overlayFilterIds.clear();
+    updateActiveUI();
+    pushToMap();
     if (typeof window.clearKnowledgeFilter === 'function') window.clearKnowledgeFilter();
   }
 
-  window.clearActiveFilter = deactivate;
+  window.clearActiveFilter = deactivateAll;
 
-  function applyToMap(labelSet) {
-    /* setMapFilter is exposed by app.js after the map loads.
-       If called before the map is ready, it's a no-op. */
-    if (typeof window.setMapFilter === 'function') {
-      window.setMapFilter(labelSet);
+  function updateActiveUI() {
+    var anyActive = baseFilterId || overlayFilterIds.size > 0;
+    if (clearBtn) clearBtn.classList.toggle('hidden', !anyActive);
+
+    document.querySelectorAll('.fp-item').forEach(function(el) {
+      var fid    = el.dataset.filterId;
+      var active = fid === baseFilterId || overlayFilterIds.has(fid);
+      el.classList.toggle('active', active);
+
+      // show/hide ring color swatch
+      var filter = FILTERS[fid];
+      var swatch = el.querySelector('.fp-ring-swatch');
+      if (filter && filter.displayMode === 'ring') {
+        if (!swatch) {
+          swatch = document.createElement('label');
+          swatch.className = 'fp-ring-swatch';
+          swatch.dataset.filterId = fid;
+          swatch.title = t ? t('filter.ring_color_label') : 'Ring colour';
+          var inp = document.createElement('input');
+          inp.type = 'color';
+          inp.value = filter.ringColor || '#9B8FB5';
+          swatch.appendChild(inp);
+          el.appendChild(swatch);
+        }
+        swatch.style.display = active ? '' : 'none';
+      } else if (swatch) {
+        swatch.style.display = 'none';
+      }
+    });
+  }
+
+  function buildDescriptors() {
+    var descs = [];
+
+    if (baseFilterId) {
+      var f = FILTERS[baseFilterId];
+      if (f) {
+        descs.push({
+          id:               baseFilterId,
+          labelSet:         f.dynamic ? null : (f.labels || null),
+          color:            f.color,
+          ringColor:        f.ringColor,
+          displayMode:      f.displayMode,
+          backgroundHidden: f.backgroundHidden,
+          isOverlay:        false
+        });
+      }
+    }
+
+    overlayFilterIds.forEach(function(fid) {
+      var f = FILTERS[fid];
+      if (f) {
+        descs.push({
+          id:               fid,
+          labelSet:         f.dynamic ? null : (f.labels || null),
+          color:            f.color,
+          ringColor:        f.ringColor,
+          displayMode:      f.displayMode,
+          backgroundHidden: f.backgroundHidden,
+          isOverlay:        true
+        });
+      }
+    });
+
+    return descs;
+  }
+
+  function pushToMap() {
+    var descs = buildDescriptors();
+
+    // Drive My Knowledge data fetch when it's an active overlay
+    var mkActive = overlayFilterIds.has('my-knowledge') ||
+                   baseFilterId === 'my-knowledge';
+    if (mkActive) {
+      fetch('/api/map/progress')
+        .then(function(r) { return r.json(); })
+        .then(function(progress) {
+          if (typeof window.setKnowledgeFilter === 'function') {
+            window.setKnowledgeFilter(progress, 50);
+          }
+          // setMapFilter is also called inside setKnowledgeFilter via refreshNodeColors,
+          // but we still push descriptors so app.js knows the display mode
+          if (typeof window.setMapFilter === 'function') window.setMapFilter(descs);
+        })
+        .catch(function() {});
+    } else {
+      if (typeof window.clearKnowledgeFilter === 'function') window.clearKnowledgeFilter();
+      if (typeof window.setMapFilter === 'function') window.setMapFilter(descs);
     }
   }
+
+  /* ─── Called from settings.html after a settings PATCH ──────────────── */
+  window.updateFilterSettings = function(dbId, settings) {
+    var fid = 'db-' + dbId;
+    var f   = FILTERS[fid];
+    if (!f) return;
+    if (settings.background_hidden !== undefined) f.backgroundHidden = !!settings.background_hidden;
+    if (settings.display_mode      !== undefined) f.displayMode      = settings.display_mode;
+    if (settings.is_overlay        !== undefined) f.isOverlay        = !!settings.is_overlay;
+    if (settings.ring_color        !== undefined) f.ringColor        = settings.ring_color;
+    // Re-render swatch state
+    updateActiveUI();
+    // If this filter is currently active, re-push to map
+    if (fid === baseFilterId || overlayFilterIds.has(fid)) pushToMap();
+  };
 
 })();
