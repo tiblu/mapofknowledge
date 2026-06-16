@@ -1027,6 +1027,9 @@ function init(data, emergentData) {
         return result === 'hidden' ? 'none' : null;
       });
 
+    if (label) label.attr('display', d => nodeFilterResult(d.id) === 'hidden' ? 'none' : null);
+    if (expander) expander.attr('display', d => nodeFilterResult(d.id) === 'hidden' ? 'none' : null);
+
     if (!link) return;
     link
       .attr('stroke', d => {
