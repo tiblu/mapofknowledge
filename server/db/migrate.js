@@ -19,7 +19,7 @@ const BATCH = 500;
 async function run() {
   const conn = await db.getConnection();
   try {
-    console.log('=== Map of Knowledge — DB Migration ===\n');
+    console.log('=== KnobitMap — DB Migration ===\n');
 
     // ── 1. Schema additions ───────────────────────────────────────────────────
     console.log('Adding schema additions if needed...');

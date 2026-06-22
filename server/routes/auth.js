@@ -39,7 +39,7 @@ passport.use(new GoogleStrategy(
         const isFirstLogin = !user.last_login;
         await conn.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
         if (isFirstLogin) {
-          notify(user.id, 'welcome', 'Welcome to the Map of Knowledge!',
+          notify(user.id, 'welcome', 'Welcome to KnobitMap!',
             'We\'re glad you\'re here. Start exploring the map and begin your journey of discovery. Happy learning!');
         }
         done(null, user);

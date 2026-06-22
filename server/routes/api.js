@@ -325,7 +325,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
       const eventTitle = pct >= 100 ? `Marked as known: ${label}` : `Unmarked as known: ${label}`;
       db.execute(
         `INSERT INTO passport_events (passport_id, event_date, title, institution, node_external_id, type, sort_order)
-         VALUES (?, CURDATE(), ?, 'Map of Knowledge · KaiQ Platform', ?, 'activity', 0)`,
+         VALUES (?, CURDATE(), ?, 'KnobitMap · KaiQ Platform', ?, 'activity', 0)`,
         [passportId, eventTitle, id]
       ).catch(() => {});
       if (pct >= 100) {
@@ -384,7 +384,7 @@ router.post('/nodes/:id/learn', async (req, res) => {
         await db.execute(
           `INSERT INTO passport_events
              (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-           VALUES (?, CURDATE(), ?, 'Map of Knowledge · KaiQ Platform', NULL, ?, 'activity', 0)`,
+           VALUES (?, CURDATE(), ?, 'KnobitMap · KaiQ Platform', NULL, ?, 'activity', 0)`,
           [passportId, `Started learning: ${node.label}`, id]
         ).catch(() => {});
       }
@@ -591,13 +591,13 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
             `INSERT INTO passport_credentials
                (passport_id, type, title, issuer, awarded_date, score_pct, threshold_pct,
                 blockchain_hash, sort_order)
-             VALUES (?, 'platform', ?, 'Map of Knowledge · KaiQ Platform', CURDATE(), 100, 80, ?, 0)`,
+             VALUES (?, 'platform', ?, 'KnobitMap · KaiQ Platform', CURDATE(), 100, 80, ?, 0)`,
             [passportId, credTitle, '0x' + hash]
           );
           await db.execute(
             `INSERT INTO passport_events
                (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-             VALUES (?, CURDATE(), ?, 'Map of Knowledge · KaiQ Platform', 'Score: 100%', ?, 'assessment', 0)`,
+             VALUES (?, CURDATE(), ?, 'KnobitMap · KaiQ Platform', 'Score: 100%', ?, 'assessment', 0)`,
             [passportId, `Completed: ${nodeLabel}`, nodeExtId]
           );
           notify(userId, 'unit_complete', `${nodeLabel} — fully mastered!`,
@@ -1223,7 +1223,7 @@ router.post('/test/evaluate', async (req, res) => {
             await db.execute(
               `INSERT INTO passport_events
                  (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-               VALUES (?, CURDATE(), ?, 'Map of Knowledge · KaiQ Platform', ?, ?, 'assessment', 0)`,
+               VALUES (?, CURDATE(), ?, 'KnobitMap · KaiQ Platform', ?, ?, 'assessment', 0)`,
               [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
             );
             notify(req.user?.id, 'test_result', `Test result: ${label}`,
@@ -1259,7 +1259,7 @@ router.post('/test/evaluate', async (req, res) => {
       await db.execute(
         `INSERT INTO passport_events
            (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-         VALUES (?, CURDATE(), ?, 'Map of Knowledge · KaiQ Platform', ?, ?, 'assessment', 0)`,
+         VALUES (?, CURDATE(), ?, 'KnobitMap · KaiQ Platform', ?, ?, 'assessment', 0)`,
         [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
       );
       notify(req.user?.id, 'test_result', `Test result: ${label}`,

@@ -494,7 +494,7 @@
         </div>`;
     }
 
-    // ── Map of Knowledge Credentials (platform, read-only) ──
+    // ── KnobitMap Credentials (platform, read-only) ──
     var platform = creds.filter(function(c) { return c.type === 'platform'; });
     var platformCard = document.getElementById('platform-credentials-card');
     if (platformCard) {
@@ -505,7 +505,7 @@
               <div class="p-cred-icon internal">🗺️</div>
               <div>
                 <div class="p-cred-title">${esc(c.title)}</div>
-                <div class="p-cred-issuer">${esc(c.issuer || 'Map of Knowledge · KaiQ Platform')}</div>
+                <div class="p-cred-issuer">${esc(c.issuer || 'KnobitMap · KaiQ Platform')}</div>
                 <div class="p-cred-date">${fmtDate(c.awarded_date)}${c.score_pct ? ` · Score: ${c.score_pct}%` : ''}</div>
                 ${c.blockchain_hash ? `<div class="p-cred-hash">${esc(c.blockchain_hash)}…</div>` : ''}
               </div>
