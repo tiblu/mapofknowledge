@@ -120,7 +120,20 @@
 
   function apiComplete(knobitId) {
     return fetch('/api/learn/knobit/' + knobitId + '/complete', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && data.goalCompleted) _showGoalCelebration(data.goalCompleted);
+      })
       .catch(function () {});
+  }
+
+  function _showGoalCelebration(goal) {
+    var overlay = document.getElementById('goal-celebration-overlay');
+    if (!overlay) return;
+    var label = overlay.querySelector('.goal-cel-label');
+    if (label) label.textContent = goal.nodeLabel || '';
+    overlay.classList.add('active');
+    setTimeout(function () { overlay.classList.remove('active'); }, 4500);
   }
 
   /* ─── Entry / exit ────────────────────────────────────────────── */

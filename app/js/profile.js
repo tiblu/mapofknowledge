@@ -687,8 +687,16 @@
     _reflShowing += 5; _renderReflectionsWithState();
   };
 
+  function fmtEta(minutes) {
+    if (!minutes && minutes !== 0) return '';
+    if (minutes === 0) return t('label.eta_done');
+    if (minutes < 60) return 'ETA: ' + minutes + ' ' + t('label.min');
+    var h = Math.floor(minutes / 60);
+    var m = minutes % 60;
+    return 'ETA: ' + h + ' ' + t('label.h') + (m ? ' ' + m + ' ' + t('label.min') : '');
+  }
+
   function renderGoals(goals) {
-    // Hide legacy cards
     ['objectives-card','plans-card'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) el.style.display = 'none';
@@ -697,25 +705,51 @@
     var card = document.getElementById('goals-card');
     if (!card) return;
 
-    var all      = goals || [];
-    var active   = all.filter(function(g) { return g.status === 'in_progress'; });
-    var done     = all.filter(function(g) { return g.status === 'completed'; });
+    var all    = goals || [];
+    var active = all.filter(function(g) { return g.status === 'in_progress'; });
+    var done   = all.filter(function(g) { return g.status === 'completed'; });
 
     var warning = active.length >= 4
-      ? `<div class="p-goal-warning">⚠️ You have ${active.length} active goals. Research shows that focusing on fewer goals leads to better outcomes — consider completing one before adding more.</div>`
+      ? `<div class="p-goal-warning">${t('msg.too_many_goals').replace('{n}', active.length)}</div>`
       : '';
 
     function goalRow(g) {
-      var isDone   = g.status === 'completed';
-      var setDate  = g.created_at ? 'Set: ' + fmtDate(g.created_at) : '';
-      var doneDate = g.completed_at ? ' · Completed: ' + fmtDate(g.completed_at) : '';
-      var badge    = isDone
+      var isDone     = g.status === 'completed';
+      var isNodeGoal = !!g.node_external_id;
+      var doneDate   = g.completed_at ? ' · ' + fmtDate(g.completed_at) : '';
+      var setDate    = g.created_at ? fmtDate(g.created_at) : '';
+      var badge      = isDone
         ? `<span class="p-goal-badge-done">${t('label.completed_badge')}</span>`
         : `<span class="p-goal-badge-active">${t('label.in_progress')}</span>`;
       var completeBtn = !isDone
-        ? `<button onclick="window.completeGoal(${g.id})" title="Mark as completed" class="p-goal-complete-btn">${t('btn.complete')}</button>`
+        ? `<button onclick="window.completeGoal(${g.id})" class="p-goal-complete-btn">${t('btn.complete')}</button>`
         : '';
-      var delBtn = `<button onclick="window.deleteGoal(${g.id})" title="Remove" class="p-goal-delete-btn">×</button>`;
+      var delBtn = `<button onclick="window.deleteGoal(${g.id})" class="p-goal-delete-btn">×</button>`;
+
+      if (isNodeGoal) {
+        var pct    = Math.round(Number(g.progress) || 0);
+        var eta    = fmtEta(g.eta_minutes);
+        var crumb  = g.node_breadcrumb || g.node_label || g.text;
+        var target = g.target_date
+          ? `<span class="p-goal-target">${t('label.goal_target_date')}: ${fmtDate(g.target_date)}</span>`
+          : '';
+        var mapLink = !isDone
+          ? `<a class="p-goal-map-link" href="/app/?node=${esc(g.node_external_id)}">${t('btn.go_to_map')}</a>`
+          : '';
+        return `<div class="p-goal-card p-goal-card-node ${isDone ? 'p-goal-card-done' : 'p-goal-card-active'}">
+          <div class="p-goal-node-header">
+            <div class="p-goal-node-crumb">${esc(crumb)}</div>
+            ${!isDone ? `<div class="p-goal-eta">${eta}</div>` : ''}
+          </div>
+          ${!isDone ? `<div class="p-goal-bar-track"><div class="p-goal-bar-fill" style="width:${pct}%"></div></div>
+          <div class="p-goal-bar-label">${pct}% ${t('label.goal_progress')}</div>` : ''}
+          <div class="p-goal-footer">
+            <div class="p-goal-meta">${target}${setDate ? `<span class="p-goal-date">${setDate}${doneDate}</span>` : ''}</div>
+            <div class="p-goal-actions">${badge}${mapLink}${completeBtn}${delBtn}</div>
+          </div>
+        </div>`;
+      }
+
       return `<div class="p-goal-card ${isDone ? 'p-goal-card-done' : 'p-goal-card-active'}">
         <div class="p-goal-text">${esc(g.text)}</div>
         <div class="p-goal-footer">
@@ -732,23 +766,10 @@
       ? `<div class="p-goals-completed-label">${t('label.completed')}</div>` + done.map(goalRow).join('')
       : '';
 
-    var addForm = `
-      <button class="p-edit-btn p-rel-add-btn" id="goal-add-btn"
-        onclick="document.getElementById('goal-form').style.display='';this.style.display='none';document.getElementById('goal-textarea').focus()">
-        ${t('btn.add_goal')}
-      </button>
-      <div id="goal-form" style="display:none" class="p-rel-form">
-        <textarea id="goal-textarea" class="p-edit-input p-textarea-full"
-          placeholder="${esc(t('placeholder.goal_text'))}"></textarea>
-        <div class="p-goal-smart-hint">${t('msg.smart_hint')}</div>
-        <div class="p-flex-row-sm">
-          <button class="p-edit-btn primary p-edit-btn-inline" onclick="window.saveGoal()">${t('btn.add')}</button>
-          <button class="p-edit-btn p-edit-btn-inline" onclick="document.getElementById('goal-form').style.display='none';document.getElementById('goal-add-btn').style.display=''">${t('btn.cancel')}</button>
-        </div>
-      </div>`;
+    var hintHtml = `<div class="p-goal-map-hint">${t('msg.goal_map_hint')}</div>`;
 
     card.innerHTML = `<div class="p-card-title">${t('section.goals')}</div>` +
-      warning + activeRows + doneRows + addForm;
+      warning + hintHtml + activeRows + doneRows;
   }
 
   window.saveGoal = function() {
@@ -868,6 +889,142 @@
     }).then(() => window.loadProfile()).catch(() => alert(t('msg.save_failed_short')));
   };
 
+  function renderGameState(state, achievements) {
+    var gsCard = document.getElementById('game-state-card');
+    var achCard = document.getElementById('game-achievements-card');
+
+    if (gsCard) {
+      if (!state) {
+        gsCard.innerHTML = `<div class="p-card-title">${t('game.your_rank')}</div>${empty(t('msg.game_no_data'))}`;
+      } else {
+        var lumens     = state.lumens || 0;
+        var rankKey    = state.rank || '';
+        var rankTitle  = state.rankTitle_et || state.rankTitle || rankKey;
+        var nextTitle  = state.nextRank ? (state.nextRank.title_et || state.nextRank.title || '') : '';
+        var rankMin    = state.rankMin || 0;
+        var nextMin    = state.nextRank ? state.nextRank.min : lumens;
+        var pct        = nextMin > rankMin
+          ? Math.min(100, Math.round(((lumens - rankMin) / (nextMin - rankMin)) * 100))
+          : 100;
+        var momKey     = state.momentum ? state.momentum.label : '';
+        var momLabel   = momKey ? t(momKey) : '';
+        var streak     = state.momentum ? state.momentum.streakDays : 0;
+        gsCard.innerHTML = `
+          <div class="p-card-title">${t('game.your_rank')}</div>
+          <div class="p-game-rank-row">
+            <div class="p-game-rank-badge">${esc(rankTitle)}</div>
+            <div class="p-game-lumens">${lumens} ${t('game.lumens')}</div>
+          </div>
+          ${nextTitle ? `<div class="p-game-next-label">${t('game.next_rank')}: ${esc(nextTitle)}</div>` : ''}
+          <div class="p-bar-track p-game-bar">
+            <div class="p-bar-fill" style="width:${pct}%;background:var(--accent)"></div>
+          </div>
+          <div class="p-game-meta">
+            ${momLabel ? `<span class="p-game-momentum">${esc(momLabel)}</span>` : ''}
+            ${streak ? `<span class="p-game-streak">${streak}${t('label.day_streak')}</span>` : ''}
+          </div>`;
+      }
+    }
+
+    if (achCard) {
+      var all = achievements || [];
+      var unlocked = all.filter(function(a) { return a.unlocked; });
+      var locked   = all.filter(function(a) { return !a.unlocked; });
+      var achHtml  = '';
+      unlocked.forEach(function(a) {
+        achHtml += `<div class="p-ach p-ach-unlocked">
+          <div class="p-ach-icon">${esc(a.icon || '🏅')}</div>
+          <div class="p-ach-name">${esc(a.name_et || a.name)}</div>
+        </div>`;
+      });
+      locked.slice(0, 6).forEach(function(a) {
+        achHtml += `<div class="p-ach p-ach-locked">
+          <div class="p-ach-icon p-ach-icon-locked">${esc(a.icon || '🔒')}</div>
+          <div class="p-ach-name p-ach-name-locked">${esc(a.name_et || a.name)}</div>
+        </div>`;
+      });
+      achCard.innerHTML = `<div class="p-card-title">${t('game.achievements')}</div>
+        <div class="p-ach-grid">${achHtml || empty(t('msg.no_achievements'))}</div>`;
+    }
+  }
+
+  function renderLinks(links) {
+    var card = document.getElementById('links-card');
+    if (!card) return;
+    var asStudent = links.asStudent || [];
+    var asLinked  = links.asLinked  || [];
+
+    function linkRow(item, isStudent) {
+      var roleLabel = item.role === 'teacher' ? t('link.role_teacher') : t('link.role_parent');
+      var name = esc(isStudent ? item.linked_name : item.student_name);
+      return `<div class="p-link-row">
+        <div class="p-link-role-badge ${item.role}">${roleLabel}</div>
+        <div class="p-link-name">${name}</div>
+        <button class="p-row-delete-btn" onclick="window.revokeLink(${item.id})" title="${esc(t('btn.remove'))}">×</button>
+      </div>`;
+    }
+
+    var teacherLinks = asStudent.filter(function(l){ return l.role === 'teacher'; });
+    var parentLinks  = asStudent.filter(function(l){ return l.role === 'parent';  });
+
+    var html = `<div class="p-card-title">${t('section.s7_title')}</div>`;
+
+    if (asStudent.length || asLinked.length) {
+      if (teacherLinks.length) {
+        html += `<div class="p-link-group-label">${t('link.my_teachers')}</div>` +
+          teacherLinks.map(function(l){ return linkRow(l, true); }).join('');
+      }
+      if (parentLinks.length) {
+        html += `<div class="p-link-group-label">${t('link.my_parents')}</div>` +
+          parentLinks.map(function(l){ return linkRow(l, true); }).join('');
+      }
+      if (asLinked.length) {
+        html += `<div class="p-link-group-label">${t('link.as_linked')}</div>` +
+          asLinked.map(function(l){ return linkRow(l, false); }).join('');
+      }
+    } else {
+      html += empty(t('msg.no_links'));
+    }
+
+    html += `<div class="p-link-accept-form">
+      <div class="p-link-accept-label">${t('link.have_code')}</div>
+      <div class="p-link-accept-row">
+        <input id="link-code-input" class="p-edit-input p-link-code-input" placeholder="${esc(t('link.code_placeholder'))}" maxlength="8">
+        <button class="p-edit-btn primary" onclick="window.acceptLink()">${t('btn.join')}</button>
+      </div>
+      <div id="link-accept-msg" class="p-link-accept-msg"></div>
+    </div>`;
+
+    html += `<div class="p-link-nav-row">
+      <a class="p-edit-btn" href="teacher.html">${t('link.go_teacher_view')}</a>
+      <a class="p-edit-btn" href="parent.html">${t('link.go_parent_view')}</a>
+    </div>`;
+
+    card.innerHTML = html;
+  }
+
+  window.revokeLink = function(id) {
+    fetch('/api/links/' + id, { method: 'DELETE' })
+      .then(function() { window.loadProfile(); }).catch(function() {});
+  };
+
+  window.acceptLink = function() {
+    var input = document.getElementById('link-code-input');
+    if (!input || !input.value.trim()) { if (input) input.focus(); return; }
+    var msg = document.getElementById('link-accept-msg');
+    fetch('/api/links/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invite_code: input.value.trim() }),
+    }).then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.error) { if (msg) msg.textContent = d.error; return; }
+        if (msg) msg.textContent = t('msg.link_accepted');
+        window.loadProfile();
+      })
+      .catch(function() { if (msg) msg.textContent = t('msg.save_failed_short'); });
+  };
+
   /* ─── Main load ───────────────────────────────────────────────── */
   window.loadProfile = function () {
     fetch('/api/profile')
@@ -885,6 +1042,15 @@
       .catch(err => {
         console.error('Profile load failed:', err);
       });
+
+    Promise.all([
+      fetch('/api/game/state').then(r => r.json()).catch(() => null),
+      fetch('/api/game/achievements').then(r => r.json()).catch(() => []),
+      fetch('/api/links').then(r => r.json()).catch(() => ({ asStudent: [], asLinked: [] })),
+    ]).then(function(results) {
+      renderGameState(results[0], results[1]);
+      renderLinks(results[2]);
+    });
   };
 
   // Boot

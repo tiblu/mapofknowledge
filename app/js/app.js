@@ -529,6 +529,42 @@ function init(data, emergentData) {
       };
     }
 
+    // Wire "Set as goal" button — only for L5 nodes
+    const goalBtn = document.getElementById('sb-goal-btn');
+    const goalLabel = document.getElementById('sb-goal-label');
+    if (goalBtn) {
+      if (d.level === 5) {
+        goalBtn.style.display = '';
+        goalBtn.onclick = function () {
+          const crumb = (domainNode ? domainNode.label : '') +
+            (crumbParts.length ? ' › ' + crumbParts.join(' › ') : '');
+          const nodeName = d.label;
+          goalBtn.disabled = true;
+          fetch('/api/profile/goals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              node_external_id: d.id,
+              node_breadcrumb: crumb ? crumb + ' › ' + nodeName : nodeName,
+            }),
+          }).then(function (r) { return r.json(); }).then(function (res) {
+            if (goalLabel) {
+              goalLabel.textContent = res.duplicate ? t('msg.already_a_goal') : t('msg.goal_set');
+              goalBtn.classList.add('sb-goal-btn-set');
+            }
+            setTimeout(function () {
+              goalBtn.disabled = false;
+              if (goalLabel) goalLabel.setAttribute('data-i18n', 'btn.set_as_goal');
+              if (goalLabel) goalLabel.textContent = t('btn.set_as_goal');
+              goalBtn.classList.remove('sb-goal-btn-set');
+            }, 2500);
+          }).catch(function () { goalBtn.disabled = false; });
+        };
+      } else {
+        goalBtn.style.display = 'none';
+      }
+    }
+
     sidebar.classList.add("open");
 
     // Load overview and knowledge asynchronously
@@ -1473,6 +1509,65 @@ function init(data, emergentData) {
           if (chevron) chevron.setAttribute('d', collapsed ? 'M3.5 2l3.5 3-3.5 3' : 'M6.5 2L3 5l3.5 3');
         });
       }).catch(() => {});
+  }());
+
+  // ── Achievement toasts — show on page load for newly-earned achievements ──
+  (function () {
+    var container = document.getElementById('ach-toast-container');
+    if (!container) return;
+    var seenKey = 'ach_last_seen_ts';
+    var lastSeen = Number(localStorage.getItem(seenKey) || 0);
+    fetch('/api/notifications')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var notifs = Array.isArray(data) ? data : [];
+        var newAch = notifs.filter(function (n) {
+          return n.type === 'achievement' && new Date(n.created_at).getTime() > lastSeen;
+        });
+        localStorage.setItem(seenKey, Date.now());
+        newAch.forEach(function (n, i) {
+          setTimeout(function () {
+            var toast = document.createElement('div');
+            toast.className = 'ach-toast';
+            toast.innerHTML =
+              '<div class="ach-toast-icon">🏅</div>' +
+              '<div class="ach-toast-text">' +
+              '<div class="ach-toast-title">' + (window.t ? window.t('msg.achievement_unlocked') : 'Saavutus avatud!') + '</div>' +
+              '<div class="ach-toast-name">' + (n.title || '') + '</div>' +
+              '</div>';
+            container.appendChild(toast);
+            setTimeout(function () { toast.classList.add('ach-toast-visible'); }, 50);
+            setTimeout(function () {
+              toast.classList.remove('ach-toast-visible');
+              setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 400);
+            }, 3500);
+          }, i * 1800);
+        });
+      })
+      .catch(function () {});
+  }());
+
+  // ── "Start here" recommendations panel ────────────────────────────────────
+  (function () {
+    var panel = document.getElementById('reco-panel');
+    var chips = document.getElementById('reco-chips');
+    if (!panel || !chips) return;
+    fetch('/api/recommendations/next-nodes')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var nodes = data.nodes || [];
+        if (!nodes.length) return;
+        chips.innerHTML = nodes.map(function (n) {
+          return '<button class="reco-chip" data-node-id="' + n.id + '">' + n.label + '</button>';
+        }).join('');
+        chips.querySelectorAll('.reco-chip').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            navigateToNode(btn.dataset.nodeId);
+          });
+        });
+        panel.style.display = '';
+      })
+      .catch(function () {});
   }());
 
   // ── Initial build ──────────────────────────────────────────────────────────

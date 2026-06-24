@@ -1,0 +1,173 @@
+/* ═══════════════════════════════════════════════
+   TEACHER & PARENT VIEW
+   teacher.html / parent.html
+   ═══════════════════════════════════════════════ */
+
+/* ── Layout ─────────────────────────────────── */
+.teacher-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  position: fixed;
+  top: 52px; left: 0; right: 0; bottom: 0;
+}
+
+.teacher-sidebar {
+  background: var(--panel-a);
+  border-right: 1px solid var(--i09);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.teacher-sidebar-title {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.9px;
+  text-transform: uppercase; color: var(--c5);
+  padding: 18px 16px 10px;
+  border-bottom: 1px solid var(--i07);
+}
+.teacher-sidebar-footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--i07);
+  flex-shrink: 0;
+}
+.teacher-sidebar-footer .p-edit-btn { margin-top: 0; width: 100%; text-align: center; }
+
+.student-list {
+  flex: 1; overflow-y: auto;
+  padding: 6px 8px;
+}
+.student-list::-webkit-scrollbar { width: 3px; }
+.student-list::-webkit-scrollbar-thumb { background: var(--i14); border-radius: 2px; }
+
+.student-item {
+  padding: 11px 10px; border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.13s;
+  margin-bottom: 3px;
+}
+.student-item:hover { background: var(--i06); }
+.student-item-active { background: var(--i08) !important; }
+.student-item-name {
+  font-size: 13px; font-weight: 650; color: var(--c1); line-height: 1.25;
+}
+.student-item-meta {
+  font-size: 11px; color: var(--c6); margin-top: 2px;
+}
+
+/* ── Main panel ─────────────────────────────── */
+.teacher-main {
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 28px 36px 48px;
+}
+.teacher-main::-webkit-scrollbar { width: 4px; }
+.teacher-main::-webkit-scrollbar-thumb { background: var(--i14); border-radius: 2px; }
+
+.teacher-detail-empty {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%;
+}
+.teacher-empty-msg {
+  font-size: 14px; color: var(--c6); font-style: italic;
+}
+
+.teacher-detail-header {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 22px; padding-bottom: 16px;
+  border-bottom: 1.5px solid var(--i08);
+}
+.teacher-student-name {
+  flex: 1;
+  font-size: 20px; font-weight: 720; color: var(--c1); letter-spacing: -0.4px;
+}
+.teacher-detail-header .p-edit-btn { margin-top: 0; }
+
+/* Goal rows in teacher/parent views */
+.teacher-goal-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "label pct" "bar bar" "target target";
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--i06);
+}
+.teacher-goal-row:last-child { border-bottom: none; }
+.teacher-goal-label { grid-area: label; font-size: 13px; font-weight: 600; color: var(--c1); }
+.teacher-goal-pct   { grid-area: pct;   font-size: 12px; font-weight: 650; color: var(--c4); }
+.teacher-goal-row .p-bar-track { grid-area: bar; width: 100%; height: 5px; }
+.teacher-goal-target {
+  grid-area: target; grid-column: span 2;
+  font-size: 11px; color: var(--c6);
+}
+
+/* Parent stats strip */
+.parent-stats-row {
+  display: flex; gap: 24px;
+  margin-bottom: 22px;
+}
+.parent-stat { text-align: center; }
+.parent-stat-val {
+  font-size: 22px; font-weight: 720; color: var(--c1); line-height: 1;
+  letter-spacing: -0.5px;
+}
+.parent-stat-label {
+  font-size: 11px; color: var(--c6); margin-top: 4px;
+}
+
+/* ── Invite / link modal ────────────────────── */
+.link-modal {
+  position: fixed; inset: 0;
+  background: rgba(44,40,32,0.50);
+  backdrop-filter: blur(5px);
+  z-index: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.link-modal-box {
+  background: var(--bg);
+  border: 1px solid var(--i12);
+  border-radius: 18px;
+  padding: 28px 32px;
+  max-width: 340px; width: 90%;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(44,40,32,0.22);
+}
+.link-modal-title {
+  font-size: 14px; font-weight: 720; color: var(--c1);
+  margin-bottom: 18px; letter-spacing: -0.2px;
+}
+.link-code-display {
+  font-family: 'Courier New', monospace;
+  font-size: 28px; font-weight: 700; letter-spacing: 0.18em;
+  color: var(--c1);
+  background: var(--i08);
+  border-radius: 12px; padding: 12px 20px;
+  margin-bottom: 14px;
+  user-select: all;
+}
+.link-modal-hint {
+  font-size: 12px; color: var(--c5); margin-bottom: 18px; line-height: 1.55;
+}
+.link-modal-box .p-edit-btn { margin-top: 0; }
+
+/* ── p-card-title reuse (imported from profile.css via shared link) */
+.p-card-title {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.9px;
+  text-transform: uppercase; color: var(--c5);
+  margin-bottom: 12px; margin-top: 20px;
+}
+.p-card-title:first-child { margin-top: 0; }
+
+.p-scroll-lg { max-height: 320px; overflow-y: auto; }
+
+/* ── Mobile ─────────────────────────────────── */
+@media (max-width: 680px) {
+  .teacher-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .teacher-sidebar {
+    position: relative;
+    height: 200px;
+    border-right: none;
+    border-bottom: 1px solid var(--i09);
+  }
+  .teacher-main { padding: 16px 14px 48px; }
+}

@@ -104,6 +104,12 @@
      ════════════════════════════════════════ -->
 <div id="ctrl-left-stack">
 
+  <!-- Recommendations — Start here (shown by JS when goals or history exist) -->
+  <div id="reco-panel" class="ctrl-card reco-panel" style="display:none">
+    <div class="reco-label" data-i18n="label.start_here">Alusta siit</div>
+    <div id="reco-chips" class="reco-chips"></div>
+  </div>
+
   <!-- Continue learning chip (shown by JS when in-progress path exists) -->
   <div id="continue-chip" class="ctrl-card">
     <div class="continue-chip-icon">
@@ -295,6 +301,16 @@
       <span class="sb-learn-label" data-i18n="btn.learn_this">Learn this</span>
     </button>
 
+    <!-- Set as goal -->
+    <button class="sb-goal-btn" id="sb-goal-btn" style="display:none">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+        <circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.2"/>
+        <circle cx="7.5" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+        <circle cx="7.5" cy="7.5" r="0.8" fill="currentColor"/>
+      </svg>
+      <span id="sb-goal-label" data-i18n="btn.set_as_goal">Sea eesmärgiks</span>
+    </button>
+
     <p class="sb-inactive-hint" id="sb-inactive-hint" data-i18n="sidebar.inactive_hint">
       Learning and testing are available at the most detailed level — explore deeper into this topic.
     </p>
@@ -310,6 +326,19 @@
   </div>
 </aside>
 
+
+<!-- Goal completion celebration overlay -->
+<div id="goal-celebration-overlay" class="goal-cel-overlay">
+  <div class="goal-cel-inner">
+    <div class="goal-cel-emoji">🎉</div>
+    <div class="goal-cel-heading" data-i18n="msg.goal_completed">Eesmärk täidetud!</div>
+    <div class="goal-cel-label"></div>
+    <div class="goal-cel-sub" data-i18n="msg.excellent">Suurepärane!</div>
+  </div>
+</div>
+
+<!-- Achievement toast container -->
+<div id="ach-toast-container"></div>
 
 <!-- ════════════════════════════════════════
      LEARNING MODE  (z-index 320, above map)

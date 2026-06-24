@@ -621,6 +621,23 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
         game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => {});
       }
       game.checkAchievements(passportId, userId, 'knobit_complete', { totalEver }).catch(() => {});
+
+      // ── Goal completion ────────────────────────────────────────────────────
+      if (pct === 100) {
+        const [goalHit] = await db.execute(
+          `SELECT id FROM passport_goals
+           WHERE passport_id = ? AND node_external_id = ? AND status = 'in_progress'`,
+          [passportId, nodeExtId]
+        );
+        if (goalHit.length) {
+          await db.execute(
+            `UPDATE passport_goals SET status='completed', completed_at=NOW() WHERE id=?`,
+            [goalHit[0].id]
+          );
+          notify(userId, 'goal_complete', 'Eesmärk täidetud! 🎉', `Läbisid: "${nodeLabel}"`);
+          return res.json({ ok: true, goalCompleted: { nodeLabel, nodeExtId } });
+        }
+      }
     }
 
     res.json({ ok: true });
@@ -721,11 +738,29 @@ router.get('/profile', async (req, res) => {
       [passportId]
     );
 
-    const [goals] = await db.execute(
-      `SELECT * FROM passport_goals WHERE passport_id = ?
-       ORDER BY status ASC, created_at DESC`,
+    const [goalsRaw] = await db.execute(
+      `SELECT g.*,
+              n.label AS node_label,
+              COALESCE(unk.percentage, 0) AS progress,
+              (SELECT COUNT(*) FROM knobits k WHERE k.node_id = n.id) AS knobit_total,
+              (SELECT COUNT(*) FROM knobit_progress kp
+               JOIN knobits k2 ON k2.id = kp.knobit_id
+               WHERE k2.node_id = n.id AND kp.passport_id = g.passport_id
+                 AND kp.phase_reached = 'done') AS knobit_done
+       FROM passport_goals g
+       LEFT JOIN nodes n ON n.external_id = g.node_external_id
+       LEFT JOIN user_node_knowledge unk
+         ON unk.node_external_id = g.node_external_id AND unk.passport_id = g.passport_id
+       WHERE g.passport_id = ?
+       ORDER BY g.status ASC, g.created_at DESC`,
       [passportId]
     );
+    const goals = goalsRaw.map(g => ({
+      ...g,
+      eta_minutes: g.node_external_id
+        ? Math.max(0, (Number(g.knobit_total) || 4) - (Number(g.knobit_done) || 0)) * 8
+        : null,
+    }));
 
     const [aspirations] = await db.execute(
       'SELECT * FROM passport_aspirations WHERE passport_id = ? ORDER BY sort_order',
@@ -824,12 +859,22 @@ router.delete('/profile/events/:id', async (req, res) => {
 router.post('/profile/goals', async (req, res) => {
   const passportId = req.user?.passport_id;
   if (!passportId) return res.status(400).json({ error: 'No passport' });
-  const { text } = req.body;
-  if (!text?.trim()) return res.status(400).json({ error: 'text required' });
+  const { text, node_external_id, node_breadcrumb, target_date } = req.body;
+  const goalText = node_external_id ? (node_breadcrumb || node_external_id) : text?.trim();
+  if (!goalText) return res.status(400).json({ error: 'text or node_external_id required' });
   try {
+    // Prevent duplicate active node goals for the same node
+    if (node_external_id) {
+      const [existing] = await db.execute(
+        `SELECT id FROM passport_goals WHERE passport_id = ? AND node_external_id = ? AND status = 'in_progress'`,
+        [passportId, node_external_id]
+      );
+      if (existing.length) return res.json({ id: existing[0].id, ok: true, duplicate: true });
+    }
     const [result] = await db.execute(
-      `INSERT INTO passport_goals (passport_id, text, status, created_at) VALUES (?, ?, 'in_progress', NOW())`,
-      [passportId, text.trim()]
+      `INSERT INTO passport_goals (passport_id, text, node_external_id, node_breadcrumb, target_date, status, created_at)
+       VALUES (?, ?, ?, ?, ?, 'in_progress', NOW())`,
+      [passportId, goalText, node_external_id || null, node_breadcrumb || null, target_date || null]
     );
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
@@ -842,7 +887,7 @@ router.post('/profile/goals/:id/complete', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
   try {
     const [goals] = await db.execute(
-      'SELECT text FROM passport_goals WHERE id = ? AND passport_id = ?',
+      'SELECT text, node_external_id, node_breadcrumb FROM passport_goals WHERE id = ? AND passport_id = ?',
       [req.params.id, passportId]
     );
     await db.execute(
@@ -850,8 +895,9 @@ router.post('/profile/goals/:id/complete', async (req, res) => {
       [req.params.id, passportId]
     );
     if (goals.length) {
-      notify(req.user?.id, 'goal_complete', 'Goal achieved!',
-        `You completed: "${goals[0].text}"`);
+      const g = goals[0];
+      const label = g.node_breadcrumb || g.text;
+      notify(req.user?.id, 'goal_complete', 'Eesmärk täidetud! 🎉', `Läbisid: "${label}"`);
     }
     res.json({ ok: true });
   } catch (err) {
@@ -1466,6 +1512,297 @@ router.get('/game/leaderboard', async (req, res) => {
     res.json({ weekly, territory });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load leaderboard' });
+  }
+});
+
+// ── Learner links (parent / teacher) ─────────────────────────────────────────
+function _randomCode() {
+  return Math.random().toString(36).substring(2, 10).toUpperCase();
+}
+
+router.get('/links', async (req, res) => {
+  const userId = req.user?.id;
+  const passportId = req.user?.passport_id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const [asStudent] = await db.execute(
+      `SELECT ll.*, u.display_name AS linked_name
+       FROM learner_links ll
+       JOIN users u ON u.id = ll.linked_user_id
+       WHERE ll.passport_id = ? AND ll.status != 'revoked'`,
+      [passportId]
+    );
+    const [asLinked] = await db.execute(
+      `SELECT ll.*, lp.display_name AS student_name, u.id AS student_user_id
+       FROM learner_links ll
+       JOIN learner_passports lp ON lp.id = ll.passport_id
+       JOIN users u ON u.passport_id = lp.id
+       WHERE ll.linked_user_id = ? AND ll.status != 'revoked'`,
+      [userId]
+    );
+    res.json({ asStudent, asLinked });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load links' });
+  }
+});
+
+router.post('/links/invite', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.status(400).json({ error: 'No passport' });
+  const { role } = req.body;
+  if (!['parent','teacher'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  try {
+    const code = _randomCode();
+    await db.execute(
+      `INSERT INTO learner_links (passport_id, linked_user_id, role, status, invite_code, invited_at)
+       VALUES (?, 0, ?, 'pending', ?, NOW())`,
+      [passportId, role, code]
+    );
+    res.json({ invite_code: code });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create invite' });
+  }
+});
+
+router.post('/links/accept', async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  const { invite_code } = req.body;
+  if (!invite_code) return res.status(400).json({ error: 'invite_code required' });
+  try {
+    const [rows] = await db.execute(
+      `SELECT * FROM learner_links WHERE invite_code = ? AND status = 'pending'`,
+      [invite_code.toUpperCase()]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Invalid or expired code' });
+    const link = rows[0];
+    await db.execute(
+      `UPDATE learner_links SET linked_user_id = ?, status = 'active', invite_code = NULL, accepted_at = NOW()
+       WHERE id = ?`,
+      [userId, link.id]
+    );
+    res.json({ ok: true, role: link.role });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to accept invite' });
+  }
+});
+
+router.delete('/links/:id', async (req, res) => {
+  const userId = req.user?.id;
+  const passportId = req.user?.passport_id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    await db.execute(
+      `UPDATE learner_links SET status = 'revoked'
+       WHERE id = ? AND (passport_id = ? OR linked_user_id = ?)`,
+      [req.params.id, passportId, userId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to revoke link' });
+  }
+});
+
+// ── Teacher view API ──────────────────────────────────────────────────────────
+router.get('/teacher/students', async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const [students] = await db.execute(
+      `SELECT lp.id AS passport_id, lp.display_name, ll.id AS link_id,
+              (SELECT COUNT(*) FROM passport_goals pg WHERE pg.passport_id = lp.id AND pg.status='in_progress') AS active_goals,
+              (SELECT MAX(kp.completed_at) FROM knobit_progress kp WHERE kp.passport_id = lp.id) AS last_active
+       FROM learner_links ll
+       JOIN learner_passports lp ON lp.id = ll.passport_id
+       WHERE ll.linked_user_id = ? AND ll.role = 'teacher' AND ll.status = 'active'`,
+      [userId]
+    );
+    res.json({ students });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load students' });
+  }
+});
+
+router.get('/teacher/students/:passport_id', async (req, res) => {
+  const userId = req.user?.id;
+  const { passport_id } = req.params;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    // Verify teacher is linked to this student
+    const [auth] = await db.execute(
+      `SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'teacher' AND status = 'active'`,
+      [passport_id, userId]
+    );
+    if (!auth.length) return res.status(403).json({ error: 'Not linked to this student' });
+
+    const [[passport]] = await db.execute(
+      'SELECT display_name, about FROM learner_passports WHERE id = ?', [passport_id]
+    );
+    const [goals] = await db.execute(
+      `SELECT g.*, n.label AS node_label, COALESCE(unk.percentage,0) AS progress
+       FROM passport_goals g
+       LEFT JOIN nodes n ON n.external_id = g.node_external_id
+       LEFT JOIN user_node_knowledge unk ON unk.node_external_id = g.node_external_id AND unk.passport_id = g.passport_id
+       WHERE g.passport_id = ? AND g.status = 'in_progress' ORDER BY g.created_at DESC`,
+      [passport_id]
+    );
+    const [events] = await db.execute(
+      `SELECT title, institution, event_date, type FROM passport_events
+       WHERE passport_id = ? ORDER BY event_date DESC LIMIT 10`,
+      [passport_id]
+    );
+    res.json({ passport, goals, events });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load student detail' });
+  }
+});
+
+router.post('/teacher/students/:passport_id/goals', async (req, res) => {
+  const userId = req.user?.id;
+  const { passport_id } = req.params;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  const { node_external_id, node_breadcrumb, target_date } = req.body;
+  if (!node_external_id) return res.status(400).json({ error: 'node_external_id required' });
+  try {
+    const [auth] = await db.execute(
+      `SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'teacher' AND status = 'active'`,
+      [passport_id, userId]
+    );
+    if (!auth.length) return res.status(403).json({ error: 'Not linked' });
+    const [existing] = await db.execute(
+      `SELECT id FROM passport_goals WHERE passport_id = ? AND node_external_id = ? AND status = 'in_progress'`,
+      [passport_id, node_external_id]
+    );
+    if (existing.length) return res.json({ ok: true, duplicate: true, id: existing[0].id });
+    const [r] = await db.execute(
+      `INSERT INTO passport_goals (passport_id, text, node_external_id, node_breadcrumb, target_date, status, suggested_by_user_id, created_at)
+       VALUES (?, ?, ?, ?, ?, 'in_progress', ?, NOW())`,
+      [passport_id, node_breadcrumb || node_external_id, node_external_id, node_breadcrumb || null, target_date || null, userId]
+    );
+    res.json({ ok: true, id: r.insertId });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to suggest goal' });
+  }
+});
+
+// ── Parent view API ───────────────────────────────────────────────────────────
+router.get('/parent/children', async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const [children] = await db.execute(
+      `SELECT lp.id AS passport_id, lp.display_name, ll.id AS link_id,
+              gs.lumens,
+              (SELECT COUNT(*) FROM passport_goals pg WHERE pg.passport_id = lp.id AND pg.status='in_progress') AS active_goals,
+              (SELECT MAX(kp.completed_at) FROM knobit_progress kp WHERE kp.passport_id = lp.id) AS last_active
+       FROM learner_links ll
+       JOIN learner_passports lp ON lp.id = ll.passport_id
+       LEFT JOIN game_state gs ON gs.passport_id = lp.id
+       WHERE ll.linked_user_id = ? AND ll.role = 'parent' AND ll.status = 'active'`,
+      [userId]
+    );
+    res.json({ children });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load children' });
+  }
+});
+
+router.get('/parent/children/:passport_id', async (req, res) => {
+  const userId = req.user?.id;
+  const { passport_id } = req.params;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const [auth] = await db.execute(
+      `SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'parent' AND status = 'active'`,
+      [passport_id, userId]
+    );
+    if (!auth.length) return res.status(403).json({ error: 'Not linked' });
+
+    const [[passport]] = await db.execute(
+      'SELECT display_name FROM learner_passports WHERE id = ?', [passport_id]
+    );
+    const state = await game.getGameState(passport_id);
+    const [goals] = await db.execute(
+      `SELECT g.*, n.label AS node_label, COALESCE(unk.percentage,0) AS progress
+       FROM passport_goals g
+       LEFT JOIN nodes n ON n.external_id = g.node_external_id
+       LEFT JOIN user_node_knowledge unk ON unk.node_external_id = g.node_external_id AND unk.passport_id = g.passport_id
+       WHERE g.passport_id = ? ORDER BY g.status ASC, g.created_at DESC LIMIT 10`,
+      [passport_id]
+    );
+    const [events] = await db.execute(
+      `SELECT title, institution, event_date, type FROM passport_events
+       WHERE passport_id = ? ORDER BY event_date DESC LIMIT 10`,
+      [passport_id]
+    );
+    res.json({ passport, gameState: state, goals, events });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load child detail' });
+  }
+});
+
+// ── Learning recommendations — "Start here" next nodes ───────────────────────
+router.get('/recommendations/next-nodes', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.json({ nodes: [] });
+  try {
+    // Priority 1: L5 nodes in same L4 group as an active node goal, not yet started
+    // Priority 2: L5 nodes near recently-touched nodes, not started
+    // Priority 3: Any unstarted L5 in the learner's most-active L1 domain
+    const [rows] = await db.execute(`
+      SELECT sub.external_id AS id, sub.label, sub.breadcrumb, sub.priority
+      FROM (
+        -- P1: sibling L5 nodes under an active goal's L4 parent
+        SELECT n.external_id, n.label,
+               CONCAT(p4.label, ' › ', n.label) AS breadcrumb,
+               1 AS priority
+        FROM passport_goals pg
+        JOIN nodes gn ON gn.external_id = pg.node_external_id AND gn.level = 5
+        JOIN nodes p4 ON p4.id = gn.parent_id
+        JOIN nodes n  ON n.parent_id = p4.id AND n.level = 5 AND n.external_id != gn.external_id
+        WHERE pg.passport_id = ? AND pg.status = 'in_progress' AND pg.node_external_id IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM knobit_progress kp
+            JOIN knobits k ON k.id = kp.knobit_id
+            WHERE k.node_id = n.id AND kp.passport_id = ? AND kp.phase_reached = 'done'
+          )
+
+        UNION ALL
+
+        -- P2: unstarted L5 nodes in L4 groups the learner recently touched
+        SELECT n.external_id, n.label,
+               CONCAT(p4.label, ' › ', n.label) AS breadcrumb,
+               2 AS priority
+        FROM (
+          SELECT DISTINCT p4.id AS p4_id
+          FROM knobit_progress kp
+          JOIN knobits k   ON k.id = kp.knobit_id
+          JOIN nodes ln    ON ln.id = k.node_id
+          JOIN nodes p4    ON p4.id = ln.parent_id
+          WHERE kp.passport_id = ? AND kp.completed_at > DATE_SUB(NOW(), INTERVAL 14 DAY)
+        ) recent
+        JOIN nodes p4 ON p4.id = recent.p4_id
+        JOIN nodes n  ON n.parent_id = p4.id AND n.level = 5
+        WHERE NOT EXISTS (
+            SELECT 1 FROM knobit_progress kp
+            JOIN knobits k ON k.id = kp.knobit_id
+            WHERE k.node_id = n.id AND kp.passport_id = ? AND kp.phase_reached = 'done'
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM knobit_progress kp
+            JOIN knobits k ON k.id = kp.knobit_id
+            WHERE k.node_id = n.id AND kp.passport_id = ?
+          )
+      ) sub
+      GROUP BY sub.external_id, sub.label, sub.breadcrumb, sub.priority
+      ORDER BY sub.priority ASC, RAND()
+      LIMIT 5
+    `, [passportId, passportId, passportId, passportId, passportId]);
+
+    res.json({ nodes: rows });
+  } catch (err) {
+    console.error('[recommendations]', err.message);
+    res.json({ nodes: [] });
   }
 });
 
