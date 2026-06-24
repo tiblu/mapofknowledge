@@ -202,6 +202,7 @@
     _all.forEach(function(n) { n.is_read = 1; });
     render();
     updateDot();
+    if (window.parent && window.parent.refreshNotifBadge) window.parent.refreshNotifBadge();
   }
 
   function updateDot() {

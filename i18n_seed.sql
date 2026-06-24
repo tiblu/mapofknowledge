@@ -386,6 +386,14 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('game.achievements',    'et', 'Saavutused'),
 ('game.leaderboard',     'et', 'Edetabel'),
 ('game.this_week',       'et', 'Sel nädalal'),
-('game.all_time',        'et', 'Kõigi aegade')
+('game.all_time',        'et', 'Kõigi aegade'),
+
+-- Learning mode — fullscreen
+('lm.fullscreen_tip',   'en', 'For best focus, learn in fullscreen — it hides all distractions.'),
+('lm.fullscreen_tip',   'et', 'Parima keskendumisvõime saavutamiseks õpi täisekraanirežiimis — see peidab kõik segajad.'),
+('lm.fullscreen_enter', 'en', 'Enter fullscreen'),
+('lm.fullscreen_enter', 'et', 'Täisekraan'),
+('lm.fullscreen_exit',  'en', 'Exit fullscreen'),
+('lm.fullscreen_exit',  'et', 'Välju täisekraanist')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

@@ -246,7 +246,7 @@ ${byteText}
 """
 
 ${VIZ_INSTRUCTIONS}
-
+${langJson(locale)}
 Output ONLY a single JSON object — no markdown fences, no reasoning, no commentary outside the JSON:
 {"visual":{"type":"image","url":"...","caption":"..."}|{"type":"video","url":"...","caption":"..."}|null}`;
 

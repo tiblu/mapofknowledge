@@ -665,6 +665,7 @@
     document.getElementById('page-overlay').classList.remove('open');
     document.getElementById('page-overlay-frame').src = '';
     document.getElementById('nav-dropdown').classList.remove('open');
+    if (window.refreshNotifBadge) window.refreshNotifBadge();
   };
 </script>
 <script src="js/topbar-notif.js"></script>

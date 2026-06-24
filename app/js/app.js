@@ -1368,6 +1368,7 @@ function init(data, emergentData) {
       highlightAndOpen(target);
     },
     closeSidebar:         function()         { closeSidebar(); resetHighlight(); },
+    navigateToNode:       function(nodeId)   { navigateToNode(nodeId); },
     refreshCurrentNodeKnowledge: function() {
       const nodeId    = sidebar._currentNodeId;
       if (!nodeId) return;

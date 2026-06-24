@@ -170,6 +170,15 @@
     _searchWrap = null;
     _node   = null;
     KNOBITS = [];
+    var pending = window._pendingSuggestNode;
+    if (pending) {
+      window._pendingSuggestNode = null;
+      setTimeout(function () {
+        if (window.MapView && window.MapView.navigateToNode) {
+          window.MapView.navigateToNode(pending);
+        }
+      }, 120);
+    }
   };
 
   /* ─── Fullscreen ─────────────────────────────────────────────── */
