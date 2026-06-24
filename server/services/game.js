@@ -2,13 +2,13 @@ const db = require('../db');
 
 // ── Rank ladder ───────────────────────────────────────────────────────────────
 const RANKS = [
-  { title: 'Wanderer',     min: 0 },
-  { title: 'Scout',        min: 500 },
-  { title: 'Surveyor',     min: 1500 },
-  { title: 'Cartographer', min: 4000 },
-  { title: 'Navigator',    min: 10000 },
-  { title: 'Geographer',   min: 25000 },
-  { title: 'Polymath',     min: 60000 },
+  { key: 'rank.wanderer',        title: 'Wanderer',        title_et: 'Rändur',        min: 0 },
+  { key: 'rank.explorer',        title: 'Explorer',        title_et: 'Avastaja',      min: 500 },
+  { key: 'rank.pathfinder',      title: 'Pathfinder',      title_et: 'Teejuht',       min: 1500 },
+  { key: 'rank.navigator',       title: 'Navigator',       title_et: 'Navigaator',    min: 4000 },
+  { key: 'rank.cartographer',    title: 'Cartographer',    title_et: 'Kartograaf',    min: 10000 },
+  { key: 'rank.discoverer',      title: 'Discoverer',      title_et: 'Maadeuurija',   min: 25000 },
+  { key: 'rank.world_traveller', title: 'World Traveller', title_et: 'Maailmarändur', min: 60000 },
 ];
 
 function getRank(lumens) {
@@ -22,19 +22,22 @@ function getRank(lumens) {
 const ACHIEVEMENTS = {
 
   first_expedition: {
-    name: 'First Expedition',
+    name: 'First Step',
+    name_et: 'Esimene samm',
     triggers: ['knobit_complete'],
     check: async (passportId, ctx) => ctx.totalEver === 1,
   },
 
   perfect_survey: {
-    name: 'Perfect Survey',
+    name: 'Full Marks',
+    name_et: 'Täispunktid',
     triggers: ['test_complete'],
     check: async (passportId, ctx) => ctx.score === 100,
   },
 
   three_peaks: {
-    name: 'Three Peaks',
+    name: 'Hat-Trick',
+    name_et: 'Kolmik',
     triggers: ['test_complete'],
     check: async (passportId, ctx) => {
       const [[{ cnt }]] = await db.execute(
@@ -50,7 +53,8 @@ const ACHIEVEMENTS = {
   },
 
   polymath_path: {
-    name: "The Polymath's Path",
+    name: 'All-Rounder',
+    name_et: 'Kõikehõlmav',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -65,7 +69,8 @@ const ACHIEVEMENTS = {
   },
 
   deep_waters: {
-    name: 'Deep Waters',
+    name: 'Deep Dive',
+    name_et: 'Süvitsi',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
       // True if any L4 node has all its L5 children fully learned
@@ -89,7 +94,8 @@ const ACHIEVEMENTS = {
   },
 
   continent_charted: {
-    name: 'Continent Charted',
+    name: 'Domain Conqueror',
+    name_et: 'Valdkonna vallutaja',
     triggers: ['test_complete'],
     check: async (passportId) => {
       // Any L1 domain where every L5 descendant is mastered (≥80%)
@@ -120,17 +126,20 @@ const ACHIEVEMENTS = {
   },
 
   night_cartographer: {
-    name: 'Night Cartographer',
+    name: 'Night Owl',
+    name_et: 'Öökull',
     check: async () => { const h = new Date().getHours(); return h >= 0 && h < 5; },
   },
 
   dawn_patrol: {
-    name: 'Dawn Patrol',
+    name: 'Early Bird',
+    name_et: 'Varajane lind',
     check: async () => { const h = new Date().getHours(); return h >= 4 && h < 7; },
   },
 
   the_long_road: {
-    name: 'The Long Road',
+    name: 'Back on Track',
+    name_et: 'Tagasi rajal',
     check: async (passportId) => {
       const [rows] = await db.execute(
         'SELECT last_activity_at FROM user_momentum WHERE passport_id = ?', [passportId]
@@ -152,10 +161,10 @@ function _calcMultiplier(streakDays) {
 }
 
 function momentumLabel(multiplier) {
-  if (multiplier >= 2.0)  return 'Full sail';
-  if (multiplier >= 1.5)  return 'Steady expedition';
-  if (multiplier >= 1.25) return 'Building pace';
-  return 'Setting out';
+  if (multiplier >= 2.0)  return 'momentum.full_throttle';
+  if (multiplier >= 1.5)  return 'momentum.in_the_flow';
+  if (multiplier >= 1.25) return 'momentum.on_the_road';
+  return 'momentum.setting_out';
 }
 
 async function getMomentum(passportId) {
@@ -253,8 +262,8 @@ async function checkAchievements(passportId, userId, trigger, ctx = {}) {
           );
           const { notify } = require('./notifications');
           notify(userId, 'achievement',
-            `Medal unlocked: ${def.name}`,
-            `You've earned the "${def.name}" expedition medal.`
+            `Saavutus avatud: ${def.name_et}`,
+            `Oled teeninud "${def.name_et}" saavutuse.`
           );
         }
       } catch { /* individual check failure is non-fatal */ }
@@ -289,9 +298,11 @@ async function getGameState(passportId) {
 
     return {
       lumens,
-      rank: rank.title,
+      rank: rank.key,
+      rankTitle: rank.title,
+      rankTitle_et: rank.title_et,
       rankMin: rank.min,
-      nextRank: next ? { title: next.title, min: next.min } : null,
+      nextRank: next ? { key: next.key, title: next.title, title_et: next.title_et, min: next.min } : null,
       momentum: { ...mom },
       achievements,
       recentTransactions: recent,
@@ -304,7 +315,7 @@ async function getGameState(passportId) {
 
 // ── All achievement definitions (for listing) ─────────────────────────────────
 function getAllAchievements() {
-  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name }));
+  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name, name_et: def.name_et }));
 }
 
 module.exports = { awardLumens, checkAchievements, getGameState, getMomentum, getRank, RANKS, getAllAchievements };

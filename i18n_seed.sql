@@ -294,3 +294,72 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('th.action',               'en', 'Action')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- ── Gamification strings ──────────────────────────────────────────────────────
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+-- Rank names (en)
+('rank.wanderer',        'en', 'Wanderer'),
+('rank.explorer',        'en', 'Explorer'),
+('rank.pathfinder',      'en', 'Pathfinder'),
+('rank.navigator',       'en', 'Navigator'),
+('rank.cartographer',    'en', 'Cartographer'),
+('rank.discoverer',      'en', 'Discoverer'),
+('rank.world_traveller', 'en', 'World Traveller'),
+-- Rank names (et)
+('rank.wanderer',        'et', 'Rändur'),
+('rank.explorer',        'et', 'Avastaja'),
+('rank.pathfinder',      'et', 'Teejuht'),
+('rank.navigator',       'et', 'Navigaator'),
+('rank.cartographer',    'et', 'Kartograaf'),
+('rank.discoverer',      'et', 'Maadeuurija'),
+('rank.world_traveller', 'et', 'Maailmarändur'),
+-- Momentum labels (en)
+('momentum.setting_out',  'en', 'Setting Out'),
+('momentum.on_the_road',  'en', 'On the Road'),
+('momentum.in_the_flow',  'en', 'In the Flow'),
+('momentum.full_throttle','en', 'Full Throttle'),
+-- Momentum labels (et)
+('momentum.setting_out',  'et', 'Alustamas'),
+('momentum.on_the_road',  'et', 'Teel'),
+('momentum.in_the_flow',  'et', 'Hoos'),
+('momentum.full_throttle','et', 'Täistuuridel'),
+-- Achievement names (en)
+('achievement.first_expedition',  'en', 'First Step'),
+('achievement.perfect_survey',    'en', 'Full Marks'),
+('achievement.three_peaks',       'en', 'Hat-Trick'),
+('achievement.polymath_path',     'en', 'All-Rounder'),
+('achievement.deep_waters',       'en', 'Deep Dive'),
+('achievement.continent_charted', 'en', 'Domain Conqueror'),
+('achievement.night_cartographer','en', 'Night Owl'),
+('achievement.dawn_patrol',       'en', 'Early Bird'),
+('achievement.the_long_road',     'en', 'Back on Track'),
+-- Achievement names (et)
+('achievement.first_expedition',  'et', 'Esimene samm'),
+('achievement.perfect_survey',    'et', 'Täispunktid'),
+('achievement.three_peaks',       'et', 'Kolmik'),
+('achievement.polymath_path',     'et', 'Kõikehõlmav'),
+('achievement.deep_waters',       'et', 'Süvitsi'),
+('achievement.continent_charted', 'et', 'Valdkonna vallutaja'),
+('achievement.night_cartographer','et', 'Öökull'),
+('achievement.dawn_patrol',       'et', 'Varajane lind'),
+('achievement.the_long_road',     'et', 'Tagasi rajal'),
+-- Game UI labels (en)
+('game.lumens',          'en', 'Lumens'),
+('game.your_rank',       'en', 'Your rank'),
+('game.next_rank',       'en', 'Next rank'),
+('game.momentum',        'en', 'Momentum'),
+('game.achievements',    'en', 'Achievements'),
+('game.leaderboard',     'en', 'Leaderboard'),
+('game.this_week',       'en', 'This week'),
+('game.all_time',        'en', 'All time'),
+-- Game UI labels (et)
+('game.lumens',          'et', 'Luumenid'),
+('game.your_rank',       'et', 'Sinu järk'),
+('game.next_rank',       'et', 'Järgmine järk'),
+('game.momentum',        'et', 'Hoog'),
+('game.achievements',    'et', 'Saavutused'),
+('game.leaderboard',     'et', 'Edetabel'),
+('game.this_week',       'et', 'Sel nädalal'),
+('game.all_time',        'et', 'Kõigi aegade')
+
+ON DUPLICATE KEY UPDATE value = VALUES(value);
