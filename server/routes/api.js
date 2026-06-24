@@ -1286,6 +1286,83 @@ router.post('/test/evaluate', async (req, res) => {
   }
 });
 
+// ── Node suggestion (rephrase limit reached) ─────────────────────────────────
+// direction=easier → find the nearest unlearned L5 sibling before this node
+// direction=harder → find the nearest unlearned L5 sibling after this node
+router.get('/nodes/:id/suggest', async (req, res) => {
+  const { id }       = req.params;
+  const { direction } = req.query;
+  const passportId   = req.user?.passport_id;
+
+  if (!['easier', 'harder'].includes(direction)) {
+    return res.status(400).json({ error: 'direction must be easier or harder' });
+  }
+
+  try {
+    const [rows] = await db.execute(
+      'SELECT id AS db_id, parent_id FROM nodes WHERE external_id = ? AND is_active = 1', [id]
+    );
+    if (!rows.length) return res.json({ suggestion: null });
+    const { db_id: currentDbId, parent_id: parentId } = rows[0];
+
+    const idCompare = direction === 'easier' ? '<' : '>';
+    const idOrder   = direction === 'easier' ? 'DESC' : 'ASC';
+
+    let sql, params;
+    if (passportId) {
+      sql = `
+        SELECT n.external_id AS id, n.label,
+               p1.label AS p1, p2.label AS p2, p3.label AS p3
+        FROM nodes n
+        JOIN nodes p1 ON p1.id = n.parent_id
+        LEFT JOIN nodes p2 ON p2.id = p1.parent_id
+        LEFT JOIN nodes p3 ON p3.id = p2.parent_id
+        WHERE n.parent_id = ?
+          AND n.level = 5
+          AND n.is_active = 1
+          AND n.id ${idCompare} ?
+          AND n.id NOT IN (
+            SELECT DISTINCT k.node_id FROM knobit_progress kp
+            JOIN knobits k ON kp.knobit_id = k.id
+            WHERE kp.passport_id = ? AND kp.phase_reached = 'done'
+          )
+        ORDER BY n.id ${idOrder}
+        LIMIT 1`;
+      params = [parentId, currentDbId, passportId];
+    } else {
+      sql = `
+        SELECT n.external_id AS id, n.label,
+               p1.label AS p1, p2.label AS p2, p3.label AS p3
+        FROM nodes n
+        JOIN nodes p1 ON p1.id = n.parent_id
+        LEFT JOIN nodes p2 ON p2.id = p1.parent_id
+        LEFT JOIN nodes p3 ON p3.id = p2.parent_id
+        WHERE n.parent_id = ?
+          AND n.level = 5
+          AND n.is_active = 1
+          AND n.id ${idCompare} ?
+        ORDER BY n.id ${idOrder}
+        LIMIT 1`;
+      params = [parentId, currentDbId];
+    }
+
+    const [suggestions] = await db.execute(sql, params);
+    if (!suggestions.length) return res.json({ suggestion: null });
+
+    const s = suggestions[0];
+    res.json({
+      suggestion: {
+        id:         s.id,
+        label:      s.label,
+        breadcrumb: [s.p3, s.p2, s.p1].filter(Boolean).join(' › '),
+      },
+    });
+  } catch (err) {
+    console.error('[api/nodes/suggest]', err.message);
+    res.json({ suggestion: null });
+  }
+});
+
 // ── Admin: token usage per user ───────────────────────────────────────────────
 router.get('/admin/token-usage', async (req, res) => {
   if (!req.user || !['admin', 'super_admin'].includes(req.user.role)) {

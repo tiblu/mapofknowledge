@@ -40,6 +40,9 @@
   var _streamButtonEl = null;
   var _quitCallback   = null;
 
+  // Tracks consecutive 'simpler' or 'complex' clicks; reset on 'ok'/'no' or new knobit
+  var _rephraseRun = { type: null, count: 0 };
+
   /* ─── API helper ──────────────────────────────────────────────── */
   function apiInteract(params) {
     var knobit = KNOBITS[CURRENT_KNOBIT_IDX];
@@ -351,6 +354,7 @@
     _demoIdx        = 0;
     _practiceIdx    = 0;
     _pendingPractice = null;
+    _rephraseRun    = { type: null, count: 0 };
 
     var stream = document.getElementById('kn-stream');
     if (stream) stream.innerHTML = '';
@@ -460,6 +464,13 @@
     _lockButtons();
     _priorChoices.push(opt);
     _setButtonRow('');
+
+    if (opt === 'simpler' || opt === 'complex') {
+      if (opt === _rephraseRun.type) { _rephraseRun.count++; } else { _rephraseRun = { type: opt, count: 1 }; }
+      if (_rephraseRun.count > 3) { _showRephraseLimit(opt, 'explain'); return; }
+    } else {
+      _rephraseRun = { type: null, count: 0 };
+    }
 
     if (opt === 'ok') {
       _byteIdx++;
@@ -623,10 +634,19 @@
     if (opt === 'ok') {
       _lockButtons();
       _setButtonRow('');
+      _rephraseRun = { type: null, count: 0 };
       _completeKnobit();
       return;
     }
     _lockButtons();
+
+    if (opt === 'simpler' || opt === 'complex') {
+      if (opt === _rephraseRun.type) { _rephraseRun.count++; } else { _rephraseRun = { type: opt, count: 1 }; }
+      if (_rephraseRun.count > 3) { _showRephraseLimit(opt, 'meaning'); return; }
+    } else {
+      _rephraseRun = { type: null, count: 0 };
+    }
+
     var capturedOpt = opt, capturedContent = _getLastContent(['meaning']);
     _retryFn = function () {
       var live2 = null, fullText2 = '';
@@ -794,6 +814,77 @@
       }).catch(function () {
         if (loaderEl.parentNode) loaderEl.parentNode.removeChild(loaderEl);
       });
+  }
+
+  function _showRephraseLimit(direction, phase) {
+    var isComplex = (direction === 'complex');
+    _appendBlock({ type: 'note', content: t(isComplex ? 'lm.limit_reached_complex' : 'lm.limit_reached_simple') });
+
+    var dir = isComplex ? 'easier' : 'harder';
+    var nodeId = _node && _node.id;
+    if (!nodeId) { _appendSuggestionCard(null, direction, phase); return; }
+
+    fetch('/api/nodes/' + encodeURIComponent(nodeId) + '/suggest?direction=' + dir)
+      .then(function (r) { return r.json(); })
+      .then(function (d) { _appendSuggestionCard(d && d.suggestion, direction, phase); })
+      .catch(function ()  { _appendSuggestionCard(null, direction, phase); });
+  }
+
+  function _appendSuggestionCard(suggestion, direction, phase) {
+    var isComplex = (direction === 'complex');
+    var s = document.getElementById('kn-stream');
+    if (!s) return;
+
+    var el = document.createElement('div');
+    el.className = 'block block-suggestion-card';
+
+    if (suggestion) {
+      var lbl = document.createElement('div');
+      lbl.className   = 'suggestion-label';
+      lbl.textContent = t(isComplex ? 'lm.suggest_try_first' : 'lm.suggest_try_next');
+
+      var card = document.createElement('div');
+      card.className = 'suggestion-node-card';
+
+      var nodeLabel = document.createElement('div');
+      nodeLabel.className   = 'suggestion-node-label';
+      nodeLabel.textContent = suggestion.label;
+
+      var crumb = document.createElement('div');
+      crumb.className   = 'suggestion-node-crumb';
+      crumb.textContent = suggestion.breadcrumb;
+
+      var goBtn = document.createElement('button');
+      goBtn.className   = 'kn-option-btn btn-understand suggestion-go-btn';
+      goBtn.textContent = t('btn.go_to_topic');
+      goBtn.addEventListener('click', function () {
+        window._pendingSuggestNode = suggestion.id;
+        window.closeLearningMode();
+      });
+
+      card.appendChild(nodeLabel);
+      card.appendChild(crumb);
+      card.appendChild(goBtn);
+      el.appendChild(lbl);
+      el.appendChild(card);
+    } else {
+      var noSug = document.createElement('div');
+      noSug.className   = 'suggestion-label';
+      noSug.textContent = t(isComplex ? 'lm.no_suggestion_complex' : 'lm.no_suggestion_simple');
+      el.appendChild(noSug);
+    }
+
+    var continueBtn = document.createElement('button');
+    continueBtn.className   = 'kn-option-btn btn-other suggestion-continue-btn';
+    continueBtn.textContent = t('btn.continue_to_examples');
+    continueBtn.addEventListener('click', function () {
+      el.remove();
+      if (phase === 'meaning') { _completeKnobit(); } else { _enterDemonstrate(); }
+    });
+    el.appendChild(continueBtn);
+
+    s.appendChild(el);
+    _scrollStream();
   }
 
   function _appendVideoReflection() {

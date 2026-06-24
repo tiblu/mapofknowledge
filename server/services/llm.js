@@ -296,9 +296,10 @@ a more formal framing, and the kind of depth an expert or researcher would appre
 Same core concept — elevated register.`,
 
     complex: `The learner found this too complex.
-Rewrite it using simpler, everyday words. Replace jargon with plain equivalents,
-use a concrete metaphor or comparison from daily life, and keep sentences short.
-Same core concept — accessible register.`,
+Rewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.
+Maximum 3 sentences per paragraph. No jargon — replace every technical term with a plain everyday word.
+Use one concrete real-life example (something a child could picture).
+Same core concept — maximally accessible.`,
   }[mode] || 'Rewrite this explanation from a different angle.';
 
   const msg = await client.messages.create({
@@ -582,7 +583,7 @@ function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, prof
   const instructions = {
     rephrase: `The learner did not understand this explanation. Step back further.\nExplain the same concept from first principles — start from something even more basic,\nuse a concrete real-world analogy, and build up slowly.\nDo NOT reuse the same wording. A different angle entirely.`,
     simpler:  `The learner found this too simplistic.\nRewrite it with professional, expert-level language. Use precise terminology,\na more formal framing, and the kind of depth an expert or researcher would appreciate.\nSame core concept — elevated register.`,
-    complex:  `The learner found this too complex.\nRewrite it using simpler, everyday words. Replace jargon with plain equivalents,\nuse a concrete metaphor or comparison from daily life, and keep sentences short.\nSame core concept — accessible register.`,
+    complex:  `The learner found this too complex.\nRewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.\nMaximum 3 sentences per paragraph. No jargon — replace every technical term with a plain everyday word.\nUse one concrete real-life example (something a child could picture).\nSame core concept — maximally accessible.`,
   }[mode] || 'Rewrite this explanation from a different angle.';
   const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement paragraph only — 2–4 sentences, no headings.${profileBlock(profile)}${langText(locale)}`;
   return _streamText({ model: SONNET, max_tokens: 200, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'rephrase', onChunk);

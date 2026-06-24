@@ -948,6 +948,48 @@
   border-color: var(--lm-accent);
 }
 
+/* ── Rephrase-limit suggestion card ── */
+.block-suggestion-card {
+  background: var(--i04);
+  border: 1px solid var(--i10);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.suggestion-label {
+  font-size: 13px;
+  color: var(--c3);
+  line-height: 1.5;
+}
+.suggestion-node-card {
+  background: var(--bg);
+  border: 1px solid var(--i12);
+  border-radius: 10px;
+  padding: 11px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.suggestion-node-label {
+  font-size: 14px;
+  font-weight: 620;
+  color: var(--c1);
+}
+.suggestion-node-crumb {
+  font-size: 11px;
+  color: var(--c5);
+  margin-bottom: 7px;
+}
+.suggestion-go-btn,
+.suggestion-continue-btn {
+  align-self: flex-start;
+  font-size: 13px;
+  padding: 7px 14px;
+}
+
 /* ── Video reflection prompt ── */
 .block-video-reflection {
   background: var(--lm-accent-soft);
