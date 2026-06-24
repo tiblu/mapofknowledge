@@ -435,7 +435,7 @@ router.post('/learn/interact', async (req, res) => {
     knobitId, phase, action,
     byteIndex = 0, answer, priorChoices = [],
     original = '', question = '', expected = '', userAnswer = '',
-    context = '',
+    context = '', seenUrls = [],
     stream: wantStream = false,
   } = req.body;
 
@@ -482,7 +482,8 @@ router.post('/learn/interact', async (req, res) => {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
         result = { text: await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid) };
       } else if (action === 'visual') {
-        result = await llm.generateExplainByteVisual(nodeLabel, title, original, locale, uid);
+        const validUrls = Array.isArray(seenUrls) ? seenUrls.filter(u => typeof u === 'string').slice(0, 20) : [];
+        result = await llm.generateExplainByteVisual(nodeLabel, title, original, locale, uid, validUrls);
       } else {
         result = { text: await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid) };
       }

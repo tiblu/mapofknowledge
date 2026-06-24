@@ -27,18 +27,23 @@ const SONNET = 'claude-sonnet-4-6';
 
 const LANG_NAMES = { et: 'Estonian (Eesti keel)' };
 
-const VIZ_INSTRUCTIONS = `Decide whether a visual would enhance understanding of this explanation.
-Visualize when the concept involves spatial relationships, physical mechanisms, staged processes,
-geometric or structural patterns, or anything where "what does this look like?" is a natural question.
-Skip for abstract philosophical concepts, purely definitional content, or cases where images add nothing.
+const VIZ_INSTRUCTIONS = `Decide whether a visual would genuinely help a learner understand this explanation better.
 
-If a visual is warranted:
+Show a visual ONLY when the concept has clear visual form: physical objects, organisms, geographic features,
+spatial relationships, mechanical diagrams, step-by-step processes with distinct stages, or mathematical
+structures where seeing the shape is the insight. Ask: would a good textbook include a figure here?
+
+Skip a visual when: the content is primarily about definitions, relationships between ideas, history,
+social phenomena, logic, abstract principles, or any case where a picture adds atmosphere but not understanding.
+If in doubt, skip — a missing visual is fine; an irrelevant one is distracting.
+
+If a visual IS warranted:
 1. Search Wikimedia Commons for a relevant image. Return the Commons file page URL in the format
    https://commons.wikimedia.org/wiki/File:EXACT_FILENAME — never construct upload.wikimedia.org URLs yourself.
    Hard rule: reject any image with a visible copyright notice, watermark, company logo, or © mark.
-   Default to one image; add a second only if it carries distinct instructional value the first doesn't.
-2. If no clean Wikimedia image found: search YouTube for a short instructional video. Return the full YouTube URL.
-3. If nothing found: set visual to null.`;
+   Only use YouTube if the concept specifically requires motion or animation to understand (e.g. a physical
+   process, a technique, a demonstration) — not just because no Wikimedia image was found.
+2. If nothing genuinely useful exists: set visual to null.`;
 
 // Finds and parses the first complete {...} JSON object in a string,
 // ignoring any surrounding prose or reasoning text Claude may output.
@@ -239,12 +244,15 @@ Write the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level 
 
 // ── Explain phase — visual only (deferred, uses web search) ──────────────────
 // Returns { visual: { type, url, caption } | null }
-async function generateExplainByteVisual(nodeLabel, knobitTitle, byteText, locale, userId) {
+async function generateExplainByteVisual(nodeLabel, knobitTitle, byteText, locale, userId, seenUrls = []) {
+  const seenBlock = seenUrls.length
+    ? `\nAlready shown in this session — do NOT reuse these URLs:\n${seenUrls.map(u => '- ' + u).join('\n')}\n`
+    : '';
   const prompt = `A learner studying "${knobitTitle}" (part of "${nodeLabel}") just read this explanation:
 """
 ${byteText}
 """
-
+${seenBlock}
 ${VIZ_INSTRUCTIONS}
 ${langJson(locale)}
 Output ONLY a single JSON object — no markdown fences, no reasoning, no commentary outside the JSON:

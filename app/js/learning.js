@@ -43,6 +43,9 @@
   // Tracks consecutive 'simpler' or 'complex' clicks; reset on 'ok'/'no' or new knobit
   var _rephraseRun = { type: null, count: 0 };
 
+  // URLs of visuals already shown in the current knobit — sent to server to avoid duplicates
+  var _seenVisualUrls = [];
+
   /* ─── API helper ──────────────────────────────────────────────── */
   function apiInteract(params) {
     var knobit = KNOBITS[CURRENT_KNOBIT_IDX];
@@ -362,8 +365,9 @@
     _byteIdx        = 0;
     _demoIdx        = 0;
     _practiceIdx    = 0;
-    _pendingPractice = null;
-    _rephraseRun    = { type: null, count: 0 };
+    _pendingPractice  = null;
+    _rephraseRun      = { type: null, count: 0 };
+    _seenVisualUrls   = [];
 
     var stream = document.getElementById('kn-stream');
     if (stream) stream.innerHTML = '';
@@ -787,11 +791,12 @@
     s.insertBefore(loaderEl, _streamButtonEl || null);
     _scrollStream();
 
-    apiInteract({ phase: 'explain', action: 'visual', original: byteText })
+    apiInteract({ phase: 'explain', action: 'visual', original: byteText, seenUrls: _seenVisualUrls.slice() })
       .then(function (d) {
         if (!loaderEl.parentNode) return;
         var v = d && d.visual;
         if (v && v.url) {
+          _seenVisualUrls.push(v.url);
           var html;
           if (v.type === 'image') {
             html = '<img class="lm-visual-img" src="' + _escHtml(v.url) + '" alt="' + _escHtml(v.caption || '') + '" loading="lazy" onerror="this.closest(\'.block-visual\').style.display=\'none\'">' +
