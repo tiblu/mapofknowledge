@@ -74,6 +74,14 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('phase.demo',              'en', 'Demo'),
 ('phase.practice',          'en', 'Practice'),
 ('phase.meaning',           'en', 'Meaning'),
+('phase.step_1',            'et', '1. samm'),
+('phase.step_2',            'et', '2. samm'),
+('phase.step_3',            'et', '3. samm'),
+('phase.step_4',            'et', '4. samm'),
+('phase.explain',           'et', 'Selgitus'),
+('phase.demo',              'et', 'Näide'),
+('phase.practice',          'et', 'Harjutus'),
+('phase.meaning',           'et', 'Tähendus'),
 
 -- Labels
 ('label.knobits',           'en', 'knobits'),
