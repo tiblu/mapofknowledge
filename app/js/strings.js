@@ -42,7 +42,7 @@
   window.reloadStrings = function () {
     var locale = window._uiLocale
                || document.documentElement.getAttribute('lang')
-               || 'en';
+               || 'et';
     fetch('/api/strings?locale=' + encodeURIComponent(locale))
       .then(function (r) { return r.json(); })
       .then(function (d) {

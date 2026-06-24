@@ -754,7 +754,7 @@
 
     var loaderEl = document.createElement('div');
     loaderEl.className = 'block block-visual block-visual-loading';
-    loaderEl.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>';
+    loaderEl.innerHTML = '<span class="visual-loading-icon">⏳</span><span>' + t('lm.finding_visual') + '</span>';
     s.insertBefore(loaderEl, _streamButtonEl || null);
     _scrollStream();
 
@@ -771,6 +771,13 @@
             html = '<a class="lm-visual-video" href="' + _escHtml(v.url) + '" target="_blank" rel="noopener">' +
                    '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.5" stroke="currentColor" stroke-width="1.1"/><path d="M5.5 4.5l5 2.5-5 2.5V4.5z" fill="currentColor"/></svg>' +
                    _escHtml(v.caption || 'Watch video') + '</a>';
+            if (html) {
+              loaderEl.className = 'block block-visual';
+              loaderEl.innerHTML = html;
+              _appendVideoReflection();
+              _scrollStream();
+              return;
+            }
           } else {
             html = null;
           }
@@ -787,6 +794,46 @@
       }).catch(function () {
         if (loaderEl.parentNode) loaderEl.parentNode.removeChild(loaderEl);
       });
+  }
+
+  function _appendVideoReflection() {
+    var s = document.getElementById('kn-stream');
+    if (!s) return;
+
+    var el = document.createElement('div');
+    el.className = 'block block-video-reflection';
+
+    var label    = document.createElement('div');
+    label.className = 'video-reflection-label';
+    label.textContent = t('lm.video_reflection_prompt');
+
+    var textarea    = document.createElement('textarea');
+    textarea.className   = 'kn-answer-input video-reflection-input';
+    textarea.placeholder = t('placeholder.reflection');
+    textarea.rows        = 2;
+
+    var saveBtn = document.createElement('button');
+    saveBtn.className   = 'kn-option-btn btn-understand video-reflection-save';
+    saveBtn.textContent = t('btn.save');
+
+    saveBtn.addEventListener('click', function () {
+      var text = textarea.value.trim();
+      if (!text) return;
+      fetch('/api/profile/reflections', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ text: text }),
+      }).catch(function () {});
+      saveBtn.textContent = t('msg.saved');
+      saveBtn.disabled    = true;
+      textarea.disabled   = true;
+    });
+
+    el.appendChild(label);
+    el.appendChild(textarea);
+    el.appendChild(saveBtn);
+    s.insertBefore(el, _streamButtonEl || null);
+    _scrollStream();
   }
 
   function _showLoadingBlock() {

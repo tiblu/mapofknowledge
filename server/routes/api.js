@@ -13,7 +13,7 @@ async function getUserLocale(userId) {
       'SELECT value FROM user_settings WHERE user_id = ? AND key_name = ?',
       [userId, 'ui_locale']
     );
-    return (rows.length && rows[0].value) ? rows[0].value : 'en';
+    return (rows.length && rows[0].value) ? rows[0].value : 'et';
   } catch { return 'en'; }
 }
 
@@ -547,6 +547,13 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
         [passportId, node_id]
       );
       const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+      // Log every knobit completion as a learning event
+      db.execute(
+        `INSERT INTO passport_events (passport_id, event_date, title, institution, node_external_id, type, sort_order)
+         VALUES (?, CURDATE(), ?, 'KnobitMap · KaiQ Platform', ?, 'activity', 0)`,
+        [passportId, `Knobit complete: ${knobitTitle}`, nodeExtId]
+      ).catch(() => {});
 
       const userId = req.user?.id;
       const [[{ totalEver }]] = await db.execute(

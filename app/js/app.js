@@ -93,7 +93,7 @@ Promise.all([
   const palette = (settings.palette === 'midnight' ? 'vampire' : settings.palette) || 'sunset';
   document.documentElement.classList.remove('palette-nordic', 'palette-vampire', 'palette-candystore');
   if (palette !== 'sunset') document.documentElement.classList.add('palette-' + palette);
-  if (settings.ui_locale && settings.ui_locale !== 'en') {
+  if (settings.ui_locale) {
     window._uiLocale = settings.ui_locale;
     if (window.reloadStrings) window.reloadStrings();
   }

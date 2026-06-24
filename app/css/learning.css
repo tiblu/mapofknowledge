@@ -889,6 +889,28 @@
   margin-bottom: 10px;
 }
 
+.block-visual.block-visual-loading {
+  background: var(--i04);
+  border: 1px solid var(--i08);
+  border-radius: 10px;
+  padding: 11px 16px;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--c5);
+  font-size: 13px;
+}
+.visual-loading-icon {
+  font-size: 15px;
+  line-height: 1;
+  animation: hourglass-spin 2s ease-in-out infinite;
+}
+@keyframes hourglass-spin {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
 .lm-visual-img {
   display: block;
   width: 100%;
@@ -924,6 +946,33 @@
 .lm-visual-video:hover {
   background: var(--lm-accent-soft);
   border-color: var(--lm-accent);
+}
+
+/* ── Video reflection prompt ── */
+.block-video-reflection {
+  background: var(--lm-accent-soft);
+  border: 1px solid var(--lm-accent);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.video-reflection-label {
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--c2);
+  line-height: 1.45;
+}
+.video-reflection-save {
+  align-self: flex-start;
+  padding: 7px 16px;
+  font-size: 13px;
+}
+.video-reflection-save:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* ── Fullscreen button (in kn-nav) ── */

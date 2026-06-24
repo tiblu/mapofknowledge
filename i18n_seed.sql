@@ -352,6 +352,14 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('game.leaderboard',     'en', 'Leaderboard'),
 ('game.this_week',       'en', 'This week'),
 ('game.all_time',        'en', 'All time'),
+-- Learning mode — visual loader and video reflection
+('lm.finding_visual',          'en', 'Finding a visual…'),
+('lm.finding_visual',          'et', 'Otsin pilti…'),
+('lm.video_reflection_prompt', 'en', 'After watching: what was one thing that was new or interesting to you?'),
+('lm.video_reflection_prompt', 'et', 'Pärast vaatamist: mis oli üks asi, mis oli sulle uus või huvitav?'),
+('msg.saved',                  'en', 'Saved ✓'),
+('msg.saved',                  'et', 'Salvestatud ✓'),
+
 -- Game UI labels (et)
 ('game.lumens',          'et', 'Luumenid'),
 ('game.your_rank',       'et', 'Sinu järk'),
