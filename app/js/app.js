@@ -83,7 +83,7 @@ let simPreset = SIM_PRESETS.moderate;
 Promise.all([
   fetch('/api/map').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }),
   fetch('/api/settings').then(r => r.json()).catch(() => ({})),
-]).then(([{ base, emergent }, settings]) => {
+]).then(([mapData, settings]) => {
   simPreset = SIM_PRESETS[settings.map_animation] || SIM_PRESETS.moderate;
   // Apply font scale
   const fs = settings.font_size;
@@ -97,7 +97,7 @@ Promise.all([
     window._uiLocale = settings.ui_locale;
     if (window.reloadStrings) window.reloadStrings();
   }
-  init(base, emergent);
+  init(mapData);
   if (window._tourCheckAutoStart) window._tourCheckAutoStart(settings);
 }).catch(() => {
   document.body.innerHTML = '<div class="map-load-error">' + t('msg.map_load_error') + '</div>';
@@ -115,7 +115,7 @@ function loadProgress() {
     .catch(() => {});
 }
 
-function init(data, emergentData) {
+function init(data) {
   // ── Build lookup structures ────────────────────────────────────────────────
   const allNodes = {};
   data.nodes.forEach(n => allNodes[n.id] = { ...n, children: [], parent: null, expanded: false });
@@ -144,38 +144,6 @@ function init(data, emergentData) {
   });
 
   const hasHiddenChildren = id => (childrenOf[id] || []).some(cid => allNodes[cid].level >= 5);
-
-  // ── Emergent layer constants & data ───────────────────────────────────────
-  const LAYER_Y_OFFSET  = 680;
-  const LAYER_Z         = LAYER_Y_OFFSET;
-  const E_COLOR_L1      = '#C4A55A';
-  const E_COLOR_L2      = '#E8C97A';
-
-  const allEmergentNodes  = {};
-  const emergentChildrenOf = {};
-  const emergentParentOf   = {};
-  const drawsFromEdges     = [];
-
-  emergentData.nodes.forEach(n => {
-    allEmergentNodes[n.id] = {
-      ...n,
-      expanded: false,
-      color: n.level === 1 ? E_COLOR_L1 : E_COLOR_L2
-    };
-  });
-  emergentData.edges.forEach(e => {
-    if (e.edge_type === 'hierarchical') {
-      if (!emergentChildrenOf[e.source]) emergentChildrenOf[e.source] = [];
-      emergentChildrenOf[e.source].push(e.target);
-      emergentParentOf[e.target] = e.source;
-    } else if (e.edge_type === 'draws_from') {
-      drawsFromEdges.push({ source: e.source, target: e.target });
-    }
-  });
-
-  const visibleEmergentIds = new Set(
-    Object.values(allEmergentNodes).filter(n => n.level === 1).map(n => n.id)
-  );
 
   function nearestVisibleBase(id) {
     let cur = id;
@@ -208,10 +176,6 @@ function init(data, emergentData) {
   const gNodes          = g.append("g").attr("class", "nodes");
   const gRings          = g.append("g").attr("class", "filter-rings");
   const gExpand         = g.append("g").attr("class", "expanders");
-  const gConnectors     = g.append("g").attr("class", "connectors");
-  const gEmergentLinks  = g.append("g").attr("class", "emergent-links");
-  const gEmergentNodes  = g.append("g").attr("class", "emergent-nodes");
-  const gEmergentExpand = g.append("g").attr("class", "emergent-expanders");
 
   let currentTransform = d3.zoomIdentity;
 
@@ -228,7 +192,6 @@ function init(data, emergentData) {
       currentTransform = e.transform;
       updateLabels();
       repositionLabels();
-      repositionEmergentLabels();
       const tiltDeg = Math.round((window.currentTilt || 0) * 180 / Math.PI);
       document.getElementById("zoom-level").textContent =
         tiltDeg > 0 ? `zoom: ${e.transform.k.toFixed(2)}  tilt: ${tiltDeg}°` : `zoom: ${e.transform.k.toFixed(2)}`;
@@ -266,20 +229,6 @@ function init(data, emergentData) {
     }
   });
 
-  // ── Seed emergent node positions ──────────────────────────────────────────
-  const eY = h / 2;
-  const eL1 = Object.values(allEmergentNodes).filter(n => n.level === 1);
-  eL1.forEach((n, i) => {
-    const angle = (i / eL1.length) * 2 * Math.PI;
-    n.x = w / 2 + Math.min(w, h) * 0.36 * Math.cos(angle);
-    n.y = eY  + Math.min(w, h) * 0.10 * Math.sin(angle);
-  });
-  Object.values(allEmergentNodes).filter(n => n.level === 2).forEach(n => {
-    const par = allEmergentNodes[emergentParentOf[n.id]];
-    n.x = (par ? par.x : w / 2) + (Math.random() - 0.5) * 80;
-    n.y = (par ? par.y : eY)    + (Math.random() - 0.5) * 80;
-  });
-
   // ── Force simulation ───────────────────────────────────────────────────────
   const nodeRadius = d => d.level === 1 ? 16 : d.level === 2 ? 9 : d.level === 3 ? 5.5 : d.level === 4 ? 4 : 3;
 
@@ -295,21 +244,6 @@ function init(data, emergentData) {
     .alphaDecay(simPreset.alphaDecay)
     .velocityDecay(simPreset.velocityDecay)
     .on("tick", ticked);
-
-  // ── Emergent force simulation ──────────────────────────────────────────────
-  const emergentNodeRadius = d => d.level === 1 ? 15 : 9;
-  let simEmergentNodes = [], simEmergentEdges = [];
-  let connector, emergentLink, emergentNode, emergentExpander, emergentLabel;
-  let emergentLayerVisible = false;
-
-  const simEmergent = d3.forceSimulation([])
-    .force("link",    d3.forceLink([]).id(d => d.id).strength(0.5))
-    .force("charge",  d3.forceManyBody().strength(d => d.level === 1 ? -1200 : -180).distanceMax(500))
-    .force("collide", d3.forceCollide().radius(d => emergentNodeRadius(d) + 8).strength(0.9))
-    .force("x",       d3.forceX(w / 2).strength(0.03))
-    .force("y",       d3.forceY(eY).strength(0.18))
-    .alphaDecay(0.04)
-    .on("tick", tickedEmergent);
 
   let link, node, expander, label;
 
@@ -887,17 +821,7 @@ function init(data, emergentData) {
     gRings.selectAll('circle.filter-ring')
       .attr('cx', d => d.x)
       .attr('cy', d => projectY(d.y, 0));
-    updateConnectorPositions();
     repositionLabels();
-  }
-
-  function updateConnectorPositions() {
-    if (!connector) return;
-    connector
-      .attr("x1", d => allEmergentNodes[d.source] ? allEmergentNodes[d.source].x : 0)
-      .attr("y1", d => allEmergentNodes[d.source] ? projectY(allEmergentNodes[d.source].y, LAYER_Z) : 0)
-      .attr("x2", d => { const n = nearestVisibleBase(d.target); return n ? n.x : 0; })
-      .attr("y2", d => { const n = nearestVisibleBase(d.target); return n ? projectY(n.y, 0) : 0; });
   }
 
   function repositionLabels() {
@@ -1152,171 +1076,6 @@ function init(data, emergentData) {
   }
 
   window.refreshProgress = function() { loadProgress(); };
-
-  // ── Emergent tick ─────────────────────────────────────────────────────────
-  function tickedEmergent() {
-    if (emergentNode) {
-      emergentNode.attr("points", d => {
-        const r = emergentNodeRadius(d) * 1.25;
-        return diamondPoints(d.x, projectY(d.y, LAYER_Z), r);
-      });
-    }
-    if (emergentLink) {
-      emergentLink
-        .attr("x1", d => (typeof d.source === 'object' ? d.source : allEmergentNodes[d.source])?.x || 0)
-        .attr("y1", d => { const n = typeof d.source === 'object' ? d.source : allEmergentNodes[d.source]; return n ? projectY(n.y, LAYER_Z) : 0; })
-        .attr("x2", d => (typeof d.target === 'object' ? d.target : allEmergentNodes[d.target])?.x || 0)
-        .attr("y2", d => { const n = typeof d.target === 'object' ? d.target : allEmergentNodes[d.target]; return n ? projectY(n.y, LAYER_Z) : 0; });
-    }
-    if (emergentExpander) {
-      emergentExpander
-        .attr("x", d => d.x)
-        .attr("y", d => projectY(d.y, LAYER_Z))
-        .text(d => d.expanded ? "−" : "+");
-    }
-    updateConnectorPositions();
-    repositionEmergentLabels();
-  }
-
-  // ── Emergent rebuild ───────────────────────────────────────────────────────
-  function rebuildEmergent() {
-    simEmergentNodes = Array.from(visibleEmergentIds).map(id => allEmergentNodes[id]);
-    simEmergentEdges = emergentData.edges
-      .filter(e => e.edge_type === 'hierarchical' &&
-                   visibleEmergentIds.has(e.source) && visibleEmergentIds.has(e.target))
-      .map(e => ({ source: e.source, target: e.target }));
-
-    const connectorData = drawsFromEdges.filter(e => visibleEmergentIds.has(e.source));
-
-    connector = gConnectors.selectAll("line").data(connectorData, d => `${d.source}-${d.target}`);
-    connector.exit().remove();
-    connector = connector.enter().append("line")
-      .attr("class", "connector-line")
-      .attr("stroke", "#5ADCFF")
-      .attr("stroke-width", 0.9)
-      .attr("stroke-dasharray", "4 3")
-      .merge(connector);
-
-    emergentLink = gEmergentLinks.selectAll("line").data(simEmergentEdges, d => `${d.source}-${d.target}`);
-    emergentLink.exit().remove();
-    emergentLink = emergentLink.enter().append("line")
-      .attr("stroke", E_COLOR_L1)
-      .attr("stroke-opacity", 0.55)
-      .attr("stroke-width", 1.2)
-      .merge(emergentLink);
-
-    emergentNode = gEmergentNodes.selectAll("polygon").data(simEmergentNodes, d => d.id);
-    emergentNode.exit().remove();
-    emergentNode = emergentNode.enter().append("polygon")
-      .attr("fill", d => d.color)
-      .attr("fill-opacity", d => d.level === 1 ? 0.92 : 0.78)
-      .attr("stroke", "rgba(255,230,140,0.55)")
-      .attr("stroke-width", d => d.level === 1 ? 1.5 : 0.8)
-      .style("cursor", "pointer")
-      .call(d3.drag()
-        .on("start", (e, d) => { if (!e.active) simEmergent.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-        .on("drag",  (e, d) => { d.fx = e.x; d.fy = e.y; })
-        .on("end",   (e, d) => { if (!e.active) simEmergent.alphaTarget(0); d.fx = null; d.fy = null; }))
-      .on("mouseover", (e, d) => {
-        tt.style.display = "block";
-        tt.innerHTML = `<strong style="color:${d.color}">${d.label}</strong><br><span class="tt-sub">${t('label.emergent_field_tooltip')}</span>`;
-      })
-      .on("mousemove", e => { tt.style.left = (e.clientX + 14) + "px"; tt.style.top = (e.clientY - 10) + "px"; })
-      .on("mouseout",  () => { tt.style.display = "none"; })
-      .on("click", onEmergentNodeClick)
-      .merge(emergentNode);
-
-    const expandableE = simEmergentNodes.filter(n => n.level === 1 && (emergentChildrenOf[n.id] || []).length > 0);
-    emergentExpander = gEmergentExpand.selectAll("text").data(expandableE, d => d.id);
-    emergentExpander.exit().remove();
-    emergentExpander = emergentExpander.enter().append("text")
-      .attr("font-size", 6)
-      .attr("fill", "rgba(255,255,255,0.7)")
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "middle")
-      .style("pointer-events", "none")
-      .style("user-select", "none")
-      .merge(emergentExpander);
-
-    emergentLabel = labelSvg.selectAll(".emergent-label").data(simEmergentNodes, d => d.id);
-    emergentLabel.exit().remove();
-    emergentLabel = emergentLabel.enter().append("text")
-      .attr("class", "emergent-label")
-      .text(d => d.label)
-      .attr("font-size",   d => d.level === 1 ? 12 : 10)
-      .attr("font-weight", d => d.level === 1 ? 600 : 400)
-      .attr("fill", d => d.color)
-      .attr("text-anchor", "middle")
-      .attr("opacity", 1)
-      .style("pointer-events", "none")
-      .style("user-select", "none")
-      .merge(emergentLabel);
-
-    simEmergent.nodes(simEmergentNodes);
-    simEmergent.force("link").links(simEmergentEdges);
-    simEmergent.alpha(0.4).restart();
-    repositionEmergentLabels();
-
-    // Enforce current visibility state
-    const eVis = emergentLayerVisible ? null : "none";
-    gConnectors.style("display", eVis);
-    gEmergentLinks.style("display", eVis);
-    gEmergentNodes.style("display", eVis);
-    gEmergentExpand.style("display", eVis);
-    if (emergentLabel) emergentLabel.style("display", eVis);
-  }
-
-  function repositionEmergentLabels() {
-    if (!emergentLabel) return;
-    emergentLabel
-      .attr("x", d => currentTransform.applyX(d.x))
-      .attr("y", d => currentTransform.applyY(projectY(d.y, LAYER_Z)) - (d.level === 1 ? 24 : 16));
-  }
-
-  // ── Emergent expand / collapse ─────────────────────────────────────────────
-  function toggleExpandEmergent(d) {
-    const kids = emergentChildrenOf[d.id] || [];
-    if (!d.expanded) {
-      kids.forEach(cid => {
-        visibleEmergentIds.add(cid);
-        allEmergentNodes[cid].x = d.x + (Math.random() - 0.5) * 60;
-        allEmergentNodes[cid].y = d.y + (Math.random() - 0.5) * 60;
-      });
-      d.expanded = true;
-    } else {
-      kids.forEach(cid => {
-        visibleEmergentIds.delete(cid);
-        allEmergentNodes[cid].expanded = false;
-      });
-      d.expanded = false;
-    }
-    rebuildEmergent();
-  }
-
-  function onEmergentNodeClick(e, d) {
-    e.stopPropagation();
-    if (d.level === 1 && (emergentChildrenOf[d.id] || []).length > 0) {
-      toggleExpandEmergent(d);
-    }
-  }
-
-  // ── Layer visibility API (called by layers.js) ────────────────────────────
-  window.setLayerVisible = function (layerId, visible) {
-    const vis = visible ? null : "none";
-    if (layerId === 'emergent') {
-      emergentLayerVisible = visible;
-      gConnectors.style("display", vis);
-      gEmergentLinks.style("display", vis);
-      gEmergentNodes.style("display", vis);
-      gEmergentExpand.style("display", vis);
-      labelSvg.selectAll(".emergent-label").style("display", vis);
-    } else if (layerId === 'base') {
-      gLinks.style("display", vis);
-      gNodes.style("display", vis);
-      gExpand.style("display", vis);
-      labelSvg.selectAll(".base-label").style("display", vis);
-    }
-  };
 
   // ── Knowledge ID filter (called by filters.js for "My Knowledge") ───────────
   // Uses node external IDs directly — avoids the label-based filter's tendency

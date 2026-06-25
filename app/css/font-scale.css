@@ -13,7 +13,6 @@ html.fs-medium #sidebar .sb-body { zoom: 1.14; }
 
 html.fs-medium .nav-dropdown,
 html.fs-medium #filter-panel,
-html.fs-medium #layer-panel,
 html.fs-medium #search-dropdown { zoom: 1.14; }
 
 html.fs-medium .tour-tooltip    { zoom: 1.14; }
@@ -31,7 +30,6 @@ html.fs-large #sidebar .sb-body { zoom: 1.28; }
 
 html.fs-large .nav-dropdown,
 html.fs-large #filter-panel,
-html.fs-large #layer-panel,
 html.fs-large #search-dropdown  { zoom: 1.28; }
 
 html.fs-large .tour-tooltip     { zoom: 1.28; }

@@ -51,46 +51,25 @@ router.get('/map', async (req, res) => {
     const locale = await getUserLocale(req.user?.id);
     if (mapCaches[locale]) return res.json(mapCaches[locale]);
 
-    const translatedNodeSql = (layer) =>
-      locale === 'en'
-        ? [`SELECT external_id AS id, label, level
-            FROM nodes WHERE layer = ? AND is_active = 1`, [layer]]
-        : [`SELECT n.external_id AS id, COALESCE(tr.label, n.label) AS label, n.level
-            FROM nodes n
-            LEFT JOIN node_translations tr
-              ON tr.node_external_id = n.external_id AND tr.locale = ?
-            WHERE n.layer = ? AND n.is_active = 1`, [locale, layer]];
+    const [nodes] = locale === 'en'
+      ? await db.execute(
+          `SELECT external_id AS id, label, level FROM nodes WHERE layer = 'foundational' AND is_active = 1`)
+      : await db.execute(
+          `SELECT n.external_id AS id, COALESCE(tr.label, n.label) AS label, n.level
+           FROM nodes n
+           LEFT JOIN node_translations tr
+             ON tr.node_external_id = n.external_id AND tr.locale = ?
+           WHERE n.layer = 'foundational' AND n.is_active = 1`, [locale]);
 
-    const [baseNodes]     = await db.execute(...translatedNodeSql('foundational'));
-    const [emergentNodes] = await db.execute(...translatedNodeSql('emergent'));
-
-    const [baseEdges] = await db.execute(
+    const [edges] = await db.execute(
       `SELECT s.external_id AS source, t.external_id AS target
        FROM edges e
        JOIN nodes s ON e.source_node_id = s.id
        JOIN nodes t ON e.target_node_id = t.id
        WHERE e.edge_type = 'hierarchy'`
     );
-    const [emergentEdges] = await db.execute(
-      `SELECT s.external_id AS source, t.external_id AS target, e.edge_type
-       FROM edges e
-       JOIN nodes s ON e.source_node_id = s.id
-       JOIN nodes t ON e.target_node_id = t.id
-       WHERE e.edge_type IN ('hierarchy','draws_from')
-         AND (s.layer = 'emergent' OR t.layer = 'emergent')`
-    );
 
-    // Frontend expects 'hierarchical' for emergent hierarchy edges
-    const mappedEmergentEdges = emergentEdges.map(e => ({
-      ...e,
-      edge_type: e.edge_type === 'hierarchy' ? 'hierarchical' : e.edge_type,
-    }));
-
-    mapCaches[locale] = {
-      base:     { nodes: baseNodes,     edges: baseEdges },
-      emergent: { nodes: emergentNodes, edges: mappedEmergentEdges },
-    };
-
+    mapCaches[locale] = { nodes, edges };
     res.json(mapCaches[locale]);
   } catch (err) {
     console.error('[api/map]', err.message);

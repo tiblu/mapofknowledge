@@ -113,10 +113,6 @@
   /* ─── Filter panel toggle ────────────────────────────────────────────── */
   filterBtn.addEventListener('click', function (e) {
     e.stopPropagation();
-    var lp = document.getElementById('layer-panel');
-    var lb = document.getElementById('layers-btn');
-    if (lp) lp.classList.remove('open');
-    if (lb) lb.classList.remove('active');
     panel.classList.toggle('open');
     filterBtn.classList.toggle('active', panel.classList.contains('open'));
   });
