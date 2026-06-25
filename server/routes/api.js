@@ -1742,72 +1742,72 @@ router.get('/parent/children/:passport_id', async (req, res) => {
 });
 
 // ── Learning recommendations — "Start here" next nodes ───────────────────────
+// Returns 5 L5 nodes, one per L1 subject domain, all within the Estonian Basic
+// School 2023 filter (subset_id=1).  Priority: goal-siblings > recently-touched
+// neighbourhood > random.  Deduplication and per-domain picking done in JS.
 router.get('/recommendations/next-nodes', async (req, res) => {
   const passportId = req.user?.passport_id;
   if (!passportId) return res.json({ nodes: [] });
   try {
     const locale = await getUserLocale(req.user?.id);
     const [rows] = await db.execute(`
-      SELECT sub.external_id AS id,
-             COALESCE(tr.label, sub.label) AS label,
-             COALESCE(
-               CONCAT(tr4.label, ' › ', tr.label),
-               sub.breadcrumb
-             ) AS breadcrumb,
-             sub.priority
-      FROM (
-        -- P1: sibling L5 nodes under an active goal's L4 parent
-        SELECT n.external_id, n.label,
-               CONCAT(p4.label, ' › ', n.label) AS breadcrumb,
-               p4.external_id AS p4_ext,
-               1 AS priority
-        FROM passport_goals pg
-        JOIN nodes gn ON gn.external_id = pg.node_external_id AND gn.level = 5
-        JOIN nodes p4 ON p4.id = gn.parent_id
-        JOIN nodes n  ON n.parent_id = p4.id AND n.level = 5 AND n.external_id != gn.external_id
-        WHERE pg.passport_id = ? AND pg.status = 'in_progress' AND pg.node_external_id IS NOT NULL
-          AND NOT EXISTS (
-            SELECT 1 FROM knobit_progress kp
-            JOIN knobits k ON k.id = kp.knobit_id
-            WHERE k.node_id = n.id AND kp.passport_id = ? AND kp.phase_reached = 'done'
-          )
+      SELECT
+        n.external_id                        AS id,
+        COALESCE(tr.label,  n.label)         AS label,
+        COALESCE(tr4.label, p4.label)        AS parent_label,
+        l1.external_id                       AS l1_ext,
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM passport_goals pg2
+            JOIN nodes gn ON gn.external_id = pg2.node_external_id AND gn.level = 5
+            WHERE pg2.passport_id = ? AND pg2.status = 'in_progress'
+              AND gn.parent_id = p4.id AND gn.external_id != n.external_id
+          ) THEN 1
+          WHEN EXISTS (
+            SELECT 1 FROM knobit_progress kp2
+            JOIN knobits k2 ON k2.id = kp2.knobit_id
+            WHERE k2.node_id IN (SELECT id FROM nodes WHERE parent_id = p4.id)
+              AND kp2.passport_id = ? AND kp2.completed_at > DATE_SUB(NOW(), INTERVAL 14 DAY)
+          ) THEN 2
+          ELSE 3
+        END AS priority
+      FROM nodes n
+      JOIN nodes p4 ON p4.id = n.parent_id
+      JOIN nodes p3 ON p3.id = p4.parent_id
+      JOIN nodes p2 ON p2.id = p3.parent_id
+      JOIN nodes l1 ON l1.id = p2.parent_id
+      LEFT JOIN node_translations tr  ON tr.node_external_id  = n.external_id  AND tr.locale = ?
+      LEFT JOIN node_translations tr4 ON tr4.node_external_id = p4.external_id AND tr4.locale = ?
+      WHERE n.level = 5 AND n.is_active = 1
+        AND EXISTS (
+          SELECT 1 FROM knowledge_subset_nodes ksn
+          WHERE ksn.subset_id = 1
+            AND ksn.node_id IN (p4.id, p3.id, p2.id, l1.id)
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM knobit_progress kp
+          JOIN knobits k ON k.id = kp.knobit_id
+          WHERE k.node_id = n.id AND kp.passport_id = ?
+        )
+      ORDER BY priority ASC, RAND()
+      LIMIT 100
+    `, [passportId, passportId, locale, locale, passportId]);
 
-        UNION ALL
+    // One chip per L1 subject domain, preserving priority order
+    const seen = new Set();
+    const nodes = [];
+    for (const row of rows) {
+      if (!seen.has(row.l1_ext) && nodes.length < 5) {
+        seen.add(row.l1_ext);
+        nodes.push({
+          id:         row.id,
+          label:      row.label,
+          breadcrumb: row.parent_label ? row.parent_label + ' › ' + row.label : row.label
+        });
+      }
+    }
 
-        -- P2: unstarted L5 nodes in L4 groups the learner recently touched
-        SELECT n.external_id, n.label,
-               CONCAT(p4.label, ' › ', n.label) AS breadcrumb,
-               p4.external_id AS p4_ext,
-               2 AS priority
-        FROM (
-          SELECT DISTINCT p4.id AS p4_id
-          FROM knobit_progress kp
-          JOIN knobits k   ON k.id = kp.knobit_id
-          JOIN nodes ln    ON ln.id = k.node_id
-          JOIN nodes p4    ON p4.id = ln.parent_id
-          WHERE kp.passport_id = ? AND kp.completed_at > DATE_SUB(NOW(), INTERVAL 14 DAY)
-        ) recent
-        JOIN nodes p4 ON p4.id = recent.p4_id
-        JOIN nodes n  ON n.parent_id = p4.id AND n.level = 5
-        WHERE NOT EXISTS (
-            SELECT 1 FROM knobit_progress kp
-            JOIN knobits k ON k.id = kp.knobit_id
-            WHERE k.node_id = n.id AND kp.passport_id = ? AND kp.phase_reached = 'done'
-          )
-          AND NOT EXISTS (
-            SELECT 1 FROM knobit_progress kp
-            JOIN knobits k ON k.id = kp.knobit_id
-            WHERE k.node_id = n.id AND kp.passport_id = ?
-          )
-      ) sub
-      LEFT JOIN node_translations tr  ON tr.node_external_id = sub.external_id AND tr.locale = ?
-      LEFT JOIN node_translations tr4 ON tr4.node_external_id = sub.p4_ext     AND tr4.locale = ?
-      GROUP BY sub.external_id, sub.label, sub.breadcrumb, sub.priority, tr.label, tr4.label
-      ORDER BY sub.priority ASC, RAND()
-      LIMIT 5
-    `, [passportId, passportId, passportId, passportId, passportId, locale, locale]);
-
-    res.json({ nodes: rows });
+    res.json({ nodes });
   } catch (err) {
     console.error('[recommendations]', err.message);
     res.json({ nodes: [] });

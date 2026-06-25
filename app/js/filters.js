@@ -73,6 +73,16 @@
                         + '<span class="fp-label">' + s.name + '</span>';
           list.appendChild(div);
         });
+
+        // Restore saved filter, or default to Estonian Basic School 2023 (db-1)
+        var saved;
+        try { saved = localStorage.getItem('kq_base_filter'); } catch(e) { saved = null; }
+        if (saved === null) saved = 'db-1';   // first visit default
+        if (saved && saved !== 'none' && FILTERS[saved]) {
+          baseFilterId = saved;
+          ensureFilterLabels(saved, FILTERS[saved]);
+          updateActiveUI();
+        }
       })
       .catch(function() {});
   })();
@@ -140,8 +150,10 @@
     } else {
       if (baseFilterId === fid) {
         baseFilterId = null;
+        saveBaseFilter('none');
       } else {
         baseFilterId = fid;
+        saveBaseFilter(fid);
         ensureFilterLabels(fid, filter);
       }
     }
@@ -182,9 +194,14 @@
       .catch(function() {});
   }
 
+  function saveBaseFilter(fid) {
+    try { localStorage.setItem('kq_base_filter', fid || 'none'); } catch(e) {}
+  }
+
   function deactivateAll() {
     baseFilterId = null;
     overlayFilterIds.clear();
+    saveBaseFilter('none');
     updateActiveUI();
     pushToMap();
     if (typeof window.clearKnowledgeFilter === 'function') window.clearKnowledgeFilter();
