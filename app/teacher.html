@@ -28,12 +28,15 @@
     </div>
     <span class="topbar-logo-text">KnobitMap</span>
   </a>
+
   <div class="topbar-banner">
-    <div class="topbar-banner-inner">
-      <span class="topbar-banner-dot"></span>
-      <span data-i18n="teacher.title">Õpetaja vaade</span>
+    <div class="role-switcher">
+      <a href="index.html" class="role-btn">Kaart</a>
+      <a href="teacher.html" class="role-btn role-active">Õpetaja</a>
+      <a href="parent.html" class="role-btn">Lapsevanem</a>
     </div>
   </div>
+
   <div class="topbar-right">
     <div class="topbar-burger-wrap">
       <button class="topbar-icon-btn topbar-burger" id="nav-menu" title="Menu">
@@ -51,6 +54,9 @@
         <button class="nav-dropdown-item active-page">
           <span data-i18n="teacher.title">Õpetaja vaade</span>
         </button>
+        <button class="nav-dropdown-item" onclick="window.location='parent.html'">
+          <span data-i18n="parent.title">Lapsevanema vaade</span>
+        </button>
         <div class="nav-dropdown-divider"></div>
         <button class="nav-dropdown-item" onclick="window.top.location='/auth/logout'">
           <span data-i18n="nav.log_out">Logi välja</span>
@@ -59,6 +65,7 @@
     </div>
   </div>
 </header>
+
 <script>
   document.getElementById('nav-menu').addEventListener('click', function(e) {
     e.stopPropagation();
@@ -69,39 +76,470 @@
   });
 </script>
 
-<div class="teacher-layout">
+<!-- ════ LAYOUT ════ -->
+<div class="ta-wrap">
 
-  <!-- Student list sidebar -->
-  <nav class="teacher-sidebar" id="teacher-sidebar">
-    <div class="teacher-sidebar-title" data-i18n="teacher.my_students">Minu õpilased</div>
-    <div id="student-list" class="student-list"></div>
-    <div class="teacher-sidebar-footer">
-      <button class="p-edit-btn" id="link-invite-btn" onclick="window.showInviteModal('teacher')">
-        + <span data-i18n="teacher.invite_student">Lisa õpilane</span>
-      </button>
-    </div>
-  </nav>
+  <!-- ════ LEFT SIDEBAR ════ -->
+  <aside class="ta-aside">
 
-  <!-- Student detail panel -->
-  <main class="teacher-main" id="teacher-main">
-    <div id="teacher-detail" class="teacher-detail-empty">
-      <div class="teacher-empty-msg" data-i18n="teacher.select_student">Vali õpilane vasakult.</div>
+    <div class="ta-section-header" style="padding-top:16px">
+      <span class="ta-section-title">Rühmad</span>
+      <button class="ta-icon-btn" id="btn-add-group" title="Lisa rühm">+</button>
     </div>
+
+    <div class="ta-group-list" id="group-list">
+      <div class="ta-group-item ta-group-active" data-group="all">
+        <div class="ta-group-dot" style="background:#8BAD7E"></div>
+        <span class="ta-group-label">Kõik õpilased</span>
+        <span class="ta-group-count">8</span>
+      </div>
+      <div class="ta-group-item" data-group="7A">
+        <div class="ta-group-dot" style="background:#378ADD"></div>
+        <span class="ta-group-label">7A klass</span>
+        <span class="ta-group-count">4</span>
+      </div>
+      <div class="ta-group-item" data-group="7B">
+        <div class="ta-group-dot" style="background:#9B8FB5"></div>
+        <span class="ta-group-label">7B klass</span>
+        <span class="ta-group-count">4</span>
+      </div>
+      <div class="ta-group-item" data-group="mat-tugi">
+        <div class="ta-group-dot" style="background:#C4A55A"></div>
+        <span class="ta-group-label">Matemaatika tugi</span>
+        <span class="ta-group-count">3</span>
+      </div>
+    </div>
+
+    <div class="ta-divider"></div>
+
+    <div class="ta-section-header">
+      <span class="ta-section-title" id="student-list-label">Kõik õpilased</span>
+    </div>
+
+    <div class="ta-student-scroll" id="student-list"></div>
+
+    <div class="ta-aside-footer">
+      <button class="ta-invite-btn" id="btn-invite">+ Lisa õpilane</button>
+    </div>
+
+  </aside>
+
+  <!-- ════ MAIN ════ -->
+  <main class="ta-main" id="ta-main">
+
+    <!-- Dashboard view -->
+    <div id="view-dashboard">
+
+      <div class="ta-main-header">
+        <span class="ta-main-title" id="dashboard-title">Kõik õpilased</span>
+        <div class="ta-view-toggle">
+          <button class="ta-view-btn ta-view-active" id="btn-view-cards">Kaardid</button>
+          <button class="ta-view-btn" id="btn-view-list">Nimekiri</button>
+        </div>
+        <button class="ta-action-btn" id="btn-manage-groups">Halda rühmi</button>
+      </div>
+
+      <div class="ta-stats-row">
+        <div class="ta-stat">
+          <div class="ta-stat-val" id="stat-total">8</div>
+          <div class="ta-stat-label">Õpilast</div>
+        </div>
+        <div class="ta-stat">
+          <div class="ta-stat-val" id="stat-active">3</div>
+          <div class="ta-stat-label">Aktiivne täna</div>
+        </div>
+        <div class="ta-stat">
+          <div class="ta-stat-val" id="stat-goals">6</div>
+          <div class="ta-stat-label">Aktiivseid eesmärke</div>
+        </div>
+        <div class="ta-stat">
+          <div class="ta-stat-val" id="stat-avg">54%</div>
+          <div class="ta-stat-label">Keskmine edenemine</div>
+        </div>
+      </div>
+
+      <div class="ta-cards-section">
+        <div class="ta-cards-grid" id="cards-grid"></div>
+      </div>
+
+    </div>
+
+    <!-- Detail view -->
+    <div id="view-detail" style="display:none">
+
+      <div class="ta-main-header">
+        <button class="ta-back-btn" id="btn-back-detail">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Tagasi nimekirja
+        </button>
+        <div style="flex:1"></div>
+        <button class="ta-action-btn ta-btn-primary" id="btn-suggest-goal">Sea eesmärk</button>
+        <button class="ta-action-btn" id="btn-view-map">Vaata kaardil</button>
+      </div>
+
+      <div class="ta-detail" id="detail-panel"></div>
+
+    </div>
+
   </main>
-
 </div>
 
 <!-- Invite modal -->
-<div id="invite-modal" class="link-modal" style="display:none">
+<div class="link-modal" id="invite-modal" style="display:none">
   <div class="link-modal-box">
-    <div class="link-modal-title" data-i18n="link.share_code">Jaga seda koodi</div>
-    <div id="invite-code-display" class="link-code-display"></div>
-    <div class="link-modal-hint" data-i18n="link.code_hint">Õpilane sisestab selle koodi oma profiilis.</div>
-    <button class="p-edit-btn primary" onclick="document.getElementById('invite-modal').style.display='none'" data-i18n="btn.close">Sulge</button>
+    <div class="link-modal-title">Lisa õpilane</div>
+    <div style="font-size:12px;color:var(--c5);margin-bottom:16px;line-height:1.6">
+      Jaga seda koodi õpilasele. Ta sisestab selle oma profiili lehe jaotises "Seosed".
+    </div>
+    <div class="link-code-display">KN7X2MPQ</div>
+    <div class="link-modal-hint">Kood aegub 48 tunni pärast.</div>
+    <button class="ta-action-btn" onclick="document.getElementById('invite-modal').style.display='none'">Sulge</button>
+  </div>
+</div>
+
+<!-- Group manager modal -->
+<div class="link-modal" id="group-modal" style="display:none">
+  <div class="link-modal-box" style="max-width:420px">
+    <div class="link-modal-title">Rühmade haldamine</div>
+    <div style="font-size:12px;color:var(--c5);margin-bottom:12px;line-height:1.6">
+      Rühmad on sildid, mida saad õpilastele vabalt määrata. Õpilasel võib olla mitu silti.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--i10);border-radius:9px;background:var(--panel-a)">
+        <div style="width:10px;height:10px;border-radius:50%;background:#378ADD;flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:600;color:var(--c1);flex:1">7A klass</span>
+        <span style="font-size:11px;color:var(--c5)">4 õpilast</span>
+        <button style="border:none;background:none;color:var(--c5);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--i10);border-radius:9px;background:var(--panel-a)">
+        <div style="width:10px;height:10px;border-radius:50%;background:#9B8FB5;flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:600;color:var(--c1);flex:1">7B klass</span>
+        <span style="font-size:11px;color:var(--c5)">4 õpilast</span>
+        <button style="border:none;background:none;color:var(--c5);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--i10);border-radius:9px;background:var(--panel-a)">
+        <div style="width:10px;height:10px;border-radius:50%;background:#C4A55A;flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:600;color:var(--c1);flex:1">Matemaatika tugi</span>
+        <span style="font-size:11px;color:var(--c5)">3 õpilast</span>
+        <button style="border:none;background:none;color:var(--c5);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px dashed var(--i18);border-radius:9px;margin-bottom:14px">
+      <input type="text" placeholder="Uue rühma nimi..." style="flex:1;border:none;background:none;font-size:13px;color:var(--c1);font-family:inherit;outline:none">
+      <button class="ta-action-btn ta-btn-primary" style="padding:5px 12px;font-size:12px">Lisa</button>
+    </div>
+    <button class="ta-action-btn" onclick="document.getElementById('group-modal').style.display='none'" style="width:100%">Valmis</button>
   </div>
 </div>
 
 <script src="js/topbar-notif.js"></script>
-<script src="js/teacher.js"></script>
+<script>
+(function () {
+
+var GROUPS = {
+  'all':      { label: 'Kõik õpilased', color: '#8BAD7E' },
+  '7A':       { label: '7A klass',       color: '#378ADD' },
+  '7B':       { label: '7B klass',       color: '#9B8FB5' },
+  'mat-tugi': { label: 'Matemaatika tugi', color: '#C4A55A' }
+};
+
+var STUDENTS = [
+  { id:1, initials:'KL', name:'Kristiina L.', avatarClass:'ta-avatar-b',
+    groups:['7A'],
+    goal:'Murdude liitmine', goalDomain:'Matemaatika › Aritmeetika › Murrud',
+    progress:78, goalDate:'20. juuli 2026',
+    streak:5, rank:'Avastaja', lumens:340,
+    lastActive:'täna', status:'active',
+    events:[
+      {icon:'✓', title:'Harilikud murrud lõpetatud', date:'eile', badge:'✓'},
+      {icon:'📖', title:'Murdude lahutamine alustatud', date:'2 päeva tagasi', badge:null},
+      {icon:'🏅', title:'Saavutus: "Päevane tegija" avatud', date:'3 päeva tagasi', badge:null},
+      {icon:'✓', title:'Kümnendmurrud lõpetatud', date:'4 päeva tagasi', badge:'✓'}
+    ]
+  },
+  { id:2, initials:'MR', name:'Marko R.', avatarClass:'ta-avatar-a',
+    groups:['7A','mat-tugi'],
+    goal:'Fotosüntees', goalDomain:'Loodusteadused › Bioloogia › Taimed',
+    progress:42, goalDate:'1. august 2026',
+    streak:1, rank:'Rändur', lumens:120,
+    lastActive:'täna', status:'active',
+    events:[
+      {icon:'📖', title:'Fotosüntees alustatud', date:'täna', badge:null},
+      {icon:'✓', title:'Rakkude ehitus lõpetatud', date:'2 päeva tagasi', badge:'✓'},
+      {icon:'📖', title:'Taimede hingamine alustatud', date:'4 päeva tagasi', badge:null}
+    ]
+  },
+  { id:3, initials:'LT', name:'Liisa T.', avatarClass:'ta-avatar-d',
+    groups:['7A'],
+    goal:null, goalCompleted:'Eesti ajalugu', goalDomain:'Ajalugu › Eesti ajalugu',
+    progress:100, goalDate:null,
+    streak:12, rank:'Teejuht', lumens:580,
+    lastActive:'täna', status:'active',
+    events:[
+      {icon:'🎉', title:'Eesmärk täidetud: Eesti ajalugu', date:'täna', badge:'🎉'},
+      {icon:'✓', title:'Iseseisvumine lõpetatud', date:'täna', badge:'✓'},
+      {icon:'✓', title:'Esimene maailmasõda lõpetatud', date:'eile', badge:'✓'},
+      {icon:'✓', title:'Muinasaeg lõpetatud', date:'3 päeva tagasi', badge:'✓'}
+    ]
+  },
+  { id:4, initials:'JK', name:'Jaan K.', avatarClass:'ta-avatar-e',
+    groups:['7A','mat-tugi'],
+    goal:'Tehted täisarvudega', goalDomain:'Matemaatika › Aritmeetika',
+    progress:30, goalDate:'15. juuli 2026',
+    streak:0, rank:'Rändur', lumens:85,
+    lastActive:'5 päeva tagasi', status:'warning',
+    events:[
+      {icon:'📖', title:'Tehted täisarvudega alustatud', date:'5 päeva tagasi', badge:null},
+      {icon:'✓', title:'Täisarvude mõiste lõpetatud', date:'6 päeva tagasi', badge:'✓'}
+    ]
+  },
+  { id:5, initials:'MV', name:'Mari V.', avatarClass:'ta-avatar-c',
+    groups:['7B'],
+    goal:'Eesti ajalugu', goalDomain:'Ajalugu › Eesti ajalugu',
+    progress:65, goalDate:'25. juuli 2026',
+    streak:3, rank:'Avastaja', lumens:215,
+    lastActive:'eile', status:'ok',
+    events:[
+      {icon:'✓', title:'Muinasaeg lõpetatud', date:'eile', badge:'✓'},
+      {icon:'✓', title:'Keskaeg lõpetatud', date:'3 päeva tagasi', badge:'✓'},
+      {icon:'📖', title:'Iseseisvumine alustatud', date:'4 päeva tagasi', badge:null}
+    ]
+  },
+  { id:6, initials:'TS', name:'Tõnis S.', avatarClass:'ta-avatar-h',
+    groups:['7B','mat-tugi'],
+    goal:null, goalDomain:null,
+    progress:0, goalDate:null,
+    streak:0, rank:'Rändur', lumens:40,
+    lastActive:'12 päeva tagasi', status:'inactive',
+    events:[]
+  },
+  { id:7, initials:'KP', name:'Kati P.', avatarClass:'ta-avatar-f',
+    groups:['7B'],
+    goal:'Eesti kirjandus', goalDomain:'Kirjandus › Eesti kirjandus',
+    progress:88, goalDate:'10. juuli 2026',
+    streak:8, rank:'Teejuht', lumens:420,
+    lastActive:'täna', status:'active',
+    events:[
+      {icon:'✓', title:'A.H. Tammsaare teosed lõpetatud', date:'täna', badge:'✓'},
+      {icon:'🏅', title:'Saavutus: "Nädala entusiast" avatud', date:'eile', badge:null},
+      {icon:'✓', title:'Lydia Koidula looming lõpetatud', date:'2 päeva tagasi', badge:'✓'}
+    ]
+  },
+  { id:8, initials:'PM', name:'Peeter M.', avatarClass:'ta-avatar-g',
+    groups:['7B'],
+    goal:'Eesti geograafia', goalDomain:'Geograafia › Eesti',
+    progress:15, goalDate:'5. august 2026',
+    streak:2, rank:'Rändur', lumens:95,
+    lastActive:'eile', status:'ok',
+    events:[
+      {icon:'📖', title:'Maakondade geograafia alustatud', date:'eile', badge:null},
+      {icon:'✓', title:'Eesti pinnamood lõpetatud', date:'4 päeva tagasi', badge:'✓'}
+    ]
+  }
+];
+
+var activeGroup = 'all';
+var selectedId  = null;
+
+function studentsInGroup(gid) {
+  if (gid === 'all') return STUDENTS;
+  return STUDENTS.filter(function(s){ return s.groups.indexOf(gid) !== -1; });
+}
+
+function statusStyle(st) {
+  return st === 'active' ? 'background:#5CAD72'
+       : st === 'ok'     ? 'background:#C4A55A'
+       : st === 'warning'? 'background:#E07060'
+       :                   'background:var(--i18)';
+}
+
+function groupChipsHtml(groups) {
+  var map = {'7A':'#378ADD','7B':'#9B8FB5','mat-tugi':'#C4A55A'};
+  return groups.map(function(g){
+    var c = map[g] || '#8BAD7E';
+    return '<span class="ta-chip" style="background:'+c+'1a;color:'+c+';border-color:'+c+'33">'+(GROUPS[g]||{label:g}).label+'</span>';
+  }).join('');
+}
+
+/* ── Sidebar ── */
+function renderSidebar() {
+  var list = document.getElementById('student-list');
+  list.innerHTML = studentsInGroup(activeGroup).map(function(s){
+    var sel = s.id === selectedId ? ' ta-student-selected' : '';
+    return '<div class="ta-student-item'+sel+'" data-id="'+s.id+'">'
+      +'<div class="ta-avatar '+s.avatarClass+'">'+s.initials+'</div>'
+      +'<div class="ta-student-info">'
+      +  '<div class="ta-student-name">'+s.name+'</div>'
+      +  '<div class="ta-student-sub">'+(s.goal || (s.goalCompleted ? '✓ Eesmärk täidetud' : 'Eesmärk puudub'))+'</div>'
+      +'</div>'
+      +'<div class="ta-student-mini-bar"><div class="ta-mini-fill" style="width:'+s.progress+'%"></div></div>'
+      +'<div class="ta-status-dot" style="'+statusStyle(s.status)+'"></div>'
+      +'</div>';
+  }).join('');
+  list.querySelectorAll('.ta-student-item').forEach(function(el){
+    el.addEventListener('click', function(){ selectStudent(+el.dataset.id); });
+  });
+}
+
+/* ── Dashboard ── */
+function renderDashboard() {
+  var students = studentsInGroup(activeGroup);
+  document.getElementById('stat-total').textContent  = students.length;
+  document.getElementById('stat-active').textContent = students.filter(function(s){return s.status==='active';}).length;
+  document.getElementById('stat-goals').textContent  = students.filter(function(s){return s.goal;}).length;
+  var withProgress = students.filter(function(s){return s.goal||s.goalCompleted;});
+  var avg = withProgress.length ? Math.round(withProgress.reduce(function(a,s){return a+s.progress;},0)/withProgress.length) : 0;
+  document.getElementById('stat-avg').textContent = avg + '%';
+  document.getElementById('dashboard-title').textContent = GROUPS[activeGroup].label;
+  document.getElementById('student-list-label').textContent = GROUPS[activeGroup].label;
+
+  var grid = document.getElementById('cards-grid');
+  grid.innerHTML = students.map(function(s){
+    var barCls = s.progress===100 ? 'ta-bar-green' : s.status==='warning' ? 'ta-bar-warn' : '';
+    var cardCls = s.status==='warning' ? ' ta-card-warning' : s.status==='inactive' ? ' ta-card-inactive' : '';
+    var goalHtml;
+    if (s.goal) {
+      goalHtml = '<div class="ta-card-goal-name">'+s.goal+'</div>'
+        +'<div class="ta-bar-track"><div class="ta-bar-fill '+barCls+'" style="width:'+s.progress+'%"></div></div>'
+        +'<div class="ta-card-progress-row">'
+        +'<span class="ta-card-pct">'+s.progress+'%</span>'
+        +'<span class="ta-card-streak">'+(s.streak>0?'<span class="ta-card-streak-icon">🔥</span>'+s.streak+' p.':'–')+'</span>'
+        +'</div>';
+    } else if (s.goalCompleted) {
+      goalHtml = '<div class="ta-card-goal-name" style="color:var(--accent-dark)">✓ '+s.goalCompleted+'</div>'
+        +'<div class="ta-bar-track"><div class="ta-bar-fill ta-bar-green" style="width:100%"></div></div>'
+        +'<div class="ta-card-progress-row"><span class="ta-card-pct" style="color:#5CAD72">100%</span>'
+        +'<span class="ta-card-streak"><span class="ta-card-streak-icon">🔥</span>'+s.streak+' p.</span></div>';
+    } else {
+      goalHtml = '<div class="ta-card-no-goal">Eesmärk ei ole seatud</div>';
+    }
+    return '<div class="ta-student-card'+cardCls+'" data-id="'+s.id+'">'
+      +'<div class="ta-card-header">'
+      +  '<div class="ta-card-avatar '+s.avatarClass+'">'+s.initials+'</div>'
+      +  '<div class="ta-card-meta">'
+      +    '<div class="ta-card-name">'+s.name+'</div>'
+      +    '<div class="ta-card-last-active">'+s.lastActive+'</div>'
+      +  '</div>'
+      +  '<div class="ta-card-status" style="'+statusStyle(s.status)+'"></div>'
+      +'</div>'
+      +'<div class="ta-card-groups">'+groupChipsHtml(s.groups)+'</div>'
+      +'<div class="ta-card-goal-label">Aktiivne eesmärk</div>'
+      +goalHtml
+      +'<div class="ta-card-footer">'
+      +  '<span class="ta-card-rank">'+s.rank+'</span>'
+      +  '<span class="ta-card-lumens">✦ '+s.lumens+' luumenit</span>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  grid.querySelectorAll('.ta-student-card').forEach(function(el){
+    el.addEventListener('click', function(){ selectStudent(+el.dataset.id); });
+  });
+}
+
+/* ── Detail ── */
+function selectStudent(id) {
+  selectedId = id;
+  var s = STUDENTS.find(function(x){return x.id===id;});
+  if (!s) return;
+  document.querySelectorAll('.ta-student-item').forEach(function(el){
+    el.classList.toggle('ta-student-selected', +el.dataset.id===id);
+  });
+
+  var barCls = s.progress>=80 ? 'ta-bar-green' : s.status==='warning' ? 'ta-bar-warn' : '';
+  var goalHtml;
+  if (s.goal) {
+    goalHtml = '<div class="ta-goal-row">'
+      +'<div class="ta-goal-header"><div class="ta-goal-name">'+s.goal+'</div><div class="ta-goal-pct">'+s.progress+'%</div></div>'
+      +'<div class="ta-goal-crumb">'+s.goalDomain+'</div>'
+      +'<div class="ta-bar-track"><div class="ta-bar-fill '+barCls+'" style="width:'+s.progress+'%"></div></div>'
+      +(s.goalDate?'<div class="ta-goal-date">⏰ Tähtaeg: '+s.goalDate+'</div>':'')
+      +'</div>';
+  } else if (s.goalCompleted) {
+    goalHtml = '<div class="ta-goal-row" style="border-color:rgba(92,173,114,0.3)">'
+      +'<div class="ta-goal-header"><div class="ta-goal-name">✓ '+s.goalCompleted+'</div><div class="ta-goal-pct" style="color:#5CAD72">100%</div></div>'
+      +'<div class="ta-goal-crumb">'+(s.goalDomain||'')+'</div>'
+      +'<div class="ta-bar-track"><div class="ta-bar-fill ta-bar-green" style="width:100%"></div></div>'
+      +'<div class="ta-goal-date" style="color:#5CAD72">✓ Eesmärk täidetud täna!</div>'
+      +'</div>';
+  } else {
+    goalHtml = '<div style="font-size:13px;color:var(--c6);font-style:italic;padding:12px 0">Eesmärk ei ole seatud.</div>';
+  }
+
+  var eventsHtml = s.events.length
+    ? s.events.map(function(e){
+        return '<div class="ta-event-row">'
+          +'<div class="ta-event-icon">'+e.icon+'</div>'
+          +'<div class="ta-event-body"><div class="ta-event-title">'+e.title+'</div><div class="ta-event-date">'+e.date+'</div></div>'
+          +(e.badge?'<div class="ta-event-badge">'+e.badge+'</div>':'')
+          +'</div>';
+      }).join('')
+    : '<div style="font-size:13px;color:var(--c6);font-style:italic">Tegevusi ei ole.</div>';
+
+  document.getElementById('detail-panel').innerHTML =
+    '<div class="ta-detail-header">'
+    +'<div class="ta-detail-avatar '+s.avatarClass+'" style="width:52px;height:52px;font-size:16px">'+s.initials+'</div>'
+    +'<div class="ta-detail-info">'
+    +  '<div class="ta-detail-name">'+s.name+'</div>'
+    +  '<div class="ta-detail-chips">'+groupChipsHtml(s.groups)+'<button class="ta-chip-add">+ Lisa rühma</button></div>'
+    +  '<div class="ta-detail-stats-row">'
+    +    '<div class="ta-detail-stat"><span>🔥</span><strong>'+s.streak+'</strong><span>päeva järjest</span></div>'
+    +    '<div class="ta-detail-stat"><span>✦</span><strong>'+s.lumens+'</strong><span>luumenit</span></div>'
+    +    '<div class="ta-detail-stat"><span>🏅</span><strong>'+s.rank+'</strong></div>'
+    +    '<div class="ta-detail-stat"><span>🕒</span><span>Aktiivne: <strong>'+s.lastActive+'</strong></span></div>'
+    +  '</div>'
+    +'</div>'
+    +'</div>'
+    +'<div class="ta-detail-section"><div class="ta-section-label">Aktiivne eesmärk</div>'+goalHtml+'</div>'
+    +'<div class="ta-detail-section"><div class="ta-section-label">Viimane tegevus</div><div class="ta-event-list">'+eventsHtml+'</div></div>';
+
+  document.getElementById('view-dashboard').style.display = 'none';
+  document.getElementById('view-detail').style.display = '';
+}
+
+/* ── Group filter ── */
+document.getElementById('group-list').addEventListener('click', function(e){
+  var item = e.target.closest('.ta-group-item');
+  if (!item) return;
+  activeGroup = item.dataset.group;
+  selectedId  = null;
+  document.querySelectorAll('.ta-group-item').forEach(function(el){
+    el.classList.toggle('ta-group-active', el.dataset.group===activeGroup);
+  });
+  renderSidebar();
+  renderDashboard();
+  document.getElementById('view-dashboard').style.display = '';
+  document.getElementById('view-detail').style.display = 'none';
+});
+
+/* ── Back ── */
+document.getElementById('btn-back-detail').addEventListener('click', function(){
+  selectedId = null;
+  document.querySelectorAll('.ta-student-item').forEach(function(el){ el.classList.remove('ta-student-selected'); });
+  document.getElementById('view-dashboard').style.display = '';
+  document.getElementById('view-detail').style.display = 'none';
+});
+
+/* ── Modals ── */
+document.getElementById('btn-invite').addEventListener('click', function(){
+  document.getElementById('invite-modal').style.display = 'flex';
+});
+document.getElementById('btn-add-group').addEventListener('click', function(){
+  document.getElementById('group-modal').style.display = 'flex';
+});
+document.getElementById('btn-manage-groups').addEventListener('click', function(){
+  document.getElementById('group-modal').style.display = 'flex';
+});
+document.querySelectorAll('.link-modal').forEach(function(m){
+  m.addEventListener('click', function(e){ if(e.target===m) m.style.display='none'; });
+});
+
+/* ── Init ── */
+renderSidebar();
+renderDashboard();
+
+})();
+</script>
 </body>
 </html>

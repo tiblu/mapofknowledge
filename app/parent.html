@@ -28,12 +28,15 @@
     </div>
     <span class="topbar-logo-text">KnobitMap</span>
   </a>
+
   <div class="topbar-banner">
-    <div class="topbar-banner-inner">
-      <span class="topbar-banner-dot"></span>
-      <span data-i18n="parent.title">Lapsevanema vaade</span>
+    <div class="role-switcher">
+      <a href="index.html" class="role-btn">Kaart</a>
+      <a href="teacher.html" class="role-btn">Õpetaja</a>
+      <a href="parent.html" class="role-btn role-active">Lapsevanem</a>
     </div>
   </div>
+
   <div class="topbar-right">
     <div class="topbar-burger-wrap">
       <button class="topbar-icon-btn topbar-burger" id="nav-menu" title="Menu">
@@ -48,6 +51,9 @@
         <button class="nav-dropdown-item" onclick="window.location='profile.html'">
           <span data-i18n="nav.account">Konto</span>
         </button>
+        <button class="nav-dropdown-item" onclick="window.location='teacher.html'">
+          <span data-i18n="teacher.title">Õpetaja vaade</span>
+        </button>
         <button class="nav-dropdown-item active-page">
           <span data-i18n="parent.title">Lapsevanema vaade</span>
         </button>
@@ -59,6 +65,7 @@
     </div>
   </div>
 </header>
+
 <script>
   document.getElementById('nav-menu').addEventListener('click', function(e) {
     e.stopPropagation();
@@ -69,39 +76,209 @@
   });
 </script>
 
-<div class="teacher-layout">
+<!-- ════ PARENT LAYOUT ════ -->
+<div class="pa-wrap">
 
-  <!-- Child selector sidebar -->
-  <nav class="teacher-sidebar" id="parent-sidebar">
-    <div class="teacher-sidebar-title" data-i18n="parent.my_children">Minu lapsed</div>
-    <div id="child-list" class="student-list"></div>
-    <div class="teacher-sidebar-footer">
-      <button class="p-edit-btn" onclick="window.showInviteModal('parent')">
-        + <span data-i18n="parent.invite_child">Lisa laps</span>
-      </button>
-    </div>
-  </nav>
+  <div class="pa-header">
+    <span class="pa-title">Minu lapsed</span>
+    <button class="ta-action-btn" id="btn-add-child">+ Lisa laps</button>
+  </div>
 
-  <!-- Child detail panel -->
-  <main class="teacher-main" id="parent-main">
-    <div id="parent-detail" class="teacher-detail-empty">
-      <div class="teacher-empty-msg" data-i18n="parent.select_child">Vali laps vasakult.</div>
-    </div>
-  </main>
+  <!-- Children cards -->
+  <div class="pa-children-section">
+    <div class="pa-children-grid" id="children-grid"></div>
+  </div>
+
+  <!-- Child detail -->
+  <div class="pa-detail-wrap" id="child-detail"></div>
 
 </div>
 
-<!-- Invite modal -->
-<div id="invite-modal" class="link-modal" style="display:none">
+<!-- Add-child modal -->
+<div class="link-modal" id="add-child-modal" style="display:none">
   <div class="link-modal-box">
-    <div class="link-modal-title" data-i18n="link.share_code">Jaga seda koodi</div>
-    <div id="invite-code-display" class="link-code-display"></div>
-    <div class="link-modal-hint" data-i18n="link.code_hint_child">Laps sisestab selle koodi oma profiilis.</div>
-    <button class="p-edit-btn primary" onclick="document.getElementById('invite-modal').style.display='none'" data-i18n="btn.close">Sulge</button>
+    <div class="link-modal-title">Lisa laps</div>
+    <div style="font-size:12px;color:var(--c5);margin-bottom:16px;line-height:1.6">
+      Paluge lapsel avada oma profiililehe jaotis "Seosed" ja sisestada sealt saadud kood siia.
+    </div>
+    <div style="margin-bottom:10px">
+      <input type="text" placeholder="Lapse kood (nt K9X3WA)…"
+        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid var(--i14);border-radius:9px;font-size:14px;font-family:inherit;color:var(--c1);background:var(--bg);outline:none">
+    </div>
+    <div class="link-modal-hint">Kood leitakse lapse profiililt → Seosed → Lisa lapsevanem.</div>
+    <div style="display:flex;gap:8px">
+      <button class="ta-action-btn" onclick="document.getElementById('add-child-modal').style.display='none'" style="flex:1">Tühista</button>
+      <button class="ta-action-btn ta-btn-primary" style="flex:1">Ühenda</button>
+    </div>
   </div>
 </div>
 
 <script src="js/topbar-notif.js"></script>
-<script src="js/parent.js"></script>
+<script>
+(function () {
+
+var CHILDREN = [
+  { id:1, initials:'KL', name:'Karl', avatarClass:'pa-avatar-b',
+    age:15, grade:'7. klass',
+    streak:5, lumens:340, rank:'Avastaja',
+    lastActive:'täna',
+    goal:'Murdude liitmine', goalDomain:'Matemaatika › Aritmeetika › Murrud',
+    goalProgress:78, goalDate:'20. juuli 2026',
+    achievements:[
+      {icon:'🔥', name:'Päevane tegija', locked:false},
+      {icon:'📚', name:'Esimene viktoriin', locked:false},
+      {icon:'🗺️', name:'Avastaja', locked:false},
+      {icon:'⭐', name:'5 järjest', locked:false},
+      {icon:'🏆', name:'Nädala tegija', locked:true},
+      {icon:'🚀', name:'Teejuht', locked:true}
+    ],
+    events:[
+      {text:'Murdude liitmine: 78% edenemist', time:'täna, 09:14'},
+      {text:'Harilikud murrud lõpetatud', time:'eile, 19:32'},
+      {text:'Saavutus "Päevane tegija" avatud', time:'eile, 19:32', ach:true},
+      {text:'Murdude lahutamine alustatud', time:'2 päeva tagasi'},
+      {text:'Kümnendmurrud lõpetatud', time:'4 päeva tagasi'}
+    ]
+  },
+  { id:2, initials:'LL', name:'Liis', avatarClass:'pa-avatar-c',
+    age:12, grade:'4. klass',
+    streak:3, lumens:95, rank:'Rändur',
+    lastActive:'eile',
+    goal:'Eesti looduskaitse', goalDomain:'Loodusteadused › Eesti loodus',
+    goalProgress:41, goalDate:'10. august 2026',
+    achievements:[
+      {icon:'📚', name:'Esimene viktoriin', locked:false},
+      {icon:'🌱', name:'Alustaja', locked:false},
+      {icon:'🔥', name:'Päevane tegija', locked:true},
+      {icon:'⭐', name:'5 järjest', locked:true},
+      {icon:'🏆', name:'Nädala tegija', locked:true},
+      {icon:'🚀', name:'Avastaja', locked:true}
+    ],
+    events:[
+      {text:'Eesti looduskaitse: 41% edenemist', time:'eile, 17:05'},
+      {text:'Kaitsealad Eestis alustatud', time:'eile, 17:05'},
+      {text:'Eesti metsloomad lõpetatud', time:'3 päeva tagasi'},
+      {text:'Esimene viktoriin lõpetatud', time:'5 päeva tagasi'},
+      {text:'Eesti looduskaitse eesmärk seatud', time:'6 päeva tagasi'}
+    ]
+  }
+];
+
+var selectedId = null;
+
+function renderCards() {
+  var grid = document.getElementById('children-grid');
+  grid.innerHTML = CHILDREN.map(function(c){
+    var sel = c.id === selectedId ? ' pa-card-selected' : '';
+    return '<div class="pa-child-card'+sel+'" data-id="'+c.id+'">'
+      +'<div class="pa-card-top">'
+      +  '<div class="pa-avatar '+c.avatarClass+'">'+c.initials+'</div>'
+      +  '<div class="pa-card-nameblock">'
+      +    '<div class="pa-card-name">'+c.name+'</div>'
+      +    '<div class="pa-card-sub">'+c.age+' a. · '+c.grade+'</div>'
+      +    '<div class="pa-last-active">Aktiivne: '+c.lastActive+'</div>'
+      +  '</div>'
+      +'</div>'
+      +'<div class="pa-stats-strip">'
+      +  '<div class="pa-stat"><div class="pa-stat-val">'+c.streak+'🔥</div><div class="pa-stat-label">Päevi järjest</div></div>'
+      +  '<div class="pa-stat"><div class="pa-stat-val">'+c.lumens+'</div><div class="pa-stat-label">Luumenit</div></div>'
+      +  '<div class="pa-stat"><div class="pa-stat-val">'+c.rank+'</div><div class="pa-stat-label">Järk</div></div>'
+      +'</div>'
+      +'<div class="pa-card-goal-label">Aktiivne eesmärk</div>'
+      +'<div class="pa-card-goal-name">'+c.goal+'</div>'
+      +'<div class="pa-bar-track"><div class="pa-bar-fill" style="width:'+c.goalProgress+'%"></div></div>'
+      +'<div class="pa-bar-pct">'+c.goalProgress+'%'+(c.goalDate?' · tähtaeg '+c.goalDate:'')+'</div>'
+      +'<div class="pa-card-footer">'
+      +  '<span class="pa-card-rank">'+c.goalDomain+'</span>'
+      +  '<span class="pa-card-view-link">Vaata lähemalt →</span>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  grid.querySelectorAll('.pa-child-card').forEach(function(el){
+    el.addEventListener('click', function(){ selectChild(+el.dataset.id); });
+  });
+}
+
+function selectChild(id) {
+  selectedId = id;
+  var c = CHILDREN.find(function(x){return x.id===id;});
+  if (!c) return;
+  document.querySelectorAll('.pa-child-card').forEach(function(el){
+    el.classList.toggle('pa-card-selected', +el.dataset.id===id);
+  });
+
+  var achHtml = c.achievements.map(function(a){
+    return '<div class="pa-ach'+(a.locked?' pa-ach-locked':'')+'"><div class="pa-ach-icon">'+a.icon+'</div><div class="pa-ach-name">'+a.name+'</div></div>';
+  }).join('');
+
+  var eventsHtml = c.events.map(function(e){
+    return '<div class="pa-event-row'+(e.ach?' pa-event-ach':'')+'">'
+      +'<div class="pa-event-dot"></div>'
+      +'<div>'
+      +  '<div class="pa-event-text">'+e.text+'</div>'
+      +  '<div class="pa-event-time">'+e.time+'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+
+  var detail = document.getElementById('child-detail');
+  detail.innerHTML =
+    '<div class="pa-detail-header">'
+    +'<div class="pa-detail-avatar '+c.avatarClass+'" style="width:56px;height:56px;font-size:20px">'+c.initials+'</div>'
+    +'<div>'
+    +  '<div class="pa-detail-name">'+c.name+'</div>'
+    +  '<div class="pa-detail-sub">'+c.age+' aastat · '+c.grade+'</div>'
+    +  '<div class="pa-detail-last">Aktiivne: '+c.lastActive+'</div>'
+    +'</div>'
+    +'<div style="margin-left:auto">'
+    +  '<button class="ta-action-btn" onclick="closeDetail()">Sulge</button>'
+    +'</div>'
+    +'</div>'
+    +'<div class="pa-detail-stats-row">'
+    +  '<div class="pa-detail-stat"><div class="pa-detail-stat-val">'+c.streak+'🔥</div><div class="pa-detail-stat-label">Päeva järjest</div></div>'
+    +  '<div class="pa-detail-stat"><div class="pa-detail-stat-val">'+c.lumens+'</div><div class="pa-detail-stat-label">Luumenit</div></div>'
+    +  '<div class="pa-detail-stat"><div class="pa-detail-stat-val">'+c.rank+'</div><div class="pa-detail-stat-label">Järk</div></div>'
+    +'</div>'
+    +'<div class="pa-detail-section">'
+    +  '<div class="pa-detail-section-label">Aktiivne eesmärk</div>'
+    +  '<div class="pa-goal-card">'
+    +    '<div class="pa-goal-row"><div class="pa-goal-name">'+c.goal+'</div><div class="pa-goal-pct">'+c.goalProgress+'%</div></div>'
+    +    '<div class="pa-goal-sub">'+c.goalDomain+'</div>'
+    +    '<div class="pa-bar-track"><div class="pa-bar-fill" style="width:'+c.goalProgress+'%"></div></div>'
+    +    (c.goalDate?'<div class="pa-goal-date">⏰ Tähtaeg: '+c.goalDate+'</div>':'')
+    +  '</div>'
+    +'</div>'
+    +'<div class="pa-detail-section">'
+    +  '<div class="pa-detail-section-label">Saavutused</div>'
+    +  '<div class="pa-ach-grid">'+achHtml+'</div>'
+    +'</div>'
+    +'<div class="pa-detail-section">'
+    +  '<div class="pa-detail-section-label">Viimane tegevus</div>'
+    +  eventsHtml
+    +'</div>';
+
+  detail.classList.add('pa-detail-visible');
+  detail.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+window.closeDetail = function() {
+  selectedId = null;
+  document.querySelectorAll('.pa-child-card').forEach(function(el){ el.classList.remove('pa-card-selected'); });
+  var detail = document.getElementById('child-detail');
+  detail.classList.remove('pa-detail-visible');
+  detail.innerHTML = '';
+};
+
+document.getElementById('btn-add-child').addEventListener('click', function(){
+  document.getElementById('add-child-modal').style.display = 'flex';
+});
+document.querySelectorAll('.link-modal').forEach(function(m){
+  m.addEventListener('click', function(e){ if(e.target===m) m.style.display='none'; });
+});
+
+renderCards();
+
+})();
+</script>
 </body>
 </html>
