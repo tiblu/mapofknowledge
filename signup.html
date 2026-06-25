@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loo konto — KnobitMap</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #080810;
+  --panel:     #0f0f1c;
+  --cream:     #F2EDE6;
+  --terra:     #C4826A;
+  --terra-dim: rgba(196,130,106,0.12);
+  --muted:     rgba(242,237,230,0.45);
+  --border:    rgba(255,255,255,0.07);
+  --border-hi: rgba(255,255,255,0.13);
+  --teal:      #5EA898;
+  --red-soft:  #c46a5a;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ── Nav ────────────────────────────────────────────────────────────── */
+.su-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 56px;
+  background: rgba(8,8,16,0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+}
+
+.su-logo {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 15px; font-weight: 640; letter-spacing: -0.2px;
+}
+
+.su-logo-mark {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--terra-dim);
+  border: 1px solid rgba(196,130,106,0.28);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.su-login-link {
+  font-size: 13px; color: var(--muted);
+  transition: color 0.15s;
+}
+.su-login-link:hover { color: var(--cream); }
+
+/* ── Main ───────────────────────────────────────────────────────────── */
+.su-main {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 80px 16px 40px;
+}
+
+/* ── Wizard card ────────────────────────────────────────────────────── */
+.wizard {
+  width: 100%;
+  max-width: 480px;
+  background: var(--panel);
+  border: 1px solid var(--border-hi);
+  border-radius: 20px;
+  padding: 36px 40px 40px;
+}
+
+/* ── Step dots ──────────────────────────────────────────────────────── */
+.step-dots {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 28px;
+}
+
+.sdot {
+  height: 7px; border-radius: 4px;
+  background: var(--border-hi);
+  transition: background 0.2s, width 0.2s;
+  width: 7px;
+}
+.sdot.done    { background: rgba(196,130,106,0.45); }
+.sdot.current { background: var(--terra); width: 22px; }
+
+/* ── Step visibility ────────────────────────────────────────────────── */
+.step { display: none; }
+.step.active { display: block; animation: stepIn 0.22s ease; }
+
+@keyframes stepIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Step header ────────────────────────────────────────────────────── */
+.step h2 {
+  font-size: 22px; font-weight: 680; letter-spacing: -0.4px;
+  color: var(--cream);
+  margin-bottom: 8px;
+}
+
+.step-hint {
+  font-size: 13px; color: var(--muted);
+  margin-bottom: 24px; line-height: 1.55;
+}
+
+/* ── Text input ─────────────────────────────────────────────────────── */
+.su-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid var(--border-hi);
+  border-radius: 10px;
+  color: var(--cream);
+  font-size: 21px; font-weight: 500; letter-spacing: 3px;
+  padding: 14px 16px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.su-input::placeholder { letter-spacing: 1px; font-size: 16px; font-weight: 400; color: rgba(242,237,230,0.25); }
+.su-input:focus  { border-color: rgba(196,130,106,0.5); }
+.su-input.valid  { border-color: rgba(94,168,152,0.6); }
+.su-input.err    { border-color: rgba(196,106,90,0.6); }
+
+.su-input-sm {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  color: var(--cream);
+  font-size: 14px; padding: 10px 13px;
+  outline: none; font-family: inherit;
+  transition: border-color 0.15s;
+}
+.su-input-sm:focus { border-color: rgba(196,130,106,0.5); }
+.su-input-sm.err  { border-color: rgba(196,106,90,0.5); }
+
+/* ── Feedback elements ──────────────────────────────────────────────── */
+.id-result, .age-notice {
+  margin-top: 10px;
+  padding: 11px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: none;
+}
+.id-result.show {
+  display: block;
+  background: rgba(94,168,152,0.08);
+  border: 1px solid rgba(94,168,152,0.22);
+  color: var(--teal);
+}
+.age-notice.show {
+  display: block;
+  background: rgba(196,130,106,0.07);
+  border: 1px solid rgba(196,130,106,0.2);
+  color: var(--muted);
+}
+
+.id-error {
+  margin-top: 8px;
+  font-size: 13px; color: var(--red-soft);
+  min-height: 20px;
+  display: none;
+}
+.id-error.show { display: block; }
+
+/* ── Choice cards (role) ────────────────────────────────────────────── */
+.choice-grid {
+  display: flex; flex-direction: column; gap: 9px;
+  margin-bottom: 24px;
+}
+
+.choice-card {
+  border: 1.5px solid var(--border-hi);
+  border-radius: 11px;
+  padding: 15px 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex; align-items: flex-start; gap: 14px;
+}
+.choice-card:hover { border-color: rgba(196,130,106,0.35); }
+.choice-card.selected {
+  border-color: var(--terra);
+  background: var(--terra-dim);
+}
+
+.cc-icon {
+  width: 38px; height: 38px; flex-shrink: 0;
+  border-radius: 9px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-hi);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted);
+  transition: color 0.15s, border-color 0.15s;
+}
+.choice-card.selected .cc-icon {
+  color: var(--terra);
+  border-color: rgba(196,130,106,0.35);
+}
+
+.cc-text { flex: 1; }
+.cc-title { font-size: 14px; font-weight: 620; margin-bottom: 2px; }
+.cc-desc  { font-size: 12px; color: var(--muted); }
+
+/* ── Plan cards ─────────────────────────────────────────────────────── */
+.plan-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 24px;
+}
+
+.plan-card {
+  border: 1.5px solid var(--border-hi);
+  border-radius: 11px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+.plan-card:hover { border-color: rgba(196,130,106,0.35); }
+.plan-card.selected {
+  border-color: var(--terra);
+  background: var(--terra-dim);
+}
+
+.plan-badge {
+  display: inline-block;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--terra);
+  background: rgba(196,130,106,0.15);
+  border-radius: 4px; padding: 2px 6px;
+  margin-bottom: 10px;
+}
+
+.plan-price {
+  font-size: 26px; font-weight: 720; letter-spacing: -0.5px;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.plan-price span { font-size: 13px; font-weight: 400; color: var(--muted); }
+
+.plan-name { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 12px; }
+
+.plan-features {
+  list-style: none;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.plan-features li {
+  font-size: 11.5px; color: var(--muted);
+  padding-left: 12px; position: relative;
+}
+.plan-features li::before { content: '·'; position: absolute; left: 0; color: var(--terra); }
+.plan-features li.hi { color: var(--cream); }
+
+/* ── Payment form ───────────────────────────────────────────────────── */
+.discount-row {
+  display: flex; gap: 8px; margin-bottom: 6px;
+}
+
+.discount-msg {
+  font-size: 12px; min-height: 18px; margin-bottom: 14px;
+}
+.discount-msg.ok  { color: var(--teal); }
+.discount-msg.err { color: var(--red-soft); }
+
+.amount-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.amount-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.amount-value { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+
+.card-form {
+  display: flex; flex-direction: column; gap: 9px;
+  margin-bottom: 14px;
+}
+.card-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+
+.payment-disclaimer {
+  font-size: 11px; color: rgba(242,237,230,0.28);
+  text-align: center; margin-bottom: 24px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+
+/* ── Google step ────────────────────────────────────────────────────── */
+.google-icon-wrap {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(94,168,152,0.1);
+  border: 1px solid rgba(94,168,152,0.28);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--teal);
+  margin: 0 auto 20px;
+  font-size: 20px;
+}
+
+.signup-summary {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  padding: 13px 16px;
+  margin-bottom: 22px;
+}
+.signup-summary p {
+  font-size: 13px; color: var(--muted); line-height: 1.6;
+}
+.signup-summary strong { color: var(--cream); font-weight: 600; }
+
+.terms-notice {
+  font-size: 11px; color: rgba(242,237,230,0.28);
+  text-align: center; margin-top: 14px;
+}
+.terms-notice a { color: rgba(196,130,106,0.55); }
+.terms-notice a:hover { color: var(--terra); }
+
+/* ── Actions ────────────────────────────────────────────────────────── */
+.step-actions {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 9px; margin-top: 26px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--terra); color: #fff;
+  border: none; border-radius: 8px;
+  padding: 11px 22px;
+  font-size: 14px; font-weight: 620;
+  cursor: pointer; font-family: inherit;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover:not(:disabled) { opacity: 0.85; }
+.btn-primary:disabled { opacity: 0.32; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border-hi); border-radius: 8px;
+  padding: 11px 18px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-ghost:hover { color: var(--cream); border-color: rgba(255,255,255,0.22); }
+
+.btn-ghost-sm {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border-hi); border-radius: 7px;
+  padding: 9px 15px; font-size: 13px;
+  cursor: pointer; font-family: inherit;
+  transition: color 0.15s; white-space: nowrap;
+}
+.btn-ghost-sm:hover { color: var(--cream); }
+
+.btn-google {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #fff; color: #3c4043;
+  border: 1px solid #dadce0; border-radius: 9px;
+  padding: 12px 20px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: box-shadow 0.15s;
+}
+.btn-google:hover:not(:disabled) { box-shadow: 0 2px 8px rgba(0,0,0,0.22); }
+.btn-google:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.su-hidden { display: none !important; }
+
+@media (max-width: 520px) {
+  .wizard { padding: 28px 20px 32px; border-radius: 0; border-left: none; border-right: none; }
+  .plan-grid { grid-template-columns: 1fr; }
+  .su-nav { padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="su-nav">
+  <a href="/" class="su-logo">
+    <div class="su-logo-mark">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <circle cx="7" cy="7" r="3" fill="#C4826A" opacity="0.9"/>
+        <circle cx="7" cy="2" r="1.2" fill="#C4826A" opacity="0.5"/>
+        <circle cx="7" cy="12" r="1.2" fill="#C4826A" opacity="0.5"/>
+        <circle cx="2" cy="7" r="1.2" fill="#C4826A" opacity="0.5"/>
+        <circle cx="12" cy="7" r="1.2" fill="#C4826A" opacity="0.5"/>
+      </svg>
+    </div>
+    KnobitMap
+  </a>
+  <a href="/auth/google" class="su-login-link">Logi sisse</a>
+</nav>
+
+<main class="su-main">
+  <div class="wizard">
+    <div class="step-dots" id="step-dots"></div>
+
+    <!-- ── Step 1: ID code ─────────────────────────────────────────── -->
+    <div class="step active" id="step-id">
+      <h2>Sisesta isikukood</h2>
+      <p class="step-hint">Kasutame isikukoodi ainult sinu vanuse kontrollimiseks. Koodi ei salvestata.</p>
+      <input class="su-input" id="id-input" type="text" maxlength="11"
+             placeholder="38501085718" autocomplete="off" inputmode="numeric" spellcheck="false">
+      <div class="id-result" id="id-result"></div>
+      <div class="age-notice" id="age-notice">
+        Kuna oled alla 14-aastane, luuakse sulle automaatselt tasuta konto.
+      </div>
+      <div class="id-error" id="id-error"></div>
+      <div class="step-actions">
+        <button class="btn-primary" id="id-next" disabled>Edasi</button>
+      </div>
+    </div>
+
+    <!-- ── Step 2: Role (18+ only) ────────────────────────────────── -->
+    <div class="step" id="step-role">
+      <h2>Kes sa oled?</h2>
+      <p class="step-hint">Vali roll, mis kirjeldab, kuidas kavatsed KnobitMapi kasutada.</p>
+      <div class="choice-grid">
+        <div class="choice-card" data-role="learner">
+          <div class="cc-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12.5v4.5a6 6 0 0 0 12 0v-4.5"/><line x1="20" y1="10" x2="20" y2="15"/>
+            </svg>
+          </div>
+          <div class="cc-text">
+            <div class="cc-title">Õpilane</div>
+            <div class="cc-desc">Avan kaardi, õpin teemasid ja jälgin oma arengut</div>
+          </div>
+        </div>
+        <div class="choice-card" data-role="parent">
+          <div class="cc-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="9" cy="7" r="3"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+              <circle cx="18" cy="9" r="2"/><path d="M21 21v-1.5a3 3 0 0 0-2-2.83"/>
+            </svg>
+          </div>
+          <div class="cc-text">
+            <div class="cc-title">Lapsevanem</div>
+            <div class="cc-desc">Jälgin oma lapse edu, aktiivsust ja eesmärke</div>
+          </div>
+        </div>
+        <div class="choice-card" data-role="teacher">
+          <div class="cc-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <rect x="2" y="3" width="15" height="11" rx="1"/><path d="M9 14v4"/><path d="M6 18h6"/>
+              <circle cx="19" cy="8" r="3"/><path d="M19 11v5"/>
+            </svg>
+          </div>
+          <div class="cc-text">
+            <div class="cc-title">Õpetaja</div>
+            <div class="cc-desc">Jälgin õpilaste edu, sean eesmärke ja jälgin arengut</div>
+          </div>
+        </div>
+      </div>
+      <div class="step-actions">
+        <button class="btn-ghost" id="role-back">← Tagasi</button>
+        <button class="btn-primary" id="role-next" disabled>Edasi</button>
+      </div>
+    </div>
+
+    <!-- ── Step 3: Plan ────────────────────────────────────────────── -->
+    <div class="step" id="step-plan">
+      <h2>Vali konto tüüp</h2>
+      <p class="step-hint">Tasuta konto katab põhivajadused. Tellija saab juurdepääsu AI-õppele ja õpiteedele.</p>
+      <div class="plan-grid">
+        <div class="plan-card" data-plan="free">
+          <div class="plan-price">€0 <span>/kuus</span></div>
+          <div class="plan-name">Tasuta</div>
+          <ul class="plan-features">
+            <li>Kaardi sirvimine (L1–L5)</li>
+            <li>Enesehindamine</li>
+            <li>Isiklik kaardikiht</li>
+            <li>Märkmed sõlmedes</li>
+            <li>Jagamine ja export</li>
+          </ul>
+        </div>
+        <div class="plan-card" data-plan="subscriber">
+          <div class="plan-badge">Soovituslik</div>
+          <div class="plan-price">€10 <span>/kuus</span></div>
+          <div class="plan-name">Tellija</div>
+          <ul class="plan-features">
+            <li>Kõik tasuta</li>
+            <li class="hi">AI-põhine testimine</li>
+            <li class="hi">Õpiteed</li>
+            <li class="hi">Andmete import</li>
+          </ul>
+        </div>
+      </div>
+      <div class="step-actions">
+        <button class="btn-ghost" id="plan-back">← Tagasi</button>
+        <button class="btn-primary" id="plan-next" disabled>Edasi</button>
+      </div>
+    </div>
+
+    <!-- ── Step 4: Payment ─────────────────────────────────────────── -->
+    <div class="step" id="step-payment">
+      <h2>Makse</h2>
+      <p class="step-hint">Sisesta kaardi andmed. Tellimus algab kohe pärast kinnitust.</p>
+
+      <div class="discount-row">
+        <input class="su-input-sm" id="discount-code" type="text"
+               placeholder="Sooduskood (valikuline)" autocomplete="off">
+        <button class="btn-ghost-sm" id="discount-apply">Rakenda</button>
+      </div>
+      <div class="discount-msg" id="discount-msg"></div>
+
+      <div class="amount-row">
+        <span class="amount-label">Summa</span>
+        <span class="amount-value" id="amount-value">€10.00</span>
+      </div>
+
+      <div class="card-form" id="card-form">
+        <input class="su-input-sm" id="card-num" type="text"
+               placeholder="1234 5678 9012 3456" maxlength="19" inputmode="numeric" autocomplete="cc-number">
+        <div class="card-row-2">
+          <input class="su-input-sm" id="card-exp" type="text"
+                 placeholder="KK/AA" maxlength="5" autocomplete="cc-exp">
+          <input class="su-input-sm" id="card-cvv" type="text"
+                 placeholder="CVV" maxlength="4" inputmode="numeric" autocomplete="cc-csc">
+        </div>
+        <input class="su-input-sm" id="card-name" type="text"
+               placeholder="Kaardil olev nimi" autocomplete="cc-name">
+      </div>
+
+      <p class="payment-disclaimer">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Kaardi andmeid ei salvestata
+      </p>
+      <div class="step-actions">
+        <button class="btn-ghost" id="payment-back">← Tagasi</button>
+        <button class="btn-primary" id="payment-submit">Maksa €10.00</button>
+      </div>
+    </div>
+
+    <!-- ── Step 5: Google ──────────────────────────────────────────── -->
+    <div class="step" id="step-google">
+      <div class="google-icon-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h2>Viimane samm</h2>
+      <p class="step-hint">Konto loomiseks ühenda oma Google'i konto. Sisse logimiseks kasutataksegi seda kontot.</p>
+      <div class="signup-summary" id="signup-summary"></div>
+      <button class="btn-google" id="google-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.09-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Jätka Google'iga
+      </button>
+      <p class="terms-notice">
+        Jätkates nõustud <a href="#">kasutustingimustega</a> ja
+        <a href="#">privaatsuspoliitikaga</a>.
+      </p>
+    </div>
+
+  </div><!-- /wizard -->
+</main>
+
+<script>
+(function () {
+
+  // ── State ─────────────────────────────────────────────────────────────
+  var state = {
+    age:       null,
+    birthYear: null,
+    role:      'learner',
+    plan:      'free',
+    price:     10.0,
+  };
+
+  // ── Step machine ──────────────────────────────────────────────────────
+  var activeSteps = ['id', 'google'];
+  var stepIdx = 0;
+
+  function computeSteps() {
+    var s = ['id'];
+    if (state.age >= 18) s.push('role');
+    if (state.age >= 14) s.push('plan');
+    if (state.plan === 'subscriber' && state.age >= 14) s.push('payment');
+    s.push('google');
+    return s;
+  }
+
+  function goTo(id) {
+    document.querySelectorAll('.step').forEach(function (el) {
+      el.classList.remove('active');
+    });
+    document.getElementById('step-' + id).classList.add('active');
+    stepIdx = activeSteps.indexOf(id);
+    renderDots();
+    if (id === 'google') renderSummary();
+    if (id === 'payment') resetPayment();
+  }
+
+  function next() {
+    var nxt = activeSteps[stepIdx + 1];
+    if (nxt) goTo(nxt);
+  }
+
+  function back() {
+    var prev = activeSteps[stepIdx - 1];
+    if (prev) goTo(prev);
+  }
+
+  function renderDots() {
+    var el = document.getElementById('step-dots');
+    el.innerHTML = '';
+    activeSteps.forEach(function (id, i) {
+      var d = document.createElement('div');
+      d.className = 'sdot' +
+        (i < stepIdx ? ' done' : i === stepIdx ? ' current' : '');
+      el.appendChild(d);
+    });
+  }
+
+  renderDots();
+
+  // ── Redirect existing sessions away ───────────────────────────────────
+  fetch('/auth/me').then(function (r) { return r.json(); }).then(function (u) {
+    if (u && u.id) {
+      if (u.role === 'teacher') { window.location.href = '/app/teacher.html'; return; }
+      if (u.role === 'parent')  { window.location.href = '/app/parent.html';  return; }
+      window.location.href = '/app/';
+    }
+  }).catch(function () {});
+
+  // ── ID code validation ────────────────────────────────────────────────
+  function parseIdCode(code) {
+    if (!/^\d{11}$/.test(code)) return null;
+    var d = code.split('').map(Number);
+    var w1 = [1,2,3,4,5,6,7,8,9,1];
+    var w2 = [3,4,5,6,7,8,9,1,2,3];
+    var sum = w1.reduce(function (a, w, i) { return a + d[i] * w; }, 0) % 11;
+    if (sum >= 10) sum = w2.reduce(function (a, w, i) { return a + d[i] * w; }, 0) % 11;
+    if (sum >= 10) sum = 0;
+    if (sum !== d[10]) return null;
+    var g = d[0];
+    if (g < 1 || g > 8) return null;
+    var century = g <= 2 ? 1800 : g <= 4 ? 1900 : 2000;
+    var year  = century + d[1] * 10 + d[2];
+    var month = d[3] * 10 + d[4];
+    var day   = d[5] * 10 + d[6];
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    var dob = new Date(year, month - 1, day);
+    if (dob.getMonth() !== month - 1) return null;
+    return { dob: dob, year: year };
+  }
+
+  function calcAge(dob) {
+    var now = new Date();
+    var age = now.getFullYear() - dob.getFullYear();
+    var m = now.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+    return age;
+  }
+
+  function fmtDate(d) {
+    return String(d.getDate()).padStart(2, '0') + '.' +
+           String(d.getMonth() + 1).padStart(2, '0') + '.' +
+           d.getFullYear();
+  }
+
+  var idInput   = document.getElementById('id-input');
+  var idResult  = document.getElementById('id-result');
+  var idError   = document.getElementById('id-error');
+  var ageNotice = document.getElementById('age-notice');
+  var idNext    = document.getElementById('id-next');
+
+  idInput.addEventListener('input', function () {
+    var raw = idInput.value.replace(/\D/g, '').slice(0, 11);
+    idInput.value = raw;
+
+    idResult.classList.remove('show');
+    idError.classList.remove('show');
+    ageNotice.classList.remove('show');
+    idInput.classList.remove('valid', 'err');
+    idNext.disabled = true;
+
+    if (raw.length < 11) return;
+
+    var parsed = parseIdCode(raw);
+    if (!parsed) {
+      idInput.classList.add('err');
+      idError.textContent = 'Isikukood on vigane. Kontrolli numbrid üle.';
+      idError.classList.add('show');
+      return;
+    }
+
+    var age = calcAge(parsed.dob);
+    state.age       = age;
+    state.birthYear = parsed.year;
+
+    if (age <= 13) {
+      state.role = 'learner';
+      state.plan = 'free';
+      ageNotice.classList.add('show');
+    }
+
+    idInput.classList.add('valid');
+    idResult.innerHTML =
+      'Sünnikuupäev: <strong>' + fmtDate(parsed.dob) + '</strong>' +
+      ' &nbsp;·&nbsp; ' +
+      'Vanus: <strong>' + age + ' a.</strong>';
+    idResult.classList.add('show');
+    idNext.disabled = false;
+  });
+
+  idNext.addEventListener('click', function () {
+    activeSteps = computeSteps();
+    renderDots();
+    next();
+  });
+
+  // ── Role step ─────────────────────────────────────────────────────────
+  document.querySelectorAll('[data-role]').forEach(function (card) {
+    card.addEventListener('click', function () {
+      document.querySelectorAll('[data-role]').forEach(function (c) {
+        c.classList.remove('selected');
+      });
+      card.classList.add('selected');
+      state.role = card.dataset.role;
+      document.getElementById('role-next').disabled = false;
+    });
+  });
+
+  document.getElementById('role-back').addEventListener('click', back);
+  document.getElementById('role-next').addEventListener('click', next);
+
+  // ── Plan step ─────────────────────────────────────────────────────────
+  document.querySelectorAll('[data-plan]').forEach(function (card) {
+    card.addEventListener('click', function () {
+      document.querySelectorAll('[data-plan]').forEach(function (c) {
+        c.classList.remove('selected');
+      });
+      card.classList.add('selected');
+      state.plan = card.dataset.plan;
+      activeSteps = computeSteps();
+      renderDots();
+      document.getElementById('plan-next').disabled = false;
+    });
+  });
+
+  document.getElementById('plan-back').addEventListener('click', back);
+  document.getElementById('plan-next').addEventListener('click', function () {
+    activeSteps = computeSteps();
+    next();
+  });
+
+  // ── Payment step ──────────────────────────────────────────────────────
+  var DISCOUNTS = { 'KNOBIT20': 20, 'VABA': 100 };
+
+  function resetPayment() {
+    state.price = 10.0;
+    document.getElementById('discount-code').value = '';
+    document.getElementById('discount-msg').textContent = '';
+    document.getElementById('discount-msg').className = 'discount-msg';
+    document.getElementById('card-form').classList.remove('su-hidden');
+    document.getElementById('card-num').value = '';
+    document.getElementById('card-exp').value = '';
+    document.getElementById('card-cvv').value = '';
+    document.getElementById('card-name').value = '';
+    updateAmount();
+  }
+
+  function updateAmount() {
+    var el  = document.getElementById('amount-value');
+    var btn = document.getElementById('payment-submit');
+    if (state.price <= 0) {
+      el.textContent  = 'Tasuta';
+      btn.textContent = 'Jätka tasuta';
+    } else {
+      el.textContent  = '€' + state.price.toFixed(2);
+      btn.textContent = 'Maksa €' + state.price.toFixed(2);
+    }
+  }
+
+  document.getElementById('discount-apply').addEventListener('click', function () {
+    var code = document.getElementById('discount-code').value.trim().toUpperCase();
+    var msg  = document.getElementById('discount-msg');
+    if (!code || code.length < 3) {
+      msg.className   = 'discount-msg err';
+      msg.textContent = 'Sisesta kehtiv sooduskood.';
+      return;
+    }
+    var pct = DISCOUNTS[code];
+    if (pct === undefined) {
+      msg.className   = 'discount-msg err';
+      msg.textContent = 'Sooduskood ei kehti.';
+      return;
+    }
+    state.price = Math.round(10 * (1 - pct / 100) * 100) / 100;
+    msg.className   = 'discount-msg ok';
+    msg.textContent = pct === 100
+      ? 'Kood rakendatud — 100% soodustus!'
+      : 'Kood rakendatud — ' + pct + '% soodustus.';
+    updateAmount();
+    document.getElementById('card-form').classList.toggle('su-hidden', state.price <= 0);
+  });
+
+  // Card number: space every 4 digits
+  var cardNum = document.getElementById('card-num');
+  cardNum.addEventListener('input', function () {
+    var v = cardNum.value.replace(/\D/g, '').slice(0, 16);
+    var parts = [];
+    for (var i = 0; i < v.length; i += 4) parts.push(v.slice(i, i + 4));
+    cardNum.value = parts.join(' ');
+  });
+
+  // Expiry: auto-insert slash
+  var cardExp = document.getElementById('card-exp');
+  cardExp.addEventListener('input', function () {
+    var v = cardExp.value.replace(/\D/g, '').slice(0, 4);
+    cardExp.value = v.length > 2 ? v.slice(0, 2) + '/' + v.slice(2) : v;
+  });
+
+  document.getElementById('payment-back').addEventListener('click', back);
+
+  document.getElementById('payment-submit').addEventListener('click', function () {
+    if (state.price > 0) {
+      var num = cardNum.value.replace(/\s/g, '');
+      if (num.length < 16) {
+        cardNum.classList.add('err');
+        setTimeout(function () { cardNum.classList.remove('err'); }, 800);
+        return;
+      }
+    }
+    var btn = document.getElementById('payment-submit');
+    btn.disabled = true;
+    btn.textContent = 'Töötleme...';
+    setTimeout(function () {
+      btn.disabled = false;
+      updateAmount();
+      next();
+    }, 1600);
+  });
+
+  // ── Google step ───────────────────────────────────────────────────────
+  var ROLE_ET = { learner: 'Õpilane', parent: 'Lapsevanem', teacher: 'Õpetaja' };
+
+  function renderSummary() {
+    var el = document.getElementById('signup-summary');
+    var lines = [];
+    var role = state.age <= 13 ? 'learner' : state.role;
+    lines.push('<p>Roll: <strong>' + (ROLE_ET[role] || 'Õpilane') + '</strong></p>');
+    if (state.age >= 14) {
+      var planLabel = state.plan === 'subscriber'
+        ? 'Tellija — €' + state.price.toFixed(2) + '/kuus'
+        : 'Tasuta';
+      lines.push('<p>Konto: <strong>' + planLabel + '</strong></p>');
+    } else {
+      lines.push('<p>Konto: <strong>Tasuta</strong></p>');
+    }
+    el.innerHTML = lines.join('');
+  }
+
+  document.getElementById('google-btn').addEventListener('click', function () {
+    var btn = document.getElementById('google-btn');
+    btn.disabled = true;
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<span>Ühendamine...</span>';
+
+    fetch('/auth/signup/prepare', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        role:      state.age <= 13 ? 'learner' : state.role,
+        plan:      state.age <= 13 ? 'free' : state.plan,
+        birthYear: state.birthYear,
+      }),
+    })
+    .then(function (r) {
+      if (r.ok) {
+        window.location.href = '/auth/google';
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      }
+    })
+    .catch(function () {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    });
+  });
+
+}());
+</script>
+</body>
+</html>
