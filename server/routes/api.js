@@ -1746,15 +1746,20 @@ router.get('/recommendations/next-nodes', async (req, res) => {
   const passportId = req.user?.passport_id;
   if (!passportId) return res.json({ nodes: [] });
   try {
-    // Priority 1: L5 nodes in same L4 group as an active node goal, not yet started
-    // Priority 2: L5 nodes near recently-touched nodes, not started
-    // Priority 3: Any unstarted L5 in the learner's most-active L1 domain
+    const locale = await getUserLocale(req.user?.id);
     const [rows] = await db.execute(`
-      SELECT sub.external_id AS id, sub.label, sub.breadcrumb, sub.priority
+      SELECT sub.external_id AS id,
+             COALESCE(tr.label, sub.label) AS label,
+             COALESCE(
+               CONCAT(tr4.label, ' › ', tr.label),
+               sub.breadcrumb
+             ) AS breadcrumb,
+             sub.priority
       FROM (
         -- P1: sibling L5 nodes under an active goal's L4 parent
         SELECT n.external_id, n.label,
                CONCAT(p4.label, ' › ', n.label) AS breadcrumb,
+               p4.external_id AS p4_ext,
                1 AS priority
         FROM passport_goals pg
         JOIN nodes gn ON gn.external_id = pg.node_external_id AND gn.level = 5
@@ -1772,6 +1777,7 @@ router.get('/recommendations/next-nodes', async (req, res) => {
         -- P2: unstarted L5 nodes in L4 groups the learner recently touched
         SELECT n.external_id, n.label,
                CONCAT(p4.label, ' › ', n.label) AS breadcrumb,
+               p4.external_id AS p4_ext,
                2 AS priority
         FROM (
           SELECT DISTINCT p4.id AS p4_id
@@ -1794,10 +1800,12 @@ router.get('/recommendations/next-nodes', async (req, res) => {
             WHERE k.node_id = n.id AND kp.passport_id = ?
           )
       ) sub
-      GROUP BY sub.external_id, sub.label, sub.breadcrumb, sub.priority
+      LEFT JOIN node_translations tr  ON tr.node_external_id = sub.external_id AND tr.locale = ?
+      LEFT JOIN node_translations tr4 ON tr4.node_external_id = sub.p4_ext     AND tr4.locale = ?
+      GROUP BY sub.external_id, sub.label, sub.breadcrumb, sub.priority, tr.label, tr4.label
       ORDER BY sub.priority ASC, RAND()
       LIMIT 5
-    `, [passportId, passportId, passportId, passportId, passportId]);
+    `, [passportId, passportId, passportId, passportId, passportId, locale, locale]);
 
     res.json({ nodes: rows });
   } catch (err) {
