@@ -3,32 +3,6 @@
    teacher.html / parent.html
    ═══════════════════════════════════════════════ */
 
-/* ── Shared topbar role-switcher ────────────────── */
-.role-switcher {
-  display: flex; align-items: center;
-  gap: 2px;
-  background: var(--i06);
-  border: 1px solid var(--i10);
-  border-radius: 10px;
-  padding: 3px;
-  margin-left: 20px;
-}
-.role-btn {
-  padding: 5px 14px;
-  border-radius: 7px;
-  font-size: 12px; font-weight: 550;
-  color: var(--c4);
-  text-decoration: none;
-  transition: background 0.13s, color 0.13s;
-  white-space: nowrap;
-}
-.role-btn:hover { color: var(--c2); background: var(--i06); }
-.role-btn.role-active {
-  background: var(--bg);
-  color: var(--c1);
-  font-weight: 650;
-  box-shadow: 0 1px 4px var(--i10);
-}
 
 /* ── Teacher layout ─────────────────────────────── */
 .ta-wrap {
@@ -707,12 +681,6 @@
 .pa-event-time { font-size: 10px; color: var(--c5); margin-top: 2px; }
 .pa-event-ach  { background: rgba(196,165,90,0.15); }
 
-/* ── Topbar banner centering ────────────────────── */
-.topbar-banner {
-  display: flex; align-items: center;
-  justify-content: center;
-  flex: 1;
-}
 
 /* ── Modal overlay ──────────────────────────────── */
 .link-modal {
