@@ -1139,7 +1139,6 @@ function init(data) {
     tiltAngle = angle;
     window.currentTilt = angle;
     ticked();
-    tickedEmergent();
   };
   window.currentTilt = 0;
 
@@ -1331,6 +1330,5 @@ function init(data) {
 
   // ── Initial build ──────────────────────────────────────────────────────────
   rebuild();
-  rebuildEmergent();
   setTimeout(loadProgress, 800);  // load after D3 settles
 }
