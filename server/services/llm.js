@@ -458,6 +458,41 @@ Question: "${question}"${profileBlock(profile)}${langText(locale)}`,
 // questionNum: 1-4  history: [{question, answer, correct}]
 // Returns: { question, type: 'open'|'mcq', options?: string[] }
 
+// Builds the Q4 (final) evaluation prompt. Shared by streaming and non-streaming paths.
+function _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, locale) {
+  const mcqNote = Array.isArray(options) && typeof correctIndex === 'number'
+    ? `Q4 is MCQ. The correct answer is option ${correctIndex + 1}: "${options[correctIndex]}". Compare the learner's answer letter to this — do not re-derive which option is correct.\n\n`
+    : '';
+  return `Topic: "${nodeLabel}" (${breadcrumb})
+
+Full Q&A:
+${historyText}
+
+The Verdict field for Q1–Q3 is ground truth — do not re-evaluate those answers. Only evaluate Q4 yourself.
+${mcqNote}Score each question out of 25. Q1–Q3: Correct = 25 pts, Incorrect = 0 pts.
+For Q4, reason through the answer before scoring:
+
+  Step 1 — What does the answer correctly demonstrate? Credit understanding shown through reasoning, examples, or application — even if the formal concept is not explicitly named.
+  Step 2 — What is missing or imprecise?
+  Step 3 — Assign Q4 a score (0–25):
+    • 23–25: complete — all dimensions the question asked for are addressed
+    • 15–22: strong — main concept correct, one dimension missing or unnamed but its logic is present in the reasoning
+    •  8–14: partial — core is right but significant aspects are missing
+    •  1–7:  surface level only
+    •  0:    incorrect or no meaningful engagement
+
+Key principle: demonstrating correct reasoning by example counts nearly as much as naming the concept. Naming a concept without showing you understand it counts for little.
+
+finalScore = Q1 score + Q2 score + Q3 score + Q4 score (total 0–100).
+
+Return JSON:
+- "correct": boolean — true only if Q4 score is 25
+- "partial": boolean — true if Q4 score is 1–24
+- "feedback": 2-3 sentences on the Q4 answer — acknowledge what was right, specify what was missing
+- "finalScore": integer 0–100
+- "scoreBreakdown": 2-4 sentences on overall performance — what the learner demonstrated, what they missed${langJson(locale)}`;
+}
+
 // Builds an unambiguous MCQ context block for the evaluator prompt.
 // Returns null when options/correctIndex are absent (open question path).
 function _mcqEvalBlock(userAnswer, options, correctIndex) {
@@ -540,7 +575,7 @@ async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, 
 
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: isLast ? 600 : 300,
+    max_tokens: isLast ? 900 : 300,
     system: [{
       type: 'text',
       text: `You are a knowledge diagnostic evaluator. Return ONLY valid JSON. No text outside the JSON object.`,
@@ -549,20 +584,7 @@ async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, 
     messages: [{
       role: 'user',
       content: isLast
-        ? `Topic: "${nodeLabel}" (${breadcrumb})
-
-Full Q&A:
-${historyText}
-
-The Verdict field for Q1–Q3 is the ground truth from real-time evaluation — do not re-evaluate those answers. Only evaluate Q4 yourself.
-${options && typeof correctIndex === 'number' ? `Q4 is MCQ. The correct answer is option ${correctIndex + 1}: "${options[correctIndex]}". Determine correct/incorrect by comparing the learner's answer to this — do not re-derive which option is right.` : ''}
-
-Return JSON with:
-- "correct": boolean — true only if the Q4 answer is fully and precisely correct. For open questions, do not penalize for omitting valid points beyond what was asked; judge against the question's stated criteria, not against an ideal exhaustive answer.
-- "partial": boolean (true if Q4 shows real understanding but is incomplete or imprecise; always false for MCQ)
-- "feedback": 1-2 sentence feedback on the Q4 answer — always include this, even if the answer is wrong
-- "finalScore": integer 0-100 computed from all four verdicts (Q1–Q3 ground truth + your Q4 evaluation)
-- "scoreBreakdown": string (2-4 sentences explaining the score — what they got right, what they missed)${langJson(locale)}`
+        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, locale)
         : (() => {
             const mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
             return mcq
@@ -682,7 +704,7 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
   testlog('llm_evaluate_stream_prompt', { userId, questionNum, isLast, prompt: _stePrompt }); // TESTLOG
   return _streamText({
     model: SONNET,
-    max_tokens: isLast ? 600 : 300,
+    max_tokens: isLast ? 900 : 300,
     system: [{
       type: 'text',
       text: `You are a knowledge diagnostic evaluator. Return ONLY valid JSON. No text outside the JSON object.`,
@@ -691,7 +713,7 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
     messages: [{
       role: 'user',
       content: isLast
-        ? `Topic: "${nodeLabel}" (${breadcrumb})\n\nFull Q&A:\n${historyText}\n\nThe Verdict field for Q1–Q3 is the ground truth from real-time evaluation — do not re-evaluate those answers. Only evaluate Q4 yourself.\n${options && typeof correctIndex === 'number' ? `Q4 is MCQ. The correct answer is option ${correctIndex + 1}: "${options[correctIndex]}". Determine correct/incorrect by comparing the learner's answer to this — do not re-derive which option is right.\n` : ''}\nReturn JSON with:\n- "correct": boolean — true only if the Q4 answer is fully and precisely correct. For open questions, do not penalize for omitting valid points beyond what was asked; judge against the question's stated criteria, not against an ideal exhaustive answer.\n- "partial": boolean (true if Q4 shows real understanding but is incomplete or imprecise; always false for MCQ)\n- "feedback": 1-2 sentence feedback on the Q4 answer — always include this, even if the answer is wrong\n- "finalScore": integer 0-100 computed from all four verdicts (Q1–Q3 ground truth + your Q4 evaluation)\n- "scoreBreakdown": string (2-4 sentences explaining the score — what they got right, what they missed)${langJson(locale)}`
+        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, locale)
         : (function() {
             var mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
             return mcq
