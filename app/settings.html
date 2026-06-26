@@ -242,11 +242,16 @@
     var isOverlay  = !!s.is_overlay;
     var ringColor  = s.ring_color || '#9B8FB5';
 
+    // localStorage overrides (overlay + color) apply to both editable and read-only paths
+    var storedOv = null;
+    try { storedOv = localStorage.getItem('kq_is_overlay_db-' + s.id); } catch(e) {}
+    var effectiveOverlay = storedOv !== null ? !!parseInt(storedOv) : isOverlay;
+
+    var colorOverride = null;
+    try { colorOverride = localStorage.getItem('kq_filter_color_db-' + s.id) || localStorage.getItem('kq_ring_color_db-' + s.id); } catch(e) {}
+    var effectiveColor = colorOverride || ringColor;
+
     if (!editable) {
-      // read-only display for non-admin public filters (overlay is user-overridable via localStorage)
-      var storedOv = null;
-      try { storedOv = localStorage.getItem('kq_is_overlay_db-' + s.id); } catch(e) {}
-      var effectiveOverlay = storedOv !== null ? !!parseInt(storedOv) : isOverlay;
       return '<div class="sf-filter-opts sf-filter-opts-readonly" data-subset-id="' + s.id + '">' +
         '<span class="sf-opt-chip">' + t('filter.bg_label') + ': ' + (bgVisible ? t('filter.bg_visible') : t('filter.bg_hidden')) + '</span>' +
         '<span class="sf-opt-chip">' + t('filter.display_label') + ': ' + (isColor ? t('filter.display_color') : t('filter.display_ring')) + '</span>' +
@@ -272,14 +277,21 @@
           '<button class="st-picker-btn' + (isRing  ? ' active' : '') + '" data-opt="display_mode" data-val="ring">'  + t('filter.display_ring')  + '</button>' +
         '</div>' +
         '<label class="sf-ring-color-wrap' + (isRing ? '' : ' hidden') + '" title="' + t('filter.ring_color_label') + '">' +
-          '<input type="color" class="sf-ring-color-input" value="' + ringColor + '" data-opt="ring_color">' +
+          '<input type="color" class="sf-ring-color-input" value="' + effectiveColor + '" data-opt="ring_color">' +
         '</label>' +
       '</div>' +
       '<div class="sf-opt-row">' +
         '<span class="sf-opt-label" data-i18n="filter.overlay_label">' + t('filter.overlay_label') + '</span>' +
-        '<button class="st-toggle' + (isOverlay ? ' on' : '') + '" data-opt="is_overlay"><div class="st-toggle-thumb"></div></button>' +
+        '<button class="st-toggle' + (effectiveOverlay ? ' on' : '') + '" data-opt="is_overlay"><div class="st-toggle-thumb"></div></button>' +
       '</div>' +
     '</div>';
+  }
+
+  function _dotColor(s) {
+    var fid = 'db-' + s.id;
+    var ov = null;
+    try { ov = localStorage.getItem('kq_filter_color_' + fid) || localStorage.getItem('kq_ring_color_' + fid); } catch(e) {}
+    return ov || resolveDot(s.icon_color);
   }
 
   function renderPublicMaps(maps) {
@@ -296,7 +308,7 @@
       var row  = document.createElement('div');
       row.className = 'sf-filter-row';
       row.innerHTML =
-        '<span class="sf-color-dot" style="background:' + resolveDot(s.icon_color) + '"></span>' +
+        '<span class="sf-color-dot" style="background:' + _dotColor(s) + '"></span>' +
         '<span class="sf-filter-label">' + s.name + '</span>' +
         '<span class="sf-node-count">' + s.node_count + ' ' + t('label.nodes') + '</span>' +
         (_isAdmin ? _adminBtn(s.id, true) : '') +
@@ -318,7 +330,7 @@
       var row = document.createElement('div');
       row.className = 'sf-filter-row';
       row.innerHTML =
-        '<span class="sf-color-dot" style="background:' + resolveDot(s.icon_color) + '"></span>' +
+        '<span class="sf-color-dot" style="background:' + _dotColor(s) + '"></span>' +
         '<span class="sf-filter-label">' + s.name + '</span>' +
         '<span class="sf-node-count">' + s.node_count + ' ' + t('label.nodes') + '</span>' +
         (_isAdmin ? _adminBtn(s.id, false) : '') +
