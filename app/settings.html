@@ -347,6 +347,7 @@
     var btn = e.target.closest('.st-toggle');
     if (!btn) return;
     var fid  = btn.dataset.filterId;
+    if (!fid) return;  // not a visibility toggle (e.g. overlay toggle) — let handleOptClick handle it
     var isOn = btn.classList.toggle('on');
     var h    = sfGetHidden();
     if (isOn) { h = h.filter(function(id) { return id !== fid; }); }
