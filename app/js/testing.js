@@ -315,31 +315,7 @@
     var q = _currentQuestion || {};
     var capturedQ = q, capturedAns = ans;
 
-    // Q1-Q3 MCQ: evaluate locally — no API call needed, correctIndex is ground truth
-    if (capturedQ.type === 'mcq' && typeof capturedQ.correctIndex === 'number' && _questionNum < 4) {
-      var letter = capturedAns.trim().toUpperCase();
-      var selectedIdx = (letter.length === 1 && letter >= 'A' && letter <= 'D')
-        ? letter.charCodeAt(0) - 65
-        : (parseInt(capturedAns.trim(), 10) - 1);
-      var isCorrect = (selectedIdx === capturedQ.correctIndex);
-      var correctLetter = String.fromCharCode(65 + capturedQ.correctIndex);
-      var locale = window._uiLocale || 'en';
-      var feedbackText = isCorrect
-        ? (locale === 'et' ? 'Õige.' : 'Correct.')
-        : (locale === 'et'
-            ? 'Vale. Õige vastus oli ' + correctLetter + ': ' + capturedQ.options[capturedQ.correctIndex]
-            : 'Incorrect. The correct answer was ' + correctLetter + ': ' + capturedQ.options[capturedQ.correctIndex]);
-      _removeLoadingBlock();
-      _history.push({ question: capturedQ.question || '', answer: capturedAns, correct: isCorrect });
-      // TESTLOG
-      fetch('/api/test/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionNum: _questionNum, question: capturedQ.question, options: capturedQ.options,
-          correctIndex: capturedQ.correctIndex, userAnswer: capturedAns, correct: isCorrect }) }).catch(function(){});
-      _appendBlock({ type: 'feedback', content: (isCorrect ? '✓ ' : '✗ ') + feedbackText,
-        subClass: isCorrect ? 'feedback-correct' : 'feedback-incorrect' });
-      setTimeout(_advanceQuestion, 1000);
-      return;
-    }
+
 
     function doEvaluate() {
       apiEvaluate(_questionNum, capturedQ.question || '', capturedQ.options || null, capturedAns, _history,
