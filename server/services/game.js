@@ -181,7 +181,7 @@ async function getMomentum(passportId) {
       'UPDATE user_momentum SET streak_days=0, multiplier=1.00, updated_at=NOW() WHERE passport_id=?',
       [passportId]
     );
-    return { multiplier: 1.0, streakDays: 0, label: 'Setting out' };
+    return { multiplier: 1.0, streakDays: 0, label: 'momentum.setting_out' };
   }
   const mult = parseFloat(m.multiplier);
   return { multiplier: mult, streakDays: m.streak_days, label: momentumLabel(mult) };

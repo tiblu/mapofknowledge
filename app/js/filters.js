@@ -65,6 +65,7 @@
   }
 
   function _primeFromServer(s) {
+    // Server → localStorage (server wins for keys it already has)
     ['kq_filter_hidden', 'kq_base_filter', 'screensaver_enabled'].forEach(function(k) {
       if (s[k] !== undefined) { try { localStorage.setItem(k, s[k]); } catch(e) {} }
     });
@@ -73,6 +74,23 @@
         try { localStorage.setItem(k, s[k]); } catch(e) {}
       }
     });
+    // localStorage → server migration: push any local key the server doesn't have yet
+    ['kq_filter_hidden', 'kq_base_filter', 'screensaver_enabled'].forEach(function(k) {
+      if (s[k] === undefined) {
+        var lv = null; try { lv = localStorage.getItem(k); } catch(e) {}
+        if (lv !== null) _syncToServer(k, lv);
+      }
+    });
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var lk = localStorage.key(i);
+        if (lk && s[lk] === undefined &&
+            (lk.startsWith('kq_is_overlay_') || lk.startsWith('kq_ring_color_') || lk.startsWith('kq_filter_color_'))) {
+          var lv2 = localStorage.getItem(lk);
+          if (lv2 !== null) _syncToServer(lk, lv2);
+        }
+      }
+    } catch(e) {}
   }
 
   function loadDBSubsets() {
