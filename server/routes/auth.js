@@ -61,7 +61,7 @@ passport.use(new GoogleStrategy(
 
           req.session.pendingSignup = null;
 
-          notify(userId, 'welcome', 'Tere tulemast Knobitz-i!',
+          notify(userId, 'welcome', 'Tere tulemast KnoBitz-i!',
             'Oleme rõõmsad, et oled siin. Alusta kaardi uurimisega ja jõua teadmistes kaugemale!');
 
           const [newUsers] = await conn.execute(
@@ -75,7 +75,7 @@ passport.use(new GoogleStrategy(
         const isFirstLogin = !user.last_login;
         await conn.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
         if (isFirstLogin) {
-          notify(user.id, 'welcome', 'Tere tulemast Knobitz-i!',
+          notify(user.id, 'welcome', 'Tere tulemast KnoBitz-i!',
             'Oleme rõõmsad, et oled siin. Alusta kaardi uurimisega!');
         }
         done(null, user);

@@ -505,7 +505,7 @@
               <div class="p-cred-icon internal">🗺️</div>
               <div>
                 <div class="p-cred-title">${esc(c.title)}</div>
-                <div class="p-cred-issuer">${esc(c.issuer || 'Knobitz · KaiQ Platform')}</div>
+                <div class="p-cred-issuer">${esc(c.issuer || 'KnoBitz · KaiQ Platform')}</div>
                 <div class="p-cred-date">${fmtDate(c.awarded_date)}${c.score_pct ? ` · Score: ${c.score_pct}%` : ''}</div>
                 ${c.blockchain_hash ? `<div class="p-cred-hash">${esc(c.blockchain_hash)}…</div>` : ''}
               </div>
