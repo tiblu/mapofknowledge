@@ -241,12 +241,11 @@ var STUDENTS = [
     groups:['7A'],
     goal:'Murdude liitmine', goalDomain:'Matemaatika › Aritmeetika › Murrud',
     progress:78, goalDate:'20. juuli 2026',
-    streak:5, rank:'Avastaja', lumens:340,
+    streak:5,
     lastActive:'täna', status:'active',
     events:[
       {icon:'✓', title:'Harilikud murrud lõpetatud', date:'eile', badge:'✓'},
       {icon:'📖', title:'Murdude lahutamine alustatud', date:'2 päeva tagasi', badge:null},
-      {icon:'🏅', title:'Saavutus: "Päevane tegija" avatud', date:'3 päeva tagasi', badge:null},
       {icon:'✓', title:'Kümnendmurrud lõpetatud', date:'4 päeva tagasi', badge:'✓'}
     ]
   },
@@ -254,7 +253,7 @@ var STUDENTS = [
     groups:['7A','mat-tugi'],
     goal:'Fotosüntees', goalDomain:'Loodusteadused › Bioloogia › Taimed',
     progress:42, goalDate:'1. august 2026',
-    streak:1, rank:'Rändur', lumens:120,
+    streak:1,
     lastActive:'täna', status:'active',
     events:[
       {icon:'📖', title:'Fotosüntees alustatud', date:'täna', badge:null},
@@ -266,7 +265,7 @@ var STUDENTS = [
     groups:['7A'],
     goal:null, goalCompleted:'Eesti ajalugu', goalDomain:'Ajalugu › Eesti ajalugu',
     progress:100, goalDate:null,
-    streak:12, rank:'Teejuht', lumens:580,
+    streak:12,
     lastActive:'täna', status:'active',
     events:[
       {icon:'🎉', title:'Eesmärk täidetud: Eesti ajalugu', date:'täna', badge:'🎉'},
@@ -279,7 +278,7 @@ var STUDENTS = [
     groups:['7A','mat-tugi'],
     goal:'Tehted täisarvudega', goalDomain:'Matemaatika › Aritmeetika',
     progress:30, goalDate:'15. juuli 2026',
-    streak:0, rank:'Rändur', lumens:85,
+    streak:0,
     lastActive:'5 päeva tagasi', status:'warning',
     events:[
       {icon:'📖', title:'Tehted täisarvudega alustatud', date:'5 päeva tagasi', badge:null},
@@ -290,7 +289,7 @@ var STUDENTS = [
     groups:['7B'],
     goal:'Eesti ajalugu', goalDomain:'Ajalugu › Eesti ajalugu',
     progress:65, goalDate:'25. juuli 2026',
-    streak:3, rank:'Avastaja', lumens:215,
+    streak:3,
     lastActive:'eile', status:'ok',
     events:[
       {icon:'✓', title:'Muinasaeg lõpetatud', date:'eile', badge:'✓'},
@@ -302,7 +301,7 @@ var STUDENTS = [
     groups:['7B','mat-tugi'],
     goal:null, goalDomain:null,
     progress:0, goalDate:null,
-    streak:0, rank:'Rändur', lumens:40,
+    streak:0,
     lastActive:'12 päeva tagasi', status:'inactive',
     events:[]
   },
@@ -310,11 +309,10 @@ var STUDENTS = [
     groups:['7B'],
     goal:'Eesti kirjandus', goalDomain:'Kirjandus › Eesti kirjandus',
     progress:88, goalDate:'10. juuli 2026',
-    streak:8, rank:'Teejuht', lumens:420,
+    streak:8,
     lastActive:'täna', status:'active',
     events:[
       {icon:'✓', title:'A.H. Tammsaare teosed lõpetatud', date:'täna', badge:'✓'},
-      {icon:'🏅', title:'Saavutus: "Nädala entusiast" avatud', date:'eile', badge:null},
       {icon:'✓', title:'Lydia Koidula looming lõpetatud', date:'2 päeva tagasi', badge:'✓'}
     ]
   },
@@ -322,7 +320,7 @@ var STUDENTS = [
     groups:['7B'],
     goal:'Eesti geograafia', goalDomain:'Geograafia › Eesti',
     progress:15, goalDate:'5. august 2026',
-    streak:2, rank:'Rändur', lumens:95,
+    streak:2,
     lastActive:'eile', status:'ok',
     events:[
       {icon:'📖', title:'Maakondade geograafia alustatud', date:'eile', badge:null},
@@ -418,10 +416,6 @@ function renderDashboard() {
       +'<div class="ta-card-groups">'+groupChipsHtml(s.groups)+'</div>'
       +'<div class="ta-card-goal-label">Aktiivne eesmärk</div>'
       +goalHtml
-      +'<div class="ta-card-footer">'
-      +  '<span class="ta-card-rank">'+s.rank+'</span>'
-      +  '<span class="ta-card-lumens">✦ '+s.lumens+' luumenit</span>'
-      +'</div>'
       +'</div>';
   }).join('');
   grid.querySelectorAll('.ta-student-card').forEach(function(el){
@@ -476,8 +470,6 @@ function selectStudent(id) {
     +  '<div class="ta-detail-chips">'+groupChipsHtml(s.groups)+'<button class="ta-chip-add">+ Lisa rühma</button></div>'
     +  '<div class="ta-detail-stats-row">'
     +    '<div class="ta-detail-stat"><span>🔥</span><strong>'+s.streak+'</strong><span>päeva järjest</span></div>'
-    +    '<div class="ta-detail-stat"><span>✦</span><strong>'+s.lumens+'</strong><span>luumenit</span></div>'
-    +    '<div class="ta-detail-stat"><span>🏅</span><strong>'+s.rank+'</strong></div>'
     +    '<div class="ta-detail-stat"><span>🕒</span><span>Aktiivne: <strong>'+s.lastActive+'</strong></span></div>'
     +  '</div>'
     +'</div>'
