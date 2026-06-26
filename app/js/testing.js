@@ -99,6 +99,12 @@
   window.openTestingMode = function (node, crumb) {
     _searchWrap = document.querySelector('.topbar-search-wrap');
     if (_searchWrap) _searchWrap.style.display = 'none';
+    // Localise Q-chip labels: K1–K4 in Estonian, Q1–Q4 elsewhere.
+    var qPrefix = window._uiLocale === 'et' ? 'K' : 'Q';
+    [1, 2, 3, 4].forEach(function (n) {
+      var chip = document.getElementById('tm-chip-q' + n);
+      if (chip) chip.textContent = qPrefix + n;
+    });
     _node  = node;
     _crumb = crumb || '';
 
@@ -283,7 +289,8 @@
   }
 
   function _appendQuestionBlock(q) {
-    _appendPhaseDivider('Q' + _questionNum + ' — ' + _tierName(_questionNum));
+    var qPrefix = window._uiLocale === 'et' ? 'K' : 'Q';
+    _appendPhaseDivider(qPrefix + _questionNum + ' — ' + _tierName(_questionNum));
 
     var text = q.question || '';
     if (q.type === 'mcq' && q.options && q.options.length) {

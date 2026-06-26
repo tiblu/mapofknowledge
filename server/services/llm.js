@@ -459,18 +459,14 @@ Question: "${question}"${profileBlock(profile)}${langText(locale)}`,
 // Returns: { question, type: 'open'|'mcq', options?: string[] }
 
 // Builds the Q4 (final) evaluation prompt. Shared by streaming and non-streaming paths.
-function _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, locale) {
-  const mcqNote = Array.isArray(options) && typeof correctIndex === 'number'
-    ? `Q4 is MCQ. The correct answer is option ${correctIndex + 1}: "${options[correctIndex]}". Compare the learner's answer letter to this — do not re-derive which option is correct.\n\n`
-    : '';
-  return `Topic: "${nodeLabel}" (${breadcrumb})
-
-Full Q&A:
-${historyText}
-
-The Verdict field for Q1–Q3 is ground truth — do not re-evaluate those answers. Only evaluate Q4 yourself.
-${mcqNote}Score each question out of 25. Q1–Q3: Correct = 25 pts, Incorrect = 0 pts.
-For Q4, reason through the answer before scoring:
+function _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale) {
+  const isMcq = Array.isArray(options) && typeof correctIndex === 'number';
+  const q4Block = isMcq
+    ? (() => {
+        const mcqBlock = _mcqEvalBlock(userAnswer, options, correctIndex);
+        return `Q4 is MCQ.\n${mcqBlock}\n\nQ4 scoring: Correct = 25 pts, Incorrect = 0 pts (same as Q1–Q3 — do NOT apply the graduated open-question rubric).`;
+      })()
+    : `For Q4, reason through the answer before scoring:
 
   Step 1 — What does the answer correctly demonstrate? Credit understanding shown through reasoning, examples, or application — even if the formal concept is not explicitly named.
   Step 2 — What is missing or imprecise?
@@ -481,8 +477,17 @@ For Q4, reason through the answer before scoring:
     •  1–7:  surface level only
     •  0:    incorrect or no meaningful engagement
 
-Key principle: demonstrating correct reasoning by example counts nearly as much as naming the concept. Naming a concept without showing you understand it counts for little.
+Key principle: demonstrating correct reasoning by example counts nearly as much as naming the concept. Naming a concept without showing you understand it counts for little.`;
 
+  return `Topic: "${nodeLabel}" (${breadcrumb})
+
+Full Q&A:
+${historyText}
+
+The Verdict field for Q1–Q3 is ground truth — do not re-evaluate those answers. Only evaluate Q4 yourself.
+${q4Block}
+
+Score each question out of 25. Q1–Q3: Correct = 25 pts, Incorrect = 0 pts.
 finalScore = Q1 score + Q2 score + Q3 score + Q4 score (total 0–100).
 
 Return JSON:
@@ -584,7 +589,7 @@ async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, 
     messages: [{
       role: 'user',
       content: isLast
-        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, locale)
+        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale)
         : (() => {
             const mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
             return mcq
@@ -714,7 +719,7 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
     messages: [{
       role: 'user',
       content: isLast
-        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, locale)
+        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale)
         : (function() {
             var mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
             return mcq
