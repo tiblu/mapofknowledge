@@ -45,6 +45,7 @@
   }
   function setRingColorOverride(filterId, color) {
     try { localStorage.setItem('kq_ring_color_' + filterId, color); } catch(e) {}
+    _syncToServer('kq_ring_color_' + filterId, color);
   }
   function getColorOverride(filterId) {
     try { return localStorage.getItem('kq_filter_color_' + filterId) || null; }
@@ -52,9 +53,29 @@
   }
   function setColorOverride(filterId, color) {
     try { localStorage.setItem('kq_filter_color_' + filterId, color); } catch(e) {}
+    _syncToServer('kq_filter_color_' + filterId, color);
   }
 
-  (function loadDBSubsets() {
+  function _syncToServer(key, value) {
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: key, value: value }),
+    }).catch(function() {});
+  }
+
+  function _primeFromServer(s) {
+    ['kq_filter_hidden', 'kq_base_filter', 'screensaver_enabled'].forEach(function(k) {
+      if (s[k] !== undefined) { try { localStorage.setItem(k, s[k]); } catch(e) {} }
+    });
+    Object.keys(s).forEach(function(k) {
+      if (k.startsWith('kq_is_overlay_') || k.startsWith('kq_ring_color_') || k.startsWith('kq_filter_color_')) {
+        try { localStorage.setItem(k, s[k]); } catch(e) {}
+      }
+    });
+  }
+
+  function loadDBSubsets() {
     var hidden;
     try { hidden = JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); }
     catch(e) { hidden = []; }
@@ -100,10 +121,9 @@
         }
       })
       .catch(function() {});
-  })();
+  }
 
-  /* ─── Apply visibility from localStorage ────────────────────────────── */
-  (function applyVisibility() {
+  function applyVisibility() {
     var hidden;
     try { hidden = JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); }
     catch(e) { hidden = []; }
@@ -113,7 +133,14 @@
         item.style.display = 'none';
       }
     });
-  })();
+  }
+
+  // Prime localStorage from server settings, then initialise filters
+  fetch('/api/settings')
+    .then(function(r) { return r.json(); })
+    .then(function(s) { _primeFromServer(s); })
+    .catch(function() {})
+    .then(function() { loadDBSubsets(); applyVisibility(); });
 
   /* ─── State ──────────────────────────────────────────────────────────── */
   var baseFilterId     = null;       // one non-overlay active filter or null
@@ -211,7 +238,9 @@
   }
 
   function saveBaseFilter(fid) {
-    try { localStorage.setItem('kq_base_filter', fid || 'none'); } catch(e) {}
+    var val = fid || 'none';
+    try { localStorage.setItem('kq_base_filter', val); } catch(e) {}
+    _syncToServer('kq_base_filter', val);
   }
 
   function deactivateAll() {

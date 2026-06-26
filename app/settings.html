@@ -226,8 +226,17 @@
   function resolveDot(iconColor) { return COLOR_DOT[iconColor] || (iconColor && iconColor[0] === '#' ? iconColor : COLOR_DOT.terra); }
   var _isAdmin = false;
 
+  function _syncSetting(key, value) {
+    fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: key, value: value }) }).catch(function() {});
+  }
+
   function sfGetHidden() { try { return JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); } catch(e) { return []; } }
-  function sfSetHidden(a) { localStorage.setItem('kq_filter_hidden', JSON.stringify(a)); }
+  function sfSetHidden(a) {
+    var v = JSON.stringify(a);
+    localStorage.setItem('kq_filter_hidden', v);
+    _syncSetting('kq_filter_hidden', v);
+  }
 
   function _adminBtn(sid, isPublic) {
     var bg = isPublic ? 'rgba(94,154,94,0.12)' : 'rgba(58,48,40,0.06)';
@@ -401,7 +410,9 @@
       var isOn = btn.classList.toggle('on');
       var inPublicSection = !!wrap.closest('#sf-public-list');
       if (inPublicSection) {
-        try { localStorage.setItem('kq_is_overlay_db-' + sid, isOn ? '1' : '0'); } catch(e) {}
+        var ovVal = isOn ? '1' : '0';
+        try { localStorage.setItem('kq_is_overlay_db-' + sid, ovVal); } catch(e) {}
+        _syncSetting('kq_is_overlay_db-' + sid, ovVal);
         if (window.parent && typeof window.parent.updateFilterSettings === 'function') {
           window.parent.updateFilterSettings(parseInt(sid), { is_overlay: isOn ? 1 : 0 });
         }
@@ -546,14 +557,20 @@
   /* ── Screensaver toggle ── */
   const ssToggle = document.getElementById('screensaver-toggle');
 
-  // Load saved state (default: on)
-  if (localStorage.getItem('screensaver_enabled') === 'false') {
-    ssToggle.classList.remove('on');
-  }
+  // Load saved state — prefer server value, fall back to localStorage (default: on)
+  fetch('/api/settings').then(function(r) { return r.json(); }).then(function(s) {
+    var val = s.screensaver_enabled !== undefined ? s.screensaver_enabled : localStorage.getItem('screensaver_enabled');
+    if (val !== undefined && val !== null) try { localStorage.setItem('screensaver_enabled', val); } catch(e) {}
+    if (val === 'false') ssToggle.classList.remove('on'); else ssToggle.classList.add('on');
+  }).catch(function() {
+    if (localStorage.getItem('screensaver_enabled') === 'false') ssToggle.classList.remove('on');
+  });
 
   ssToggle.addEventListener('click', function () {
     const isOn = this.classList.toggle('on');
-    localStorage.setItem('screensaver_enabled', isOn ? 'true' : 'false');
+    const ssVal = isOn ? 'true' : 'false';
+    localStorage.setItem('screensaver_enabled', ssVal);
+    _syncSetting('screensaver_enabled', ssVal);
   });
 
   /* ── Ambient sound toggle ── */
