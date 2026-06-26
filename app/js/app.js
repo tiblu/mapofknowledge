@@ -14,14 +14,29 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const CONTINENTS = {
-  "1":    "#378ADD",  // Mathematics
-  "2":    "#9F8FE8",  // Me (Mina)
-  "3":    "#7ABF3C",  // World (Maailm)
-  "3000": "#20A89A",  // Loodusõpetus
-  "4000": "#4C9E2C",  // Bioloogia
-  "5000": "#D4873C",  // Geograafia
-  "6000": "#E05430",  // Füüsika
-  "7000": "#B040A8",  // Keemia
+  "1":     "#378ADD",  // Mathematics
+  "2":     "#9F8FE8",  // Me (Mina)
+  "3":     "#7ABF3C",  // World (Maailm)
+  "1000":  "#E84B7A",  // Eesti keel
+  "2000":  "#C0476E",  // Kirjandus
+  "3000":  "#20A89A",  // Loodusõpetus
+  "4000":  "#4C9E2C",  // Bioloogia
+  "5000":  "#D4873C",  // Geograafia
+  "6000":  "#E05430",  // Füüsika
+  "7000":  "#B040A8",  // Keemia
+  "8000":  "#8B5E3C",  // Ajalugu
+  "9000":  "#A0722A",  // Ühiskonnaõpetus
+  "10000": "#E8A030",  // Inimeseõpetus
+  "11000": "#D43EA0",  // Kunstiõpetus
+  "12000": "#7040C8",  // Muusika
+  "13000": "#2E8BC0",  // Kehaline kasvatus
+  "14000": "#C06830",  // Käsitöö
+  "15000": "#9E7030",  // Tööõpetus
+  "16000": "#3A9AE0",  // Inglise keel
+  "17000": "#5080C8",  // Teine võõrkeel
+  "18000": "#607080",  // Tehnoloogiaõpetus
+  "19000": "#A06858",  // Keraamika
+  "20000": "#C85858",  // Toiduõpetus
 };
 
 const FADE = 0.25;
