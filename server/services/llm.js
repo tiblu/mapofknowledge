@@ -659,6 +659,7 @@ function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, 
 }
 
 function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, onChunk) {
+  testlog('llm_question_stream_start', { userId, nodeLabel, questionNum, historyLen: history.length }); // TESTLOG
   const tiers = [
     'Factual (Remember): one question on core terminology or a foundational definition.',
     'Conceptual (Understand): one question asking the learner to explain a mechanism or relationship. No calculations.',

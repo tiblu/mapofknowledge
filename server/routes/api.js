@@ -398,6 +398,8 @@ async function _runStream(streamFn, res) {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
+  // Keepalive: proxy will close idle SSE connections; ping every 8s to prevent that.
+  const keepalive = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) {} }, 8000);
   const write = (chunk) => res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n');
   try {
     await streamFn(write);
@@ -405,6 +407,7 @@ async function _runStream(streamFn, res) {
     console.error('[stream]', err.message);
     res.write('data: ' + JSON.stringify({ error: true }) + '\n\n');
   }
+  clearInterval(keepalive);
   res.write('data: [DONE]\n\n');
   res.end();
 }
