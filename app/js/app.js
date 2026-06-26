@@ -337,7 +337,6 @@ function init(data) {
     sim.force("link").links(simEdges);
     sim.alpha(0.4).restart();
 
-    document.getElementById("node-count").textContent = simNodes.length + ' ' + t('label.nodes_visible');
     updateLabels();
   }
 

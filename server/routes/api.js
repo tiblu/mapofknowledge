@@ -1537,7 +1537,7 @@ router.post('/links/invite', async (req, res) => {
     const code = _randomCode();
     await db.execute(
       `INSERT INTO learner_links (passport_id, linked_user_id, role, status, invite_code, invited_at)
-       VALUES (?, 0, ?, 'pending', ?, NOW())`,
+       VALUES (?, NULL, ?, 'pending', ?, NOW())`,
       [passportId, role, code]
     );
     res.json({ invite_code: code });

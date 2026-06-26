@@ -33,9 +33,6 @@
     const name  = passport.display_name || t('label.your_name');
     const about = passport.about || '';
 
-    // Top-bar banner
-    const banner = document.querySelector('.topbar-banner-inner');
-    if (banner) banner.innerHTML = `<span class="topbar-banner-dot"></span>${t('label.learner_passport')} — ${esc(name)}`;
 
     // Left nav
     const avatarCircle = document.querySelector('.pnav-avatar-circle');
@@ -1013,10 +1010,6 @@
       <div id="link-invite-result" class="p-link-invite-result"></div>
     </div>`;
 
-    html += `<div class="p-link-nav-row">
-      <a class="p-edit-btn" href="teacher.html">${t('link.go_teacher_view')}</a>
-      <a class="p-edit-btn" href="parent.html">${t('link.go_parent_view')}</a>
-    </div>`;
 
     card.innerHTML = html;
   }
