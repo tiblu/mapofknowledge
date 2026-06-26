@@ -18,7 +18,8 @@
 
   function fmtDate(d) {
     if (!d) return '';
-    try { return new Date(d).toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' }); }
+    var loc = (window._uiLocale === 'et') ? 'et-EE' : 'en-GB';
+    try { return new Date(d).toLocaleDateString(loc, { year: 'numeric', month: 'short', day: 'numeric' }); }
     catch { return String(d).substring(0, 7); }
   }
 
@@ -995,6 +996,15 @@
       <div id="link-accept-msg" class="p-link-accept-msg"></div>
     </div>`;
 
+    html += `<div class="p-link-invite-section">
+      <div class="p-link-accept-label">${t('link.invite_section')}</div>
+      <div class="p-link-accept-row" style="flex-wrap:wrap;gap:6px">
+        <button class="p-edit-btn" onclick="window.generateInvite('teacher')">${t('btn.invite_student')}</button>
+        <button class="p-edit-btn" onclick="window.generateInvite('parent')">${t('btn.invite_child')}</button>
+      </div>
+      <div id="link-invite-result" class="p-link-invite-result"></div>
+    </div>`;
+
     html += `<div class="p-link-nav-row">
       <a class="p-edit-btn" href="teacher.html">${t('link.go_teacher_view')}</a>
       <a class="p-edit-btn" href="parent.html">${t('link.go_parent_view')}</a>
@@ -1002,6 +1012,27 @@
 
     card.innerHTML = html;
   }
+
+  window.generateInvite = function(role) {
+    var result = document.getElementById('link-invite-result');
+    fetch('/api/links/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: role }),
+    }).then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!result) return;
+        if (d.error) { result.textContent = d.error; return; }
+        var hint = role === 'teacher' ? t('link.code_hint') : t('link.code_hint_child');
+        var code = esc(d.invite_code);
+        result.innerHTML = '<div class="p-link-code-display">'
+          + '<span class="p-link-code-value">' + code + '</span>'
+          + '<button class="p-edit-btn" onclick="navigator.clipboard.writeText(\'' + code + '\')">' + t('btn.copy_code') + '</button>'
+          + '</div>'
+          + '<div class="p-link-code-hint">' + esc(hint) + '</div>';
+      })
+      .catch(function() { if (result) result.textContent = t('msg.save_failed_short'); });
+  };
 
   window.revokeLink = function(id) {
     fetch('/api/links/' + id, { method: 'DELETE' })
