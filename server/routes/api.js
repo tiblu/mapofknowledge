@@ -4,6 +4,7 @@ const db      = require('../db');
 const llm     = require('../services/llm');
 const game    = require('../services/game');
 const { notify } = require('../services/notifications');
+const testlog = require('../testlog'); // TESTLOG
 
 // ── User locale helper ───────────────────────────────────────────────────────
 async function getUserLocale(userId) {
@@ -1198,11 +1199,18 @@ router.post('/test/question', async (req, res) => {
       return _runStream((cb) => llm.streamTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, cb), res);
     }
     const result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id);
+    testlog('route_question_generated', { userId: req.user?.id, nodeId, nodeLabel: label, questionNum, history, result }); // TESTLOG
     res.json(result);
   } catch (err) {
     console.error('[api/test/question]', err.message);
     res.status(500).json({ error: 'Failed to generate question' });
   }
+});
+
+// TESTLOG — client-side event logger (Q1-Q3 MCQ local evaluation). Remove with other TESTLOG markers.
+router.post('/test/log', (req, res) => {
+  testlog('client_mcq_local', { userId: req.user?.id, ...req.body });
+  res.json({ ok: true });
 });
 
 // ── 4-tier diagnostic: evaluate answer ───────────────────────────────────────
@@ -1218,6 +1226,8 @@ router.post('/test/evaluate', async (req, res) => {
     const { db_id, label } = nodes[0];
     const breadcrumb = await getNodeBreadcrumb(db_id);
     const locale = await getUserLocale(req.user?.id);
+
+    testlog('route_evaluate_input', { userId: req.user?.id, nodeId, nodeLabel: label, questionNum, question, options, correctIndex, userAnswer, history }); // TESTLOG
 
     if (wantStream) {
       res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -1237,6 +1247,7 @@ router.post('/test/evaluate', async (req, res) => {
       }
       res.write('data: [DONE]\n\n');
       res.end();
+      testlog('route_evaluate_stream_response', { userId: req.user?.id, questionNum, raw: fullText }); // TESTLOG
 
       // Q4 post-processing after response is sent
       if (questionNum === 4 && passportId) {

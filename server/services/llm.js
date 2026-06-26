@@ -1,5 +1,6 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const db        = require('../db');
+const testlog   = require('../testlog'); // TESTLOG
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -476,6 +477,9 @@ async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history,
     `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}\nCorrect: ${h.correct}`
   ).join('\n\n');
 
+  const _tqPrompt = `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}`; // TESTLOG
+  testlog('llm_question_prompt', { userId, nodeLabel, questionNum, prompt: _tqPrompt }); // TESTLOG
+
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: 400,
@@ -491,20 +495,13 @@ For MCQ: all four options must be similar in length and specificity. Distractors
 Do not add any explanation outside the JSON.`,
       cache_control: { type: 'ephemeral' },
     }],
-    messages: [{
-      role: 'user',
-      content: `Topic: "${nodeLabel}" (${breadcrumb})
-Tier ${questionNum}: ${tiers[questionNum - 1]}
-${adaptNote}
-${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}
-
-Generate question ${questionNum}. Choose open or MCQ based on what best tests this tier.
-For MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}`,
-    }],
+    messages: [{ role: 'user', content: _tqPrompt }],
   });
 
+  const _tqRaw = msg.content[0].text.trim(); // TESTLOG
+  testlog('llm_question_response', { userId, questionNum, raw: _tqRaw }); // TESTLOG
   _logUsage(userId, 'test_question', msg.usage, SONNET);
-  return parseJSON(msg.content[0].text.trim());
+  return parseJSON(_tqRaw);
 }
 
 // Evaluate one answer and return feedback.
@@ -558,8 +555,10 @@ Return JSON with:
     }],
   });
 
+  const _teRaw = msg.content[0].text.trim(); // TESTLOG
+  testlog('llm_evaluate_response', { userId, questionNum, raw: _teRaw }); // TESTLOG
   _logUsage(userId, 'test_evaluate', msg.usage, SONNET);
-  return parseJSON(msg.content[0].text.trim());
+  return parseJSON(_teRaw);
 }
 
 // ── Text streaming (SDK 0.39.x: create({stream:true}) → Promise<Stream>) ───────
@@ -660,6 +659,10 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
       : '';
     return `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}${verdict}`;
   }).join('\n\n');
+  const _stePrompt = isLast // TESTLOG
+    ? `Topic: "${nodeLabel}" (${breadcrumb})\n\nFull Q&A:\n${historyText}\n\n[Q4 evaluation prompt — see correctIndex in route log]` // TESTLOG
+    : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nOptions: ${options ? options.map(function(o,i){return (i+1)+'. '+o;}).join(' | ') : 'none'}\nCorrectIndex: ${correctIndex}\nAnswer: "${userAnswer}"`; // TESTLOG
+  testlog('llm_evaluate_stream_prompt', { userId, questionNum, isLast, prompt: _stePrompt }); // TESTLOG
   return _streamText({
     model: SONNET,
     max_tokens: isLast ? 600 : 300,

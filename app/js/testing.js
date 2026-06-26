@@ -331,6 +331,10 @@
             : 'Incorrect. The correct answer was ' + correctLetter + ': ' + capturedQ.options[capturedQ.correctIndex]);
       _removeLoadingBlock();
       _history.push({ question: capturedQ.question || '', answer: capturedAns, correct: isCorrect });
+      // TESTLOG
+      fetch('/api/test/log', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionNum: _questionNum, question: capturedQ.question, options: capturedQ.options,
+          correctIndex: capturedQ.correctIndex, userAnswer: capturedAns, correct: isCorrect }) }).catch(function(){});
       _appendBlock({ type: 'feedback', content: (isCorrect ? '✓ ' : '✗ ') + feedbackText,
         subClass: isCorrect ? 'feedback-correct' : 'feedback-incorrect' });
       setTimeout(_advanceQuestion, 1000);
