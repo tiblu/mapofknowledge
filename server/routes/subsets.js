@@ -25,24 +25,24 @@ router.get('/sample/json', (req, res) => {
     icon_color: 'sage',
     nodes: [
       {
-        label: 'Algebra',
-        breadcrumb: 'Mathematics',
-        note: 'Anchors at L3 — includes all algebra subtopics'
+        label: 'Fractions',
+        breadcrumb: 'Mathematics > Numbers & calculation',
+        note: 'Anchors at L3 — includes all fraction subtopics'
       },
       {
-        label: 'Estonian language',
-        breadcrumb: 'Linguistics > Philology > Uralic languages > Finno-Ugric languages',
-        note: 'Anchors at L5 — only Estonian, not the full Uralic family'
+        label: 'Divisibility',
+        breadcrumb: 'Mathematics > Numbers & calculation',
+        note: 'Anchors at L3 — includes prime numbers, GCD, LCM'
       },
       {
-        label: 'Information security',
-        breadcrumb: 'Computer science',
-        note: 'Anchors at L3 — includes cryptography, IAM, etc.'
+        label: 'Sets',
+        breadcrumb: 'Mathematics > Sets & logic',
+        note: 'Anchors at L3 — includes set operations and Venn diagrams'
       },
       {
-        label: 'Classical mechanics',
-        breadcrumb: 'Natural sciences > Physics',
-        note: 'Anchors at L3 — includes kinematics, dynamics, thermodynamics'
+        label: 'Natural numbers & numeration',
+        breadcrumb: 'Mathematics > Numbers & calculation',
+        note: 'Anchors at L3 — includes place value, number systems'
       }
     ]
   });
@@ -53,10 +53,10 @@ router.get('/sample/csv', (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.send([
     'label,breadcrumb,note',
-    'Algebra,Mathematics,Anchors at L3 — includes all algebra subtopics',
-    'Estonian language,Linguistics > Philology > Uralic languages > Finno-Ugric languages,Anchors at L5 — only Estonian',
-    'Information security,Computer science,Anchors at L3',
-    'Classical mechanics,Natural sciences > Physics,Anchors at L3',
+    'Fractions,Mathematics > Numbers & calculation,Anchors at L3 — includes all fraction subtopics',
+    'Divisibility,Mathematics > Numbers & calculation,Anchors at L3 — includes prime numbers GCD LCM',
+    'Sets,Mathematics > Sets & logic,Anchors at L3 — includes set operations and Venn diagrams',
+    'Natural numbers & numeration,Mathematics > Numbers & calculation,Anchors at L3',
   ].join('\r\n'));
 });
 

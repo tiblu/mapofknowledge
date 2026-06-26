@@ -1259,8 +1259,10 @@ router.post('/test/evaluate', async (req, res) => {
                VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'assessment', 0)`,
               [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
             );
-            notify(req.user?.id, 'test_result', `Test result: ${label}`,
-              `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+            const _locale1 = await getUserLocale(req.user?.id).catch(() => 'en');
+            notify(req.user?.id, 'test_result',
+              _locale1 === 'et' ? `Testi tulemus: ${label}` : `Test result: ${label}`,
+              _locale1 === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
             // ── Gamification ─────────────────────────────────────────────────
             const score = evaluation.finalScore;
             const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
@@ -1295,8 +1297,9 @@ router.post('/test/evaluate', async (req, res) => {
          VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'assessment', 0)`,
         [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
       );
-      notify(req.user?.id, 'test_result', `Test result: ${label}`,
-        `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+      notify(req.user?.id, 'test_result',
+        locale === 'et' ? `Testi tulemus: ${label}` : `Test result: ${label}`,
+        locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
       // ── Gamification ───────────────────────────────────────────────────────
       const score      = evaluation.finalScore;
       const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;

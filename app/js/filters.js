@@ -66,13 +66,15 @@
         subsets.forEach(function(s) {
           var filterId = 'db-' + s.id;
           var color        = resolveColor(s.icon_color);
-          var colorOverride = getColorOverride(filterId) || getRingColorOverride(filterId);
+          var colorOverride   = getColorOverride(filterId) || getRingColorOverride(filterId);
+          var overlayOverride = null;
+          try { overlayOverride = localStorage.getItem('kq_is_overlay_' + filterId); } catch(e) {}
           FILTERS[filterId] = {
             label:           s.name,
             color:           colorOverride || color,
             dbId:            s.id,
             labels:          null,
-            isOverlay:       !!s.is_overlay,
+            isOverlay:       overlayOverride !== null ? !!parseInt(overlayOverride) : !!s.is_overlay,
             displayMode:     s.display_mode || 'color',
             backgroundHidden: !!s.background_hidden,
             ringColor:       colorOverride || s.ring_color || color

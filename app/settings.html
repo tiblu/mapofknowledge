@@ -243,11 +243,17 @@
     var ringColor  = s.ring_color || '#9B8FB5';
 
     if (!editable) {
-      // read-only display for non-admin public filters
-      return '<div class="sf-filter-opts sf-filter-opts-readonly">' +
+      // read-only display for non-admin public filters (overlay is user-overridable via localStorage)
+      var storedOv = null;
+      try { storedOv = localStorage.getItem('kq_is_overlay_db-' + s.id); } catch(e) {}
+      var effectiveOverlay = storedOv !== null ? !!parseInt(storedOv) : isOverlay;
+      return '<div class="sf-filter-opts sf-filter-opts-readonly" data-subset-id="' + s.id + '">' +
         '<span class="sf-opt-chip">' + t('filter.bg_label') + ': ' + (bgVisible ? t('filter.bg_visible') : t('filter.bg_hidden')) + '</span>' +
         '<span class="sf-opt-chip">' + t('filter.display_label') + ': ' + (isColor ? t('filter.display_color') : t('filter.display_ring')) + '</span>' +
-        (isOverlay ? '<span class="sf-opt-chip">' + t('filter.overlay_label') + '</span>' : '') +
+        '<div class="sf-opt-row" style="margin-top:6px">' +
+          '<span class="sf-opt-label" data-i18n="filter.overlay_label">' + t('filter.overlay_label') + '</span>' +
+          '<button class="st-toggle' + (effectiveOverlay ? ' on' : '') + '" data-opt="is_overlay"><div class="st-toggle-thumb"></div></button>' +
+        '</div>' +
         '</div>';
     }
 
@@ -379,9 +385,16 @@
     var sid   = wrap.dataset.subsetId;
 
     if (opt === 'is_overlay') {
-      // toggle button
       var isOn = btn.classList.toggle('on');
-      patchFilterSettings(sid, { is_overlay: isOn ? 1 : 0 });
+      var inPublicSection = !!wrap.closest('#sf-public-list');
+      if (inPublicSection) {
+        try { localStorage.setItem('kq_is_overlay_db-' + sid, isOn ? '1' : '0'); } catch(e) {}
+        if (window.parent && typeof window.parent.updateFilterSettings === 'function') {
+          window.parent.updateFilterSettings(parseInt(sid), { is_overlay: isOn ? 1 : 0 });
+        }
+      } else {
+        patchFilterSettings(sid, { is_overlay: isOn ? 1 : 0 });
+      }
       return;
     }
 

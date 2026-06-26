@@ -261,15 +261,23 @@
               ${ev.institution ? `<div class="p-ledger-sub">${esc(ev.institution)}</div>` : ''}
               ${ev.result ? `<div class="p-ledger-result">${esc(ev.result)}</div>` : ''}
             </div>
-            <span class="p-type ${esc(ev.type)}">${esc(ev.type.charAt(0).toUpperCase() + ev.type.slice(1))}</span>
+            <span class="p-type ${esc(ev.type)}">${esc(window.t('label.' + ev.type) || ev.type.charAt(0).toUpperCase() + ev.type.slice(1))}</span>
           </div>`;
         }).join('');
 
     const scrollList = `<div class="p-scroll-lg">${rowsHtml}</div>`;
 
     const today   = new Date().toISOString().split('T')[0];
-    const srcOpts = ['Book','YouTube video','Conference','Workshop','Self-study period','Other']
-      .map(function(s) { return `<option value="${s}">${s}</option>`; }).join('');
+    const SRC_KEYS = [
+      ['Book',             'ev.source.book'],
+      ['YouTube video',    'ev.source.youtube'],
+      ['Conference',       'ev.source.conference'],
+      ['Workshop',         'ev.source.workshop'],
+      ['Self-study period','ev.source.selfstudy'],
+      ['Other',            'ev.source.other'],
+    ];
+    const srcOpts = SRC_KEYS
+      .map(function(p) { return `<option value="${p[0]}">${window.t(p[1]) || p[0]}</option>`; }).join('');
 
     ledger.innerHTML = `<div class="p-card-title">${t('section.events') || 'Events'}</div>` + filterRow + scrollList + `
       <button class="p-edit-btn p-ev-add-btn" id="ev-add-btn"
@@ -659,7 +667,7 @@
       ? empty(t('msg.no_reflections'))
       : showing.map(function(r) {
           var eventLine = r.event_title
-            ? `<div class="p-quote-event-line">On: <em>${esc(r.event_title)}</em>${r.event_date ? ' · ' + fmtDate(r.event_date) : ''}</div>`
+            ? `<div class="p-quote-event-line">${window.t('label.ev_on') || 'On:'} <em>${esc(r.event_title)}</em>${r.event_date ? ' · ' + fmtDate(r.event_date) : ''}</div>`
             : '';
           return `<div class="p-quote p-quote-entry">
             <div class="p-quote-date">${fmtDate(r.created_at)}</div>
