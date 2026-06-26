@@ -72,7 +72,7 @@ router.get('/', async (req, res) => {
        FROM knowledge_subsets s
        WHERE s.is_active = 1
          AND (s.type = 'public' OR s.created_by = ?)
-       ORDER BY s.type DESC, s.name ASC`,
+       ORDER BY s.type DESC, CAST(s.name AS UNSIGNED), s.name ASC`,
       [userId]
     );
     res.json(rows);
