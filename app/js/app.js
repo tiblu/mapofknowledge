@@ -920,11 +920,7 @@ function init(data) {
 
   function nodePassesLabelSet(nodeId, labelSet) {
     if (!labelSet) return false;
-    let cur = nodeId;
-    while (cur !== undefined) {
-      if (labelSet.has(cur)) return true;
-      cur = parentOf[cur];
-    }
+    if (labelSet.has(nodeId)) return true;
     return hasDescendantInLabelSet(nodeId, labelSet);
   }
 
