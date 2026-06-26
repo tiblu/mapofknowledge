@@ -172,7 +172,7 @@ async function getMomentum(passportId) {
     'SELECT last_activity_at, streak_days, multiplier FROM user_momentum WHERE passport_id = ?',
     [passportId]
   );
-  if (!rows.length) return { multiplier: 1.0, streakDays: 0, label: 'Setting out' };
+  if (!rows.length) return { multiplier: 1.0, streakDays: 0, label: 'momentum.setting_out' };
 
   const m = rows[0];
   const hoursSince = (Date.now() - new Date(m.last_activity_at).getTime()) / 3600000;
