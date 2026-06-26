@@ -770,6 +770,7 @@ router.get('/profile', async (req, res) => {
       aspirations,
       objectives,
       plans,
+      role: req.user.role,
     });
   } catch (err) {
     console.error('[api/profile]', err.message);

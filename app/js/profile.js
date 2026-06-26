@@ -919,7 +919,7 @@
           <div class="p-card-title">${t('game.your_rank')}</div>
           <div class="p-game-rank-row">
             <div class="p-game-rank-badge">${esc(rankTitle)}</div>
-            <div class="p-game-lumens">${lumens} ${t('game.lumens')}</div>
+            <div class="p-game-lumens">${lumens} ${t('game.lumens_unit')}</div>
           </div>
           ${nextTitle ? `<div class="p-game-next-label">${t('game.next_rank')}: ${esc(nextTitle)}</div>` : ''}
           <div class="p-bar-track p-game-bar">
@@ -1070,6 +1070,12 @@
         renderCompetence(d.competence, d.mapKnowledge);
         renderReflections(d.reflections);
         renderGoals(d.goals);
+
+        var gameAllowed = d.role === 'student' || d.role === 'admin' || d.role === 'super_admin';
+        var s8section = document.getElementById('s8');
+        var s8nav     = document.querySelector('.pnav-link.s8');
+        if (s8section) s8section.style.display = gameAllowed ? '' : 'none';
+        if (s8nav)     s8nav.style.display     = gameAllowed ? '' : 'none';
       })
       .catch(err => {
         console.error('Profile load failed:', err);
