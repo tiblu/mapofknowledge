@@ -1053,7 +1053,8 @@
     });
   };
 
-  // Boot
+  // Boot — render immediately, then re-render once the correct-locale strings arrive
   window.loadProfile();
+  window._onStringsLoad = window.loadProfile;
 
 })();

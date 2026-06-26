@@ -41,6 +41,7 @@
 
   window.reloadStrings = function () {
     var locale = window._uiLocale
+               || (function () { try { return localStorage.getItem('kq_ui_locale'); } catch (e) { return null; } }())
                || document.documentElement.getAttribute('lang')
                || 'et';
     fetch('/api/strings?locale=' + encodeURIComponent(locale))
@@ -48,6 +49,11 @@
       .then(function (d) {
         _strings = d;
         _applyDomSweep();
+        if (typeof window._onStringsLoad === 'function') {
+          var fn = window._onStringsLoad;
+          window._onStringsLoad = null;
+          fn();
+        }
       })
       .catch(function () {});
   };

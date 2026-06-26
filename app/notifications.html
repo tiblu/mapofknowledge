@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="css/palette.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/notifications.css">
-<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
 <script src="js/strings.js"></script>
 </head>
 <body>
