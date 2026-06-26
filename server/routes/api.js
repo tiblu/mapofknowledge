@@ -1219,13 +1219,16 @@ router.post('/test/evaluate', async (req, res) => {
   const passportId = req.user?.passport_id;
 
   try {
+    const locale = await getUserLocale(req.user?.id);
     const [nodes] = await db.execute(
-      'SELECT id AS db_id, label, level FROM nodes WHERE external_id = ?', [nodeId]
+      `SELECT n.id AS db_id, n.label, COALESCE(tr.label, n.label) AS display_label, n.level
+       FROM nodes n
+       LEFT JOIN node_translations tr ON tr.node_external_id = n.external_id AND tr.locale = ?
+       WHERE n.external_id = ?`, [locale, nodeId]
     );
     if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
-    const { db_id, label } = nodes[0];
+    const { db_id, label, display_label } = nodes[0];
     const breadcrumb = await getNodeBreadcrumb(db_id);
-    const locale = await getUserLocale(req.user?.id);
 
     testlog('route_evaluate_input', { userId: req.user?.id, nodeId, nodeLabel: label, questionNum, question, options, correctIndex, userAnswer, history }); // TESTLOG
 
@@ -1271,10 +1274,9 @@ router.post('/test/evaluate', async (req, res) => {
                VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'assessment', 0)`,
               [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
             );
-            const _locale1 = await getUserLocale(req.user?.id).catch(() => 'en');
             notify(req.user?.id, 'test_result',
-              _locale1 === 'et' ? `Testi tulemus: ${label}` : `Test result: ${label}`,
-              _locale1 === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+              locale === 'et' ? `Testi tulemus: ${display_label}` : `Test result: ${display_label}`,
+              locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
             // ── Gamification ─────────────────────────────────────────────────
             const score = evaluation.finalScore;
             const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
@@ -1310,7 +1312,7 @@ router.post('/test/evaluate', async (req, res) => {
         [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
       );
       notify(req.user?.id, 'test_result',
-        locale === 'et' ? `Testi tulemus: ${label}` : `Test result: ${label}`,
+        locale === 'et' ? `Testi tulemus: ${display_label}` : `Test result: ${display_label}`,
         locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
       // ── Gamification ───────────────────────────────────────────────────────
       const score      = evaluation.finalScore;
