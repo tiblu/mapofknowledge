@@ -1207,7 +1207,7 @@ router.post('/test/question', async (req, res) => {
 
 // ── 4-tier diagnostic: evaluate answer ───────────────────────────────────────
 router.post('/test/evaluate', async (req, res) => {
-  const { nodeId, questionNum, question, options, userAnswer, history = [], stream: wantStream = false } = req.body;
+  const { nodeId, questionNum, question, options, userAnswer, correctIndex, history = [], stream: wantStream = false } = req.body;
   const passportId = req.user?.passport_id;
 
   try {
@@ -1230,7 +1230,7 @@ router.post('/test/evaluate', async (req, res) => {
         res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n');
       };
       try {
-        await llm.streamTestEvaluate(label, breadcrumb, questionNum, question, options, userAnswer, history, locale, req.user?.id, write);
+        await llm.streamTestEvaluate(label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, write);
       } catch (err) {
         console.error('[stream/test/evaluate]', err.message);
         res.write('data: ' + JSON.stringify({ error: true }) + '\n\n');
@@ -1279,7 +1279,7 @@ router.post('/test/evaluate', async (req, res) => {
     }
 
     const evaluation = await llm.evaluateTestAnswer(
-      label, breadcrumb, questionNum, question, options, userAnswer, history, locale, req.user?.id
+      label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id
     );
 
     if (questionNum === 4 && evaluation.finalScore !== undefined && passportId) {

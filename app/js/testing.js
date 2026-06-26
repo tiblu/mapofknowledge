@@ -81,14 +81,15 @@
     return _apiStream('/api/test/question', { nodeId: _node.id, questionNum: questionNum, history: history });
   }
 
-  function apiEvaluate(questionNum, question, options, userAnswer, history) {
+  function apiEvaluate(questionNum, question, options, userAnswer, history, correctIndex) {
     return _apiStream('/api/test/evaluate', {
-      nodeId:      _node.id,
-      questionNum: questionNum,
-      question:    question,
-      options:     options || null,
-      userAnswer:  userAnswer,
-      history:     history,
+      nodeId:       _node.id,
+      questionNum:  questionNum,
+      question:     question,
+      options:      options || null,
+      userAnswer:   userAnswer,
+      history:      history,
+      correctIndex: typeof correctIndex === 'number' ? correctIndex : undefined,
     });
   }
 
@@ -252,12 +253,13 @@
         _autoRetryCount = 0;
         _removeLoadingBlock();
         if (q.type === 'mcq' && Array.isArray(q.options) && q.options.length === 4 && typeof q.correctIndex === 'number') {
+          var correctOptionText = q.options[q.correctIndex];
           var opts = q.options.slice();
           for (var i = opts.length - 1; i > 0; i--) {
             var j = Math.floor(Math.random() * (i + 1));
             var tmp = opts[i]; opts[i] = opts[j]; opts[j] = tmp;
           }
-          q = { question: q.question, type: q.type, options: opts };
+          q = { question: q.question, type: q.type, options: opts, correctIndex: opts.indexOf(correctOptionText) };
         }
         _currentQuestion = q;
         _appendQuestionBlock(q);
@@ -312,8 +314,32 @@
 
     var q = _currentQuestion || {};
     var capturedQ = q, capturedAns = ans;
+
+    // Q1-Q3 MCQ: evaluate locally — no API call needed, correctIndex is ground truth
+    if (capturedQ.type === 'mcq' && typeof capturedQ.correctIndex === 'number' && _questionNum < 4) {
+      var letter = capturedAns.trim().toUpperCase();
+      var selectedIdx = (letter.length === 1 && letter >= 'A' && letter <= 'D')
+        ? letter.charCodeAt(0) - 65
+        : (parseInt(capturedAns.trim(), 10) - 1);
+      var isCorrect = (selectedIdx === capturedQ.correctIndex);
+      var correctLetter = String.fromCharCode(65 + capturedQ.correctIndex);
+      var locale = window._uiLocale || 'en';
+      var feedbackText = isCorrect
+        ? (locale === 'et' ? 'Õige.' : 'Correct.')
+        : (locale === 'et'
+            ? 'Vale. Õige vastus oli ' + correctLetter + ': ' + capturedQ.options[capturedQ.correctIndex]
+            : 'Incorrect. The correct answer was ' + correctLetter + ': ' + capturedQ.options[capturedQ.correctIndex]);
+      _removeLoadingBlock();
+      _history.push({ question: capturedQ.question || '', answer: capturedAns, correct: isCorrect });
+      _appendBlock({ type: 'feedback', content: (isCorrect ? '✓ ' : '✗ ') + feedbackText,
+        subClass: isCorrect ? 'feedback-correct' : 'feedback-incorrect' });
+      setTimeout(_advanceQuestion, 1000);
+      return;
+    }
+
     function doEvaluate() {
-      apiEvaluate(_questionNum, capturedQ.question || '', capturedQ.options || null, capturedAns, _history)
+      apiEvaluate(_questionNum, capturedQ.question || '', capturedQ.options || null, capturedAns, _history,
+        capturedQ.type === 'mcq' ? capturedQ.correctIndex : undefined)
         .then(function (result) {
           _autoRetryCount = 0;
           _removeLoadingBlock();
