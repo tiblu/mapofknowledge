@@ -14,9 +14,14 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const CONTINENTS = {
-  "1": "#378ADD",  // Mathematics
-  "2": "#9F8FE8",  // Me (Mina)
-  "3": "#7ABF3C",  // World (Maailm)
+  "1":    "#378ADD",  // Mathematics
+  "2":    "#9F8FE8",  // Me (Mina)
+  "3":    "#7ABF3C",  // World (Maailm)
+  "3000": "#20A89A",  // Loodusõpetus
+  "4000": "#4C9E2C",  // Bioloogia
+  "5000": "#D4873C",  // Geograafia
+  "6000": "#E05430",  // Füüsika
+  "7000": "#B040A8",  // Keemia
 };
 
 const FADE = 0.25;
