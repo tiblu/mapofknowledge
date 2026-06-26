@@ -922,7 +922,7 @@ function init(data) {
     if (!labelSet) return false;
     let cur = nodeId;
     while (cur !== undefined) {
-      if (allNodes[cur] && labelSet.has(allNodes[cur].external_id)) return true;
+      if (labelSet.has(cur)) return true;
       cur = parentOf[cur];
     }
     return hasDescendantInLabelSet(nodeId, labelSet);
@@ -932,7 +932,7 @@ function init(data) {
     const kids = childrenOf[nodeId];
     if (!kids) return false;
     for (const kid of kids) {
-      if (allNodes[kid] && labelSet.has(allNodes[kid].external_id)) return true;
+      if (labelSet.has(kid)) return true;
       if (hasDescendantInLabelSet(kid, labelSet)) return true;
     }
     return false;
