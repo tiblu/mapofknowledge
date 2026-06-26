@@ -108,7 +108,7 @@ async function _askLLM(inputTerm, candidates) {
       max_tokens: 60,
       messages: [{
         role: 'user',
-        content: `KnobitMap nodes: ${list}\n\nWhich node best represents: "${inputTerm}"?\nReply with the exact node label only, or "no match".`,
+        content: `KnoBitz nodes: ${list}\n\nWhich node best represents: "${inputTerm}"?\nReply with the exact node label only, or "no match".`,
       }],
     });
     const answer = msg.content[0].text.trim().replace(/^"|"$/g, '');

@@ -138,7 +138,7 @@ function profileBlock(profile) {
 const TUTOR_SYSTEM = [
   {
     type: 'text',
-    text: `You are an expert adaptive tutor inside the KnobitMap learning platform.
+    text: `You are an expert adaptive tutor inside the KnoBitz learning platform.
 Your tone is clear, direct, and intellectually engaging.
 Keep every response focused and concise. Never pad, never repeat.
 Respond only with the content requested — no preamble, no headings.`,
@@ -170,7 +170,7 @@ async function generateKnobits(nodeLabel, domain, breadcrumb) {
     max_tokens: 600,
     system: [{
       type: 'text',
-      text: `You are a curriculum designer for the KnobitMap platform.
+      text: `You are a curriculum designer for the KnoBitz platform.
 Each knobit is one atomic idea a learner must master before the next.
 Respond only with valid JSON — no markdown fences, no commentary.`,
       cache_control: { type: 'ephemeral' },
@@ -431,7 +431,7 @@ async function answerQuestion(nodeLabel, knobitTitle, phase, question, context, 
     max_tokens: 300,
     system: [{
       type: 'text',
-      text: `You are a focused learning assistant inside the KnobitMap platform.
+      text: `You are a focused learning assistant inside the KnoBitz platform.
 You help the learner with exactly one concept:
   Knobit: "${knobitTitle}"
   Topic: "${nodeLabel}"
@@ -611,7 +611,7 @@ function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, 
     max_tokens: 300,
     system: [{
       type: 'text',
-      text: `You are a focused learning assistant inside the KnobitMap platform.\nYou help the learner with exactly one concept:\n  Knobit: "${knobitTitle}"\n  Topic: "${nodeLabel}"\n\nRules:\n1. Only answer questions relevant to this knobit or topic. If the question is clearly off-topic, reply warmly: "This chat is here to help you with '${knobitTitle}'. Happy to answer any questions about that!"\n2. Be concise: 2–4 sentences. Never repeat what is already in the context.\n3. No preamble — go straight to the helpful content.${practiceRule}`,
+      text: `You are a focused learning assistant inside the KnoBitz platform.\nYou help the learner with exactly one concept:\n  Knobit: "${knobitTitle}"\n  Topic: "${nodeLabel}"\n\nRules:\n1. Only answer questions relevant to this knobit or topic. If the question is clearly off-topic, reply warmly: "This chat is here to help you with '${knobitTitle}'. Happy to answer any questions about that!"\n2. Be concise: 2–4 sentences. Never repeat what is already in the context.\n3. No preamble — go straight to the helpful content.${practiceRule}`,
       cache_control: { type: 'ephemeral' },
     }],
     messages: [{ role: 'user', content: `Phase: ${phase}\nRecent content: "${context}"\nQuestion: "${question}"${profileBlock(profile)}${langText(locale)}` }],

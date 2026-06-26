@@ -494,7 +494,7 @@
         </div>`;
     }
 
-    // ── KnobitMap Credentials (platform, read-only) ──
+    // ── KnoBitz Credentials (platform, read-only) ──
     var platform = creds.filter(function(c) { return c.type === 'platform'; });
     var platformCard = document.getElementById('platform-credentials-card');
     if (platformCard) {

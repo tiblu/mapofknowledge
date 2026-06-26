@@ -14,15 +14,9 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const CONTINENTS = {
-  "0":   "#378ADD",  // Mathematics
-  "184": "#9F8FE8",  // Philosophy
-  "196": "#EF9F27",  // Social Sciences
-  "206": "#E2614A",  // Medicine
-  "247": "#2BBFA0",  // Humanities
-  "253": "#D4537E",  // Arts
-  "264": "#7ABF3C",  // Applied Sciences
-  "274": "#5BC8D8",  // Natural Sciences
-  "500": "#C4A55A",  // Skills & Crafts
+  "1": "#378ADD",  // Mathematics
+  "2": "#9F8FE8",  // Me (Mina)
+  "3": "#7ABF3C",  // World (Maailm)
 };
 
 const FADE = 0.25;
@@ -911,6 +905,16 @@ function init(data) {
     while (cur !== undefined) {
       if (allNodes[cur] && labelSet.has(allNodes[cur].label)) return true;
       cur = parentOf[cur];
+    }
+    return hasDescendantInLabelSet(nodeId, labelSet);
+  }
+
+  function hasDescendantInLabelSet(nodeId, labelSet) {
+    const kids = childrenOf[nodeId];
+    if (!kids) return false;
+    for (const kid of kids) {
+      if (allNodes[kid] && labelSet.has(allNodes[kid].label)) return true;
+      if (hasDescendantInLabelSet(kid, labelSet)) return true;
     }
     return false;
   }
