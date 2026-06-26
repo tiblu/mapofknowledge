@@ -1329,7 +1329,9 @@ function init(data) {
   }());
 
   // ── "Start here" recommendations panel ────────────────────────────────────
+  // Hidden for now — see docs/operations.md § "Alusta siit" panel
   (function () {
+    return;
     var panel = document.getElementById('reco-panel');
     var chips = document.getElementById('reco-chips');
     if (!panel || !chips) return;
