@@ -82,36 +82,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ── Get node labels for a subset (used by filter panel) ──────────────────────
+// ── Get node external_ids for a subset (used by filter panel) ────────────────
 router.get('/:id/nodes', async (req, res) => {
   try {
-    let locale = 'en';
-    if (req.user?.id) {
-      const [ls] = await db.execute(
-        "SELECT value FROM user_settings WHERE user_id = ? AND key_name = 'ui_locale'",
-        [req.user.id]
-      );
-      if (ls.length && ls[0].value) locale = ls[0].value;
-    }
+    const [rows] = await db.execute(
+      `SELECT n.external_id FROM knowledge_subset_nodes ksn
+       JOIN nodes n ON ksn.node_id = n.id
+       WHERE ksn.subset_id = ?`,
+      [req.params.id]
+    );
 
-    const [rows] = locale === 'en'
-      ? await db.execute(
-          `SELECT n.label FROM knowledge_subset_nodes ksn
-           JOIN nodes n ON ksn.node_id = n.id
-           WHERE ksn.subset_id = ?`,
-          [req.params.id]
-        )
-      : await db.execute(
-          `SELECT COALESCE(tr.label, n.label) AS label
-           FROM knowledge_subset_nodes ksn
-           JOIN nodes n ON ksn.node_id = n.id
-           LEFT JOIN node_translations tr
-             ON tr.node_external_id = n.external_id AND tr.locale = ?
-           WHERE ksn.subset_id = ?`,
-          [locale, req.params.id]
-        );
-
-    res.json(rows.map(r => r.label));
+    res.json(rows.map(r => r.external_id));
   } catch (err) {
     res.status(500).json({ error: 'Failed to load subset nodes' });
   }
