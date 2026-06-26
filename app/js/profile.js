@@ -936,7 +936,7 @@
     }
 
     if (achCard) {
-      var all = achievements || [];
+      var all = Array.isArray(achievements) ? achievements : [];
       var unlocked = all.filter(function(a) { return a.unlocked; });
       var locked   = all.filter(function(a) { return !a.unlocked; });
       var achHtml  = '';
