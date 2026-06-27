@@ -547,7 +547,7 @@ async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history,
 
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 400,
+    max_tokens: 800,
     system: [{
       type: 'text',
       text: `You are a knowledge diagnostic examiner. You generate exactly one question per tier of a 4-tier framework.
@@ -687,7 +687,7 @@ function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale,
   }).join('\n\n');
   return _streamText({
     model: SONNET,
-    max_tokens: 400,
+    max_tokens: 800,
     system: [{
       type: 'text',
       text: `You are a knowledge diagnostic examiner. You generate exactly one question per tier of a 4-tier framework.\nReturn ONLY valid JSON with these fields:\n- "question": the question text (string)\n- "type": "open" or "mcq"\n- "options": array of 4 strings if type is "mcq", omit if "open"\n- "correctIndex": integer 0–3 indicating which option is correct, if type is "mcq"; omit if "open"\nFor MCQ: all four options must be similar in length and specificity. Distractors must be precise and plausible — not vague, not obviously wrong. A test-taker who doesn't know the topic must not be able to identify the correct answer by its style, length, or level of detail.\nDo not add any explanation outside the JSON.`,
