@@ -670,6 +670,7 @@ router.get('/profile', async (req, res) => {
 
     // L4/L5 knowledge nodes with full breadcrumb (locale-aware labels)
     const locale = await getUserLocale(req.user?.id);
+    testlog('profile_locale_debug', { userId: req.user?.id, passportId, locale }); // TESTLOG
     const [mapKnowledgeRaw] = await db.execute(
       `SELECT COALESCE(tr_n.label,  n.label)  AS label,  n.level, u.percentage, u.source,
               COALESCE(tr_p1.label, p1.label) AS p1,
@@ -692,6 +693,7 @@ router.get('/profile', async (req, res) => {
        LIMIT 200`,
       [locale, locale, locale, locale, locale, passportId]
     );
+    testlog('profile_mapknowledge_sample', { count: mapKnowledgeRaw.length, first3: mapKnowledgeRaw.slice(0,3) }); // TESTLOG
     const mapKnowledge = mapKnowledgeRaw.map(r => ({
       label:      r.label,
       level:      r.level,
