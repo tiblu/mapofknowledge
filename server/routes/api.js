@@ -668,20 +668,29 @@ router.get('/profile', async (req, res) => {
       [passportId]
     );
 
-    // L4/L5 knowledge nodes with full breadcrumb
+    // L4/L5 knowledge nodes with full breadcrumb (locale-aware labels)
+    const locale = await getUserLocale(req.user?.id);
     const [mapKnowledgeRaw] = await db.execute(
-      `SELECT n.label, n.level, u.percentage, u.source,
-              p1.label AS p1, p2.label AS p2, p3.label AS p3, p4.label AS p4
+      `SELECT COALESCE(tr_n.label,  n.label)  AS label,  n.level, u.percentage, u.source,
+              COALESCE(tr_p1.label, p1.label) AS p1,
+              COALESCE(tr_p2.label, p2.label) AS p2,
+              COALESCE(tr_p3.label, p3.label) AS p3,
+              COALESCE(tr_p4.label, p4.label) AS p4
        FROM user_node_knowledge u
        JOIN nodes n ON n.external_id = u.node_external_id
+       LEFT JOIN node_translations tr_n  ON tr_n.node_external_id  = n.external_id  AND tr_n.locale  = ?
        LEFT JOIN nodes p1 ON p1.id = n.parent_id
+       LEFT JOIN node_translations tr_p1 ON tr_p1.node_external_id = p1.external_id AND tr_p1.locale = ?
        LEFT JOIN nodes p2 ON p2.id = p1.parent_id
+       LEFT JOIN node_translations tr_p2 ON tr_p2.node_external_id = p2.external_id AND tr_p2.locale = ?
        LEFT JOIN nodes p3 ON p3.id = p2.parent_id
+       LEFT JOIN node_translations tr_p3 ON tr_p3.node_external_id = p3.external_id AND tr_p3.locale = ?
        LEFT JOIN nodes p4 ON p4.id = p3.parent_id
+       LEFT JOIN node_translations tr_p4 ON tr_p4.node_external_id = p4.external_id AND tr_p4.locale = ?
        WHERE u.passport_id = ? AND n.level IN (4,5) AND u.percentage > 0
        ORDER BY u.percentage DESC, n.level DESC
        LIMIT 200`,
-      [passportId]
+      [locale, locale, locale, locale, locale, passportId]
     );
     const mapKnowledge = mapKnowledgeRaw.map(r => ({
       label:      r.label,
