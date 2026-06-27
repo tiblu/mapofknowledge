@@ -331,11 +331,14 @@
           _autoRetryCount = 0;
           _removeLoadingBlock();
 
-          _history.push({
+          var _hItem = {
             question: capturedQ.question || '',
             answer:   capturedAns,
             correct:  result.correct || false,
-          });
+          };
+          if (result.partial)                       _hItem.partial = true;
+          if (typeof result.score === 'number')     _hItem.score   = result.score;
+          _history.push(_hItem);
 
           var icon     = result.correct ? '✓' : (result.partial ? '~' : '✗');
           var subClass = result.correct ? 'feedback-correct' : (result.partial ? 'feedback-partial' : 'feedback-incorrect');

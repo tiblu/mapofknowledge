@@ -484,10 +484,14 @@ Key principle: demonstrating correct reasoning by example counts nearly as much 
 Full Q&A:
 ${historyText}
 
-The Verdict field for Q1–Q3 is ground truth — do not re-evaluate those answers. Only evaluate Q4 yourself.
+Only evaluate Q4 yourself — Q1–Q3 Verdicts are ground truth.
 ${q4Block}
 
-Score each question out of 25. Q1–Q3: Correct = 25 pts, Incorrect = 0 pts.
+Score each question out of 25.
+Q1–Q3: use the Verdict line as ground truth — do not re-evaluate.
+  • Verdict "Correct" → 25 pts.
+  • Verdict "Incorrect" → 0 pts.
+  • Verdict "Partial (score: N/25)" → use N pts exactly.
 finalScore = Q1 score + Q2 score + Q3 score + Q4 score (total 0–100).
 
 Return JSON:
@@ -572,8 +576,10 @@ async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, 
   const allQA = [...history, { question, answer: userAnswer }];
   const historyText = allQA.map((h, i) => {
     const isCurrentQ = i === allQA.length - 1;
-    const verdict = !isCurrentQ && h.correct !== undefined
-      ? `\nVerdict: ${h.correct ? 'Correct' : 'Incorrect'}`
+    const _vLabel = h.correct ? 'Correct' : (h.partial ? 'Partial' : 'Incorrect');
+    const _vScore = typeof h.score === 'number' ? ` (score: ${h.score}/25)` : '';
+    const verdict = (!isCurrentQ && h.correct !== undefined)
+      ? `\nVerdict: ${_vLabel}${_vScore}`
       : '';
     return `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}${verdict}`;
   }).join('\n\n');
@@ -594,7 +600,7 @@ async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, 
             const mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
             return mcq
               ? `Topic: "${nodeLabel}"\nQuestion: "${question}"\n\n${mcq}\n\nReturn JSON with:\n- "correct": boolean (use the Verdict above — do not re-evaluate)\n- "partial": false (MCQ is always fully correct or incorrect)\n- "feedback": 1-2 sentences — if correct, confirm and briefly explain why; if incorrect, explain what the right answer means${langJson(locale)}`
-              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\n${options ? `Options: ${options.map((o, i) => `${String.fromCharCode(65+i)}. ${o}`).join(' | ')}` : ''}\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true only if fully and precisely correct\n- "partial": boolean — true if the answer shows real understanding but is incomplete or imprecise\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`;
+              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true if the answer reflects a good grasp and understanding of the issue\n- "partial": boolean — true if partially correct or noticeably incomplete\n- "score": integer 0–25 (25 = full understanding; 15–24 = good grasp with minor gaps; 8–14 = partial; 1–7 = surface only; 0 = incorrect)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`;
           })(),
     }],
   });
@@ -699,8 +705,10 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
   const allQA = [...history, { question, answer: userAnswer }];
   const historyText = allQA.map(function (h, i) {
     const isCurrentQ = i === allQA.length - 1;
-    const verdict = !isCurrentQ && h.correct !== undefined
-      ? `\nVerdict: ${h.correct ? 'Correct' : 'Incorrect'}`
+    const _vLabel = h.correct ? 'Correct' : (h.partial ? 'Partial' : 'Incorrect');
+    const _vScore = typeof h.score === 'number' ? ` (score: ${h.score}/25)` : '';
+    const verdict = (!isCurrentQ && h.correct !== undefined)
+      ? `\nVerdict: ${_vLabel}${_vScore}`
       : '';
     return `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}${verdict}`;
   }).join('\n\n');
@@ -724,7 +732,7 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
             var mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
             return mcq
               ? `Topic: "${nodeLabel}"\nQuestion: "${question}"\n\n${mcq}\n\nReturn JSON with:\n- "correct": boolean (use the Verdict above — do not re-evaluate)\n- "partial": false (MCQ is always fully correct or incorrect)\n- "feedback": 1-2 sentences — if correct, confirm and briefly explain why; if incorrect, explain what the right answer means${langJson(locale)}`
-              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\n${options ? `Options: ${options.map(function (o, i) { return `${String.fromCharCode(65+i)}. ${o}`; }).join(' | ')}` : ''}\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true only if fully and precisely correct\n- "partial": boolean — true if the answer shows real understanding but is incomplete or imprecise\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`;
+              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true if the answer reflects a good grasp and understanding of the issue\n- "partial": boolean — true if partially correct or noticeably incomplete\n- "score": integer 0–25 (25 = full understanding; 15–24 = good grasp with minor gaps; 8–14 = partial; 1–7 = surface only; 0 = incorrect)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`;
           }()),
     }],
   }, userId, 'test_evaluate', onChunk);
