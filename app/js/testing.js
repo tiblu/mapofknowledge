@@ -78,7 +78,14 @@
   }
 
   function apiQuestion(questionNum, history) {
-    return _apiStream('/api/test/question', { nodeId: _node.id, questionNum: questionNum, history: history });
+    return fetch('/api/test/question', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ nodeId: _node.id, questionNum: questionNum, history: history }),
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
   }
 
   function apiEvaluate(questionNum, question, options, userAnswer, history, correctIndex) {

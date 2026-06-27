@@ -538,18 +538,15 @@ async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history,
     ? 'The previous answer was incorrect. Adjust difficulty slightly downward.'
     : '';
 
-  const historyText = history.map((h, i) => {
-    const ans = typeof h.answer === 'string' && h.answer.length > 120
-      ? h.answer.slice(0, 120) + '…'
-      : h.answer;
-    return `Q${i + 1}: ${h.question}\nAnswer: ${ans}\nCorrect: ${h.correct}`;
-  }).join('\n\n');
+  const historyText = history.map((h, i) =>
+    `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}\nCorrect: ${h.correct}`
+  ).join('\n\n');
 
   const _tqPrompt = `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}`; // TESTLOG
   testlog('llm_question_prompt', { userId, nodeLabel, questionNum, prompt: _tqPrompt }); // TESTLOG
 
   const msg = await client.messages.create({
-    model: HAIKU,
+    model: SONNET,
     max_tokens: 400,
     system: [{
       type: 'text',
@@ -686,13 +683,10 @@ function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale,
     ? 'The learner has done very well. Make this question genuinely expert-level.'
     : lastWasWrong ? 'The previous answer was incorrect. Adjust difficulty slightly downward.' : '';
   const historyText = history.map(function (h, i) {
-    var ans = typeof h.answer === 'string' && h.answer.length > 120
-      ? h.answer.slice(0, 120) + '…'
-      : h.answer;
-    return `Q${i + 1}: ${h.question}\nAnswer: ${ans}\nCorrect: ${h.correct}`;
+    return `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}\nCorrect: ${h.correct}`;
   }).join('\n\n');
   return _streamText({
-    model: HAIKU,
+    model: SONNET,
     max_tokens: 400,
     system: [{
       type: 'text',
