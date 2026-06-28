@@ -37,8 +37,8 @@
     {
       target:   '#sidebar',
       position: 'left',
-      title:    'Welcome — this is a learning platform',
-      text:     'Click any node on the map to open its sidebar. From here you can <strong>mark it as known</strong>, run a <strong>4-question knowledge test</strong>, or start a <strong>guided learning session</strong>.<br><br>No curriculum. No prerequisites. Complete freedom to learn whatever you want, in any order.',
+      title:    'Welcome to KnoBitz',
+      text:     'Click any node on the map to open its sidebar. From here you can <strong>mark it as known</strong>, run a <strong>4-question knowledge test</strong>, or start a <strong>guided learning session</strong>.<br><br>The map covers the full K12 curriculum — Grades 1 through 12, all subjects. Each topic connects to what you already know and what comes next.',
       before: function() {
         if (window.MapView && window.MapView.openDemoNode) window.MapView.openDemoNode();
       },
@@ -56,7 +56,7 @@
         + _row(_icoZoomOut, 'Zoom out')
         + _row(_icoTiltUp,  'Tilt', 'view the map in 3D')
         + _row(_icoTiltDn,  'Flatten', 'return to top-down view')
-        + '<br>Drag any node to rearrange. Over 10,000 concepts across all domains of human knowledge.',
+        + '<br>Drag any node to rearrange. Over 5,000 topics from the K12 national curriculum.',
       padding: 10,
     },
     {
@@ -64,8 +64,7 @@
       position: 'right',
       title:    'Map controls',
       text:     _row(_icoGlobe,  'Map view',  'reset to full overview')
-        + _row(_icoLayers, 'Layers',   'show or hide knowledge domains')
-        + _row(_icoFilter, 'Filters',  'focus on a specific curriculum or learning goal'),
+        + _row(_icoFilter, 'Filters',  'focus on a specific grade, subject, or learning goal'),
       padding: 14,
     },
     {
@@ -100,7 +99,7 @@
       target:   '.topbar-burger-wrap',
       position: 'bottom-left',
       title:    'Your Learner Passport',
-      text:     'Tap the menu icon above, then click <strong>Account</strong> to open your Learner Passport — a living record of everything you learn. It stores credentials, your knowledge map, reflections, and goals.<br><br>Exportable in internationally recognised formats and verifiable via blockchain.',
+      text:     'Tap the menu icon above, then click <strong>Account</strong> to open your Learner Passport — a living record of everything you learn. It tracks your progress, stores credentials, goals, and reflections across all subjects and grades.',
       padding:  10,
     },
   ];
