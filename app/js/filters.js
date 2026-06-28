@@ -27,11 +27,6 @@
     }
   };
 
-  // Apply any saved color overrides to static filters on load
-  Object.keys(FILTERS).forEach(function(fid) {
-    var ov = getColorOverride(fid) || getRingColorOverride(fid);
-    if (ov) { FILTERS[fid].color = ov; FILTERS[fid].ringColor = ov; }
-  });
 
   /* ─── DB-backed subsets ──────────────────────────────────────────────── */
   var COLOR_HEX = { terra: '#C4826A', sage: '#8BAD7E', amber: '#C4A55A', lavender: '#9B8FB5' };
@@ -40,19 +35,19 @@
   }
 
   function getRingColorOverride(filterId) {
-    try { return localStorage.getItem('kq_ring_color_' + filterId) || null; }
+    try { return localStorage.getItem(window.lsKey('kq_ring_color_' + filterId)) || null; }
     catch(e) { return null; }
   }
   function setRingColorOverride(filterId, color) {
-    try { localStorage.setItem('kq_ring_color_' + filterId, color); } catch(e) {}
+    try { localStorage.setItem(window.lsKey('kq_ring_color_' + filterId), color); } catch(e) {}
     _syncToServer('kq_ring_color_' + filterId, color);
   }
   function getColorOverride(filterId) {
-    try { return localStorage.getItem('kq_filter_color_' + filterId) || null; }
+    try { return localStorage.getItem(window.lsKey('kq_filter_color_' + filterId)) || null; }
     catch(e) { return null; }
   }
   function setColorOverride(filterId, color) {
-    try { localStorage.setItem('kq_filter_color_' + filterId, color); } catch(e) {}
+    try { localStorage.setItem(window.lsKey('kq_filter_color_' + filterId), color); } catch(e) {}
     _syncToServer('kq_filter_color_' + filterId, color);
   }
 
@@ -66,18 +61,21 @@
 
   function _primeFromServer(s) {
     ['kq_filter_hidden', 'kq_base_filter', 'screensaver_enabled'].forEach(function(k) {
-      if (s[k] !== undefined) { try { localStorage.setItem(k, s[k]); } catch(e) {} }
+      if (s[k] !== undefined) { try { localStorage.setItem(window.lsKey(k), s[k]); } catch(e) {} }
     });
     Object.keys(s).forEach(function(k) {
       if (k.startsWith('kq_is_overlay_') || k.startsWith('kq_ring_color_') || k.startsWith('kq_filter_color_')) {
-        try { localStorage.setItem(k, s[k]); } catch(e) {}
+        try { localStorage.setItem(window.lsKey(k), s[k]); } catch(e) {}
       }
     });
+    // Apply my-knowledge color from server (user-specific, replaces early-IIFE init)
+    var mkColor = s['kq_ring_color_my-knowledge'] || s['kq_filter_color_my-knowledge'];
+    if (mkColor) { FILTERS['my-knowledge'].color = mkColor; FILTERS['my-knowledge'].ringColor = mkColor; }
   }
 
   function loadDBSubsets() {
     var hidden;
-    try { hidden = JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); }
+    try { hidden = JSON.parse(localStorage.getItem(window.lsKey('kq_filter_hidden')) || '[]'); }
     catch(e) { hidden = []; }
 
     fetch('/api/subsets')
@@ -89,7 +87,7 @@
           var color        = resolveColor(s.icon_color);
           var colorOverride   = getColorOverride(filterId) || getRingColorOverride(filterId);
           var overlayOverride = null;
-          try { overlayOverride = localStorage.getItem('kq_is_overlay_' + filterId); } catch(e) {}
+          try { overlayOverride = localStorage.getItem(window.lsKey('kq_is_overlay_' + filterId)); } catch(e) {}
           FILTERS[filterId] = {
             label:           s.name,
             color:           colorOverride || color,
@@ -112,7 +110,7 @@
 
         // Restore saved filter, or default to Estonian Basic School 2023 (db-1)
         var saved;
-        try { saved = localStorage.getItem('kq_base_filter'); } catch(e) { saved = null; }
+        try { saved = localStorage.getItem(window.lsKey('kq_base_filter')); } catch(e) { saved = null; }
         if (saved === null) saved = 'db-1';   // first visit default
         if (saved && saved !== 'none' && FILTERS[saved]) {
           baseFilterId = saved;
@@ -125,7 +123,7 @@
 
   function applyVisibility() {
     var hidden;
-    try { hidden = JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); }
+    try { hidden = JSON.parse(localStorage.getItem(window.lsKey('kq_filter_hidden')) || '[]'); }
     catch(e) { hidden = []; }
     if (!hidden.length) return;
     document.querySelectorAll('.fp-item').forEach(function(item) {
@@ -135,12 +133,15 @@
     });
   }
 
-  // Prime localStorage from server settings, then initialise filters
-  fetch('/api/settings')
-    .then(function(r) { return r.json(); })
-    .then(function(s) { _primeFromServer(s); })
-    .catch(function() {})
-    .then(function() { loadDBSubsets(); applyVisibility(); });
+  // Wait for user ID, then prime localStorage from server settings and initialise
+  Promise.all([
+    window._userIdReady,
+    fetch('/api/settings').then(function(r) { return r.json(); }).catch(function() { return {}; }),
+  ]).then(function(results) {
+    _primeFromServer(results[1]);
+    loadDBSubsets();
+    applyVisibility();
+  });
 
   /* ─── State ──────────────────────────────────────────────────────────── */
   var baseFilterId     = null;       // one non-overlay active filter or null
@@ -239,7 +240,7 @@
 
   function saveBaseFilter(fid) {
     var val = fid || 'none';
-    try { localStorage.setItem('kq_base_filter', val); } catch(e) {}
+    try { localStorage.setItem(window.lsKey('kq_base_filter'), val); } catch(e) {}
     _syncToServer('kq_base_filter', val);
   }
 

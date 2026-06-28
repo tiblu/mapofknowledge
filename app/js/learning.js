@@ -166,7 +166,7 @@
     if (overlay) overlay.classList.add('active');
 
     // Show one-time fullscreen tip
-    if (!localStorage.getItem('lm_fs_tip_shown')) {
+    if (!localStorage.getItem(window.lsKey('lm_fs_tip_shown'))) {
       var tip = document.getElementById('lm-fs-tip');
       if (tip) tip.style.display = '';
     }
@@ -227,7 +227,7 @@
   };
 
   window._dismissFsTip = function () {
-    localStorage.setItem('lm_fs_tip_shown', '1');
+    localStorage.setItem(window.lsKey('lm_fs_tip_shown'), '1');
     var tip = document.getElementById('lm-fs-tip');
     if (tip) tip.style.display = 'none';
   };
@@ -243,7 +243,7 @@
   }
 
   function _ambientMuted() {
-    return localStorage.getItem('lm_ambient_muted') === '1';
+    return localStorage.getItem(window.lsKey('lm_ambient_muted')) === '1';
   }
 
   function _updateAmbientBtn() {
@@ -295,7 +295,7 @@
 
   window._toggleAmbient = function () {
     var muted = _ambientMuted();
-    localStorage.setItem('lm_ambient_muted', muted ? '0' : '1');
+    localStorage.setItem(window.lsKey('lm_ambient_muted'), muted ? '0' : '1');
     var audio = document.getElementById('lm-ambient');
     if (!audio) { _updateAmbientBtn(); return; }
     if (!muted) {

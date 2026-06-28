@@ -225,7 +225,7 @@
   }
 
   function _markDone(done) {
-    localStorage.setItem('kq_tour_done', done ? '1' : '0');
+    localStorage.setItem(window.lsKey('kq_tour_done'), done ? '1' : '0');
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -267,13 +267,13 @@
   // Called by app.js after settings are loaded
   window._tourCheckAutoStart = function (settings) {
     // Forced restart from settings page
-    if (localStorage.getItem('kq_force_tour') === '1') {
-      localStorage.removeItem('kq_force_tour');
+    if (localStorage.getItem(window.lsKey('kq_force_tour')) === '1') {
+      localStorage.removeItem(window.lsKey('kq_force_tour'));
       setTimeout(function () { window.Tour.start(); }, 1800);
       return;
     }
     // Already completed
-    if (localStorage.getItem('kq_tour_done') === '1') return;
+    if (localStorage.getItem(window.lsKey('kq_tour_done')) === '1') return;
     if (settings && settings.tour_completed === '1') return;
     // First visit — start after map settles
     setTimeout(function () { window.Tour.start(); }, 2200);

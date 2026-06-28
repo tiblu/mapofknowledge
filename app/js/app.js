@@ -97,6 +97,7 @@ let simPreset = SIM_PRESETS.moderate;
 Promise.all([
   fetch('/api/map').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }),
   fetch('/api/settings').then(r => r.json()).catch(() => ({})),
+  window._userIdReady,
 ]).then(([mapData, settings]) => {
   simPreset = SIM_PRESETS[settings.map_animation] || SIM_PRESETS.moderate;
   // Apply font scale
@@ -869,7 +870,7 @@ function init(data) {
   function resetIdleTimer() {
     if (screensaverActive) stopScreensaver();
     clearTimeout(screensaverTimer);
-    if (localStorage.getItem('screensaver_enabled') !== 'false') {
+    if (localStorage.getItem(window.lsKey('screensaver_enabled')) !== 'false') {
       screensaverTimer = setTimeout(startScreensaver, IDLE_TIMEOUT);
     }
   }
@@ -1294,7 +1295,7 @@ function init(data) {
   (function () {
     var container = document.getElementById('ach-toast-container');
     if (!container) return;
-    var seenKey = 'ach_last_seen_ts';
+    var seenKey = window.lsKey('ach_last_seen_ts');
     var lastSeen = Number(localStorage.getItem(seenKey) || 0);
     fetch('/api/notifications')
       .then(function (r) { return r.json(); })

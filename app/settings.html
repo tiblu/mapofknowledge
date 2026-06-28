@@ -137,7 +137,7 @@
         <div class="settings-row-desc" data-i18n="settings.tour_desc">Replay the introduction to KnoBitz.</div>
       </div>
       <button class="settings-save-btn settings-save-btn-inline" data-i18n="btn.restart_tour"
-        onclick="localStorage.setItem('kq_force_tour','1');window.location='index.html'">
+        onclick="localStorage.setItem(window.lsKey('kq_force_tour'),'1');window.location='index.html'">
         Restart tour
       </button>
     </div>
@@ -231,10 +231,10 @@
       body: JSON.stringify({ key: key, value: value }) }).catch(function() {});
   }
 
-  function sfGetHidden() { try { return JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); } catch(e) { return []; } }
+  function sfGetHidden() { try { return JSON.parse(localStorage.getItem(window.lsKey('kq_filter_hidden')) || '[]'); } catch(e) { return []; } }
   function sfSetHidden(a) {
     var v = JSON.stringify(a);
-    localStorage.setItem('kq_filter_hidden', v);
+    localStorage.setItem(window.lsKey('kq_filter_hidden'), v);
     _syncSetting('kq_filter_hidden', v);
   }
 
@@ -253,11 +253,11 @@
 
     // localStorage overrides (overlay + color) apply to both editable and read-only paths
     var storedOv = null;
-    try { storedOv = localStorage.getItem('kq_is_overlay_db-' + s.id); } catch(e) {}
+    try { storedOv = localStorage.getItem(window.lsKey('kq_is_overlay_db-' + s.id)); } catch(e) {}
     var effectiveOverlay = storedOv !== null ? !!parseInt(storedOv) : isOverlay;
 
     var colorOverride = null;
-    try { colorOverride = localStorage.getItem('kq_filter_color_db-' + s.id) || localStorage.getItem('kq_ring_color_db-' + s.id); } catch(e) {}
+    try { colorOverride = localStorage.getItem(window.lsKey('kq_filter_color_db-' + s.id)) || localStorage.getItem(window.lsKey('kq_ring_color_db-' + s.id)); } catch(e) {}
     var effectiveColor = colorOverride || ringColor;
 
     if (!editable) {
@@ -299,7 +299,7 @@
   function _dotColor(s) {
     var fid = 'db-' + s.id;
     var ov = null;
-    try { ov = localStorage.getItem('kq_filter_color_' + fid) || localStorage.getItem('kq_ring_color_' + fid); } catch(e) {}
+    try { ov = localStorage.getItem(window.lsKey('kq_filter_color_' + fid)) || localStorage.getItem(window.lsKey('kq_ring_color_' + fid)); } catch(e) {}
     return ov || resolveDot(s.icon_color);
   }
 
@@ -411,7 +411,7 @@
       var inPublicSection = !!wrap.closest('#sf-public-list');
       if (inPublicSection) {
         var ovVal = isOn ? '1' : '0';
-        try { localStorage.setItem('kq_is_overlay_db-' + sid, ovVal); } catch(e) {}
+        try { localStorage.setItem(window.lsKey('kq_is_overlay_db-' + sid), ovVal); } catch(e) {}
         _syncSetting('kq_is_overlay_db-' + sid, ovVal);
         if (window.parent && typeof window.parent.updateFilterSettings === 'function') {
           window.parent.updateFilterSettings(parseInt(sid), { is_overlay: isOn ? 1 : 0 });
@@ -559,17 +559,17 @@
 
   // Load saved state — prefer server value, fall back to localStorage (default: on)
   fetch('/api/settings').then(function(r) { return r.json(); }).then(function(s) {
-    var val = s.screensaver_enabled !== undefined ? s.screensaver_enabled : localStorage.getItem('screensaver_enabled');
-    if (val !== undefined && val !== null) try { localStorage.setItem('screensaver_enabled', val); } catch(e) {}
+    var val = s.screensaver_enabled !== undefined ? s.screensaver_enabled : localStorage.getItem(window.lsKey('screensaver_enabled'));
+    if (val !== undefined && val !== null) try { localStorage.setItem(window.lsKey('screensaver_enabled'), val); } catch(e) {}
     if (val === 'false') ssToggle.classList.remove('on'); else ssToggle.classList.add('on');
   }).catch(function() {
-    if (localStorage.getItem('screensaver_enabled') === 'false') ssToggle.classList.remove('on');
+    if (localStorage.getItem(window.lsKey('screensaver_enabled')) === 'false') ssToggle.classList.remove('on');
   });
 
   ssToggle.addEventListener('click', function () {
     const isOn = this.classList.toggle('on');
     const ssVal = isOn ? 'true' : 'false';
-    localStorage.setItem('screensaver_enabled', ssVal);
+    localStorage.setItem(window.lsKey('screensaver_enabled'), ssVal);
     _syncSetting('screensaver_enabled', ssVal);
   });
 
