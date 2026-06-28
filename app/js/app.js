@@ -670,6 +670,8 @@ function init(data) {
       const t = typeof l.target === "object" ? l.target.id : l.target;
       return (s === d.id || t === d.id) ? 0.9 : 0.03;
     });
+    if (label)    label.attr('display',    n => connected.has(n.id) ? null : 'none');
+    if (expander) expander.attr('display', n => connected.has(n.id) ? null : 'none');
     openSidebar(d);
   }
 
