@@ -98,7 +98,7 @@
             <th>Role</th>
             <th>Tier</th>
             <th title="Knobits completed">Knobits</th>
-            <th title="LLM API calls">LLM calls</th>
+            <th title="Token activity last 7 days">Activity</th>
             <th title="Estimated cost: $3/M input + $15/M output (Sonnet)">Cost ($)</th>
             <th>Joined</th>
             <th>Last login</th>
@@ -139,6 +139,25 @@
 
   function badge(cls, label) {
     return '<span class="badge badge-'+cls+'">'+label+'</span>';
+  }
+
+  function sparkline(data) {
+    var W = 84, H = 24, MAX = 100000;
+    var hasData = data.some(function(v) { return v > 0; });
+    if (!hasData) return '<span class="spark-empty">—</span>';
+    var n = data.length;
+    var pts = data.map(function(v, i) {
+      var x = Math.round(i * W / (n - 1));
+      var y = Math.round(H - Math.min(v, MAX) / MAX * (H - 2) - 1);
+      return x + ',' + y;
+    });
+    var fillPath = 'M' + pts.join('L') + 'L' + W + ',' + H + 'L0,' + H + 'Z';
+    var linePath = 'M' + pts.join('L');
+    return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H
+      + '" class="spark-svg">'
+      + '<path d="' + fillPath + '" class="spark-fill"/>'
+      + '<path d="' + linePath + '" class="spark-line"/>'
+      + '</svg>';
   }
 
   /* ── save an individual field ─────────────────────────────────────────────── */
@@ -200,7 +219,7 @@
         + '<td>'+roleSelect+'</td>'
         + '<td>'+tierSelect+'</td>'
         + '<td class="td-num">'+fmtNum(u.knobits_done)+'</td>'
-        + '<td class="td-num">'+fmtNum(u.token_calls)+'</td>'
+        + '<td class="td-spark">'+sparkline(u.activity7d || Array(7).fill(0))+'</td>'
         + '<td class="td-num">'+(u.estimated_cost ? '$'+Number(u.estimated_cost).toFixed(4) : '—')+'</td>'
         + '<td class="td-date">'+fmtDate(u.created_at)+'</td>'
         + '<td class="td-date">'+fmtDate(u.last_login)+'</td>'

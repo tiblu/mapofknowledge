@@ -25,9 +25,8 @@ router.get('/users', async (req, res) => {
         u.passport_id,
         lp.display_name,
         lp.birth_year,
-        COALESCE(kp.knobits_done, 0)  AS knobits_done,
-        COALESCE(tu.token_calls, 0)      AS token_calls,
-        COALESCE(tu.estimated_cost, 0)   AS estimated_cost
+        COALESCE(kp.knobits_done, 0)                                    AS knobits_done,
+        COALESCE(tu.estimated_cost, 0)                                  AS estimated_cost
       FROM users u
       LEFT JOIN learner_passports lp ON lp.id = u.passport_id
       LEFT JOIN (
@@ -38,13 +37,43 @@ router.get('/users', async (req, res) => {
       ) kp ON kp.passport_id = u.passport_id
       LEFT JOIN (
         SELECT user_id,
-               COUNT(*)                                               AS token_calls,
                SUM(input_tokens * 3.0 + output_tokens * 15.0) / 1e6 AS estimated_cost
         FROM token_usage
         GROUP BY user_id
       ) tu ON tu.user_id = u.id
       ORDER BY u.id
     `);
+
+    // 7-day token activity per user (for sparklines)
+    const [activityRows] = await db.execute(`
+      SELECT user_id,
+             DATE(created_at)                    AS day,
+             SUM(input_tokens + output_tokens)   AS tokens
+      FROM token_usage
+      WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+      GROUP BY user_id, DATE(created_at)
+    `);
+
+    const activityMap = {};
+    for (const r of activityRows) {
+      const uid = r.user_id;
+      const day = String(r.day).slice(0, 10);
+      if (!activityMap[uid]) activityMap[uid] = {};
+      activityMap[uid][day] = Number(r.tokens);
+    }
+
+    const today = new Date();
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (6 - i));
+      return d.toISOString().slice(0, 10);
+    });
+
+    for (const u of rows) {
+      const ua = activityMap[u.id] || {};
+      u.activity7d = days.map(d => ua[d] || 0);
+    }
+
     res.json(rows);
   } catch (err) {
     console.error('admin GET /users', err);

@@ -188,3 +188,10 @@
 
 /* save indicator on row */
 .admin-table tr.saving td { opacity: .6; }
+
+/* ── Sparkline ─────────────────────────────────────────────────────────────── */
+.td-spark { padding: 6px 12px; vertical-align: middle; }
+.spark-svg { display: block; overflow: visible; }
+.spark-fill { fill: var(--accent, #5bc8d8); opacity: .15; }
+.spark-line { fill: none; stroke: var(--accent, #5bc8d8); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.spark-empty { color: var(--text-muted, #8899aa); font-size: 11px; }
