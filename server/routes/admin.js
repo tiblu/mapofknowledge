@@ -141,7 +141,11 @@ router.delete('/users/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (id === 1) return res.status(403).json({ error: 'Cannot delete root super_admin' });
   try {
+    const [[user]] = await db.execute('SELECT passport_id FROM users WHERE id = ?', [id]);
     await db.execute('DELETE FROM users WHERE id = ?', [id]);
+    if (user && user.passport_id) {
+      await db.execute('DELETE FROM learner_passports WHERE id = ?', [user.passport_id]);
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('admin DELETE /users/:id', err);
