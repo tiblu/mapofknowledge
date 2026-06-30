@@ -47,8 +47,8 @@ router.get('/users', async (req, res) => {
     // 7-day token activity per user (for sparklines)
     const [activityRows] = await db.execute(`
       SELECT user_id,
-             DATE(created_at)                    AS day,
-             SUM(input_tokens + output_tokens)   AS tokens
+             DATE_FORMAT(DATE(created_at), '%Y-%m-%d') AS day,
+             SUM(input_tokens + output_tokens)          AS tokens
       FROM token_usage
       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
       GROUP BY user_id, DATE(created_at)
@@ -57,16 +57,22 @@ router.get('/users', async (req, res) => {
     const activityMap = {};
     for (const r of activityRows) {
       const uid = r.user_id;
-      const day = String(r.day).slice(0, 10);
       if (!activityMap[uid]) activityMap[uid] = {};
-      activityMap[uid][day] = Number(r.tokens);
+      activityMap[uid][r.day] = Number(r.tokens);
     }
 
+    // Build 7-day array in local time to match DATE() in MariaDB
     const today = new Date();
+    function localYMD(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(today);
       d.setDate(d.getDate() - (6 - i));
-      return d.toISOString().slice(0, 10);
+      return localYMD(d);
     });
 
     for (const u of rows) {
