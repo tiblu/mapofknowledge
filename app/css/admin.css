@@ -189,6 +189,38 @@
 /* save indicator on row */
 .admin-table tr.saving td { opacity: .6; }
 
+/* ── Sortable headers ──────────────────────────────────────────────────────── */
+.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.sortable:hover { color: var(--text, #dde3ef); }
+.sortable::after { content: ' ↕'; opacity: .3; font-size: 10px; }
+.sortable.sort-asc::after  { content: ' ↑'; opacity: 1; color: var(--accent, #5bc8d8); }
+.sortable.sort-desc::after { content: ' ↓'; opacity: 1; color: var(--accent, #5bc8d8); }
+
+/* ── Column filter selects ─────────────────────────────────────────────────── */
+.col-filter {
+  display: block;
+  margin-top: 5px;
+  width: 100%;
+  background: var(--bg, #111827);
+  border: 1px solid var(--border, #2a3040);
+  color: var(--text-muted, #8899aa);
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.col-filter:focus { outline: none; border-color: var(--accent, #5bc8d8); }
+
+/* ── Totals row ────────────────────────────────────────────────────────────── */
+#totals-row td {
+  border-top: 2px solid var(--border, #2a3040);
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--text, #dde3ef);
+}
+.td-total-label { color: var(--text-muted, #8899aa); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+
 /* ── Sparkline ─────────────────────────────────────────────────────────────── */
 .td-spark { padding: 6px 12px; vertical-align: middle; }
 .spark-svg { display: block; overflow: visible; }

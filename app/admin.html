@@ -92,20 +92,47 @@
       <table class="admin-table" id="users-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Email</th>
+            <th data-sort="id" class="sortable">ID</th>
+            <th data-sort="email" class="sortable">Email</th>
             <th>Name</th>
-            <th>Role</th>
-            <th>Tier</th>
-            <th title="Knobits completed">Knobits</th>
+            <th data-sort="role" class="sortable">Role
+              <select class="col-filter" id="filter-role" onclick="event.stopPropagation()">
+                <option value="">All</option>
+                <option value="learner">learner</option>
+                <option value="teacher">teacher</option>
+                <option value="parent">parent</option>
+                <option value="admin">admin</option>
+                <option value="super_admin">super_admin</option>
+              </select>
+            </th>
+            <th data-sort="subscription_status" class="sortable">Tier
+              <select class="col-filter" id="filter-tier" onclick="event.stopPropagation()">
+                <option value="">All</option>
+                <option value="free">free</option>
+                <option value="subscriber">subscriber</option>
+                <option value="cancelled">cancelled</option>
+              </select>
+            </th>
+            <th data-sort="knobits_done" class="sortable" title="Knobits completed">Knobits</th>
             <th title="Token activity last 7 days">Activity (7d)</th>
-            <th title="Estimated cost: $3/M input + $15/M output (Sonnet)">Cost ($)</th>
-            <th>Joined</th>
-            <th>Last login</th>
+            <th data-sort="estimated_cost" class="sortable" title="Estimated cost: $3/M input + $15/M output (Sonnet)">Cost ($)</th>
+            <th data-sort="created_at" class="sortable">Joined</th>
+            <th data-sort="last_login" class="sortable">Last login</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="users-tbody"></tbody>
+        <tfoot>
+          <tr id="totals-row">
+            <td></td>
+            <td class="td-total-label">Total</td>
+            <td></td><td></td><td></td>
+            <td class="td-num" id="total-knobits"></td>
+            <td></td>
+            <td class="td-num" id="total-cost"></td>
+            <td></td><td></td><td></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   </div>
@@ -178,18 +205,56 @@
       .catch(function () { row.classList.remove('saving'); });
   }
 
-  /* ── build rows ───────────────────────────────────────────────────────────── */
-  var _users = [];
+  /* ── sort / filter state ─────────────────────────────────────────────────── */
+  var _users    = [];
+  var _sortCol  = 'id';
+  var _sortDir  = 'asc';
+  var _filterRole = '';
+  var _filterTier = '';
 
+  function applyFiltersAndSort(users) {
+    var out = users.filter(function(u) {
+      if (_filterRole && u.role !== _filterRole) return false;
+      if (_filterTier && u.subscription_status !== _filterTier) return false;
+      return true;
+    });
+    out.sort(function(a, b) {
+      var av = a[_sortCol], bv = b[_sortCol];
+      if (av == null) av = '';
+      if (bv == null) bv = '';
+      var cmp = (typeof av === 'number' && typeof bv === 'number')
+        ? av - bv
+        : String(av).localeCompare(String(bv));
+      return _sortDir === 'asc' ? cmp : -cmp;
+    });
+    return out;
+  }
+
+  function updateSortUI() {
+    document.querySelectorAll('th[data-sort]').forEach(function(th) {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.dataset.sort === _sortCol) th.classList.add('sort-' + _sortDir);
+    });
+  }
+
+  function updateTotals(visible) {
+    var knobits = visible.reduce(function(s, u) { return s + (Number(u.knobits_done) || 0); }, 0);
+    var cost    = visible.reduce(function(s, u) { return s + (Number(u.estimated_cost) || 0); }, 0);
+    document.getElementById('total-knobits').textContent = fmtNum(knobits);
+    document.getElementById('total-cost').textContent    = cost ? '$' + cost.toFixed(4) : '—';
+  }
+
+  /* ── build rows ───────────────────────────────────────────────────────────── */
   function renderTable(users) {
-    _users = users;
+    if (users !== undefined) _users = users;
+    var visible = applyFiltersAndSort(_users);
     var tbody = document.getElementById('users-tbody');
     tbody.innerHTML = '';
 
     var roles = ['learner','teacher','parent','admin','super_admin'];
     var tiers = ['free','subscriber','cancelled'];
 
-    users.forEach(function (u) {
+    visible.forEach(function (u) {
       var tr = document.createElement('tr');
       tr.dataset.id = u.id;
 
@@ -240,7 +305,9 @@
     });
 
     document.getElementById('table-wrap').style.display = '';
-    document.getElementById('users-status').textContent = users.length + ' users';
+    document.getElementById('users-status').textContent = visible.length + ' of ' + _users.length + ' users';
+    updateTotals(visible);
+    updateSortUI();
   }
 
   function escHtml(s) {
@@ -313,6 +380,31 @@
   /* ── allow Enter on email input ───────────────────────────────────────────── */
   document.getElementById('add-email').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') window.addUser();
+  });
+
+  /* ── sort headers ─────────────────────────────────────────────────────────── */
+  document.querySelectorAll('th[data-sort]').forEach(function(th) {
+    th.addEventListener('click', function(e) {
+      if (e.target.tagName === 'SELECT' || e.target.closest('select')) return;
+      var col = th.dataset.sort;
+      if (_sortCol === col) {
+        _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        _sortCol = col;
+        _sortDir = 'asc';
+      }
+      renderTable();
+    });
+  });
+
+  /* ── column filters ───────────────────────────────────────────────────────── */
+  document.getElementById('filter-role').addEventListener('change', function() {
+    _filterRole = this.value;
+    renderTable();
+  });
+  document.getElementById('filter-tier').addEventListener('change', function() {
+    _filterTier = this.value;
+    renderTable();
   });
 
   loadUsers();
