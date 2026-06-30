@@ -34,15 +34,11 @@ passport.use(new GoogleStrategy(
           const plan      = pending.plan || 'free';
           const subStatus = plan === 'subscriber' ? 'subscriber' : 'free';
 
-          // Learners get a passport; teachers and parents do not (yet)
-          let passportId = null;
-          if (role === 'learner') {
-            const [pr] = await conn.execute(
-              'INSERT INTO learner_passports (public_id, birth_year) VALUES (?, ?)',
-              [randomUUID(), pending.birthYear || null]
-            );
-            passportId = pr.insertId;
-          }
+          const [pr] = await conn.execute(
+            'INSERT INTO learner_passports (public_id, birth_year) VALUES (?, ?)',
+            [randomUUID(), pending.birthYear || null]
+          );
+          const passportId = pr.insertId;
 
           const [ur] = await conn.execute(
             `INSERT INTO users (email, role, subscription_status, passport_id, last_login, created_at)
