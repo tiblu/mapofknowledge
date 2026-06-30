@@ -40,7 +40,7 @@ app.use(passport.session());
 app.use('/auth', authRouter);
 
 // Protected API
-app.use('/api/admin', adminRouter);
+app.use('/api/admin', requireAuth, adminRouter);
 app.use('/api', requireAuth, apiRouter);
 app.use('/api/subsets', requireAuth, subsetsRouter);
 
