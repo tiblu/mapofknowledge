@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — KnoBitz</title>
+<link rel="stylesheet" href="css/palette.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/font-scale.css">
+<link rel="stylesheet" href="css/admin.css">
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);}).catch(function(){});</script>
+<script src="js/strings.js"></script>
+</head>
+<body>
+
+<header id="top-bar">
+  <a class="topbar-logo" href="index.html">
+    <div class="topbar-logo-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="5.5" stroke="white" stroke-width="1.3"/>
+        <circle cx="8" cy="8" r="1.4" fill="white"/>
+        <line x1="8" y1="2.5" x2="8" y2="4.6" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="8" y1="11.4" x2="8" y2="13.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="2.5" y1="8" x2="4.6" y2="8" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="11.4" y1="8" x2="13.5" y2="8" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="topbar-logo-text">KnoBitz</span>
+  </a>
+  <div class="topbar-banner" id="topbar-banner"></div>
+  <div class="topbar-right">
+    <div class="topbar-burger-wrap">
+      <button class="topbar-icon-btn topbar-burger" id="nav-menu" title="Menu">
+        <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+          <path d="M1 1h14M1 7h14M1 13h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <div id="nav-dropdown" class="nav-dropdown">
+        <button class="nav-dropdown-item" onclick="window.location='profile.html'">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <circle cx="7.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M2 13c0-2.8 2.5-4.5 5.5-4.5s5.5 1.7 5.5 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <span>Account</span>
+        </button>
+        <div class="nav-dropdown-divider"></div>
+        <button class="nav-dropdown-item active-page">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <rect x="2" y="2" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M5 7.5h5M7.5 5v5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <span>Admin</span>
+        </button>
+        <div class="nav-dropdown-divider"></div>
+        <button class="nav-dropdown-item" onclick="window.top.location='/auth/logout'">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <path d="M5.5 7.5h7M10 5l2.5 2.5L10 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8 3H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <span>Log out</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="admin-wrap">
+
+  <div class="admin-section">
+    <h2>Add user</h2>
+    <div class="admin-add-form">
+      <input type="email" id="add-email" placeholder="email@example.com" autocomplete="off">
+      <select id="add-role">
+        <option value="learner">Learner</option>
+        <option value="teacher">Teacher</option>
+        <option value="parent">Parent</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button class="admin-btn" id="add-btn" onclick="addUser()">Add user</button>
+      <span class="admin-msg" id="add-msg"></span>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <h2>Users</h2>
+    <div id="users-status" style="color:var(--text-muted,#8899aa);font-size:13px;margin-bottom:12px;">Loading…</div>
+    <div class="admin-table-wrap" id="table-wrap" style="display:none">
+      <table class="admin-table" id="users-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Tier</th>
+            <th title="Knobits completed">Knobits</th>
+            <th title="LLM API calls">Calls</th>
+            <th title="Total tokens used">Tokens</th>
+            <th>Joined</th>
+            <th>Last login</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/role-nav.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── burger menu ──────────────────────────────────────────────────────────── */
+  var burger = document.getElementById('nav-menu');
+  var drop   = document.getElementById('nav-dropdown');
+  if (burger && drop) {
+    burger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      drop.classList.toggle('open');
+    });
+    document.addEventListener('click', function () { drop.classList.remove('open'); });
+  }
+
+  /* ── helpers ──────────────────────────────────────────────────────────────── */
+  function fmtDate(s) {
+    if (!s) return '—';
+    var d = new Date(s);
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  }
+  function pad(n) { return n < 10 ? '0'+n : ''+n; }
+  function fmtNum(n) { return n ? Number(n).toLocaleString() : '0'; }
+
+  function badge(cls, label) {
+    return '<span class="badge badge-'+cls+'">'+label+'</span>';
+  }
+
+  /* ── save an individual field ─────────────────────────────────────────────── */
+  function saveField(id, field, value, row) {
+    var body = {};
+    body[field] = value;
+    row.classList.add('saving');
+    fetch('/api/admin/users/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        row.classList.remove('saving');
+        if (j.error) { alert('Error: ' + j.error); loadUsers(); }
+      })
+      .catch(function () { row.classList.remove('saving'); });
+  }
+
+  /* ── build rows ───────────────────────────────────────────────────────────── */
+  var _users = [];
+
+  function renderTable(users) {
+    _users = users;
+    var tbody = document.getElementById('users-tbody');
+    tbody.innerHTML = '';
+
+    var roles = ['learner','teacher','parent','admin','super_admin'];
+    var tiers = ['free','subscriber','cancelled'];
+
+    users.forEach(function (u) {
+      var tr = document.createElement('tr');
+      tr.dataset.id = u.id;
+
+      var emailInput = '<input class="admin-cell-edit" value="'
+        + escHtml(u.email||'') + '" data-field="email"'
+        + (u.id === 1 ? ' disabled' : '')
+        + ' style="min-width:160px">';
+
+      var roleSelect = '<select class="admin-cell-edit admin-cell-edit-select" data-field="role"'
+        + (u.id === 1 ? ' disabled' : '') + '>'
+        + roles.map(function(r){ return '<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+r+'</option>'; }).join('')
+        + '</select>';
+
+      var tierSelect = '<select class="admin-cell-edit admin-cell-edit-select" data-field="subscription_status"'
+        + (u.id === 1 ? ' disabled' : '') + '>'
+        + tiers.map(function(t){ return '<option value="'+t+'"'+(u.subscription_status===t?' selected':'')+'>'+t+'</option>'; }).join('')
+        + '</select>';
+
+      var delBtn = u.id === 1
+        ? ''
+        : '<button class="admin-del-btn" title="Delete user" onclick="deleteUser('+u.id+',this)">✕</button>';
+
+      tr.innerHTML =
+        '<td class="td-num">'+u.id+'</td>'
+        + '<td>'+emailInput+'</td>'
+        + '<td style="color:var(--text-muted,#8899aa)">'+(u.display_name||'—')+'</td>'
+        + '<td>'+roleSelect+'</td>'
+        + '<td>'+tierSelect+'</td>'
+        + '<td class="td-num">'+fmtNum(u.knobits_done)+'</td>'
+        + '<td class="td-num">'+fmtNum(u.token_calls)+'</td>'
+        + '<td class="td-num">'+fmtNum(u.total_tokens)+'</td>'
+        + '<td class="td-date">'+fmtDate(u.created_at)+'</td>'
+        + '<td class="td-date">'+fmtDate(u.last_login)+'</td>'
+        + '<td>'+delBtn+'</td>';
+
+      tr.querySelectorAll('input.admin-cell-edit').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+          saveField(u.id, inp.dataset.field, inp.value, tr);
+        });
+      });
+      tr.querySelectorAll('select.admin-cell-edit').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          saveField(u.id, sel.dataset.field, sel.value, tr);
+        });
+      });
+
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('table-wrap').style.display = '';
+    document.getElementById('users-status').textContent = users.length + ' users';
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  /* ── load ─────────────────────────────────────────────────────────────────── */
+  function loadUsers() {
+    document.getElementById('users-status').textContent = 'Loading…';
+    fetch('/api/admin/users')
+      .then(function (r) {
+        if (r.status === 403) { document.getElementById('users-status').textContent = 'Access denied.'; throw new Error('403'); }
+        return r.json();
+      })
+      .then(renderTable)
+      .catch(function (e) {
+        if (e.message !== '403')
+          document.getElementById('users-status').textContent = 'Failed to load users.';
+      });
+  }
+
+  /* ── add user ─────────────────────────────────────────────────────────────── */
+  window.addUser = function () {
+    var email = document.getElementById('add-email').value.trim();
+    var role  = document.getElementById('add-role').value;
+    var msg   = document.getElementById('add-msg');
+    msg.className = 'admin-msg';
+    msg.textContent = '';
+    if (!email) { msg.className = 'admin-msg err'; msg.textContent = 'Email is required.'; return; }
+    document.getElementById('add-btn').disabled = true;
+    fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, role: role }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        document.getElementById('add-btn').disabled = false;
+        if (j.error) {
+          msg.className = 'admin-msg err';
+          msg.textContent = j.error;
+        } else {
+          msg.className = 'admin-msg ok';
+          msg.textContent = 'User #'+j.id+' created (passport #'+j.passport_id+')';
+          document.getElementById('add-email').value = '';
+          loadUsers();
+        }
+      })
+      .catch(function () {
+        document.getElementById('add-btn').disabled = false;
+        msg.className = 'admin-msg err';
+        msg.textContent = 'Request failed.';
+      });
+  };
+
+  /* ── delete user ──────────────────────────────────────────────────────────── */
+  window.deleteUser = function (id, btn) {
+    var row = btn.closest('tr');
+    var email = row.querySelector('input').value;
+    if (!confirm('Delete user #'+id+' ('+email+')?\n\nThis cannot be undone.')) return;
+    fetch('/api/admin/users/'+id, { method: 'DELETE' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.error) { alert('Error: '+j.error); return; }
+        loadUsers();
+      })
+      .catch(function () { alert('Request failed.'); });
+  };
+
+  /* ── allow Enter on email input ───────────────────────────────────────────── */
+  document.getElementById('add-email').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') window.addUser();
+  });
+
+  loadUsers();
+}());
+</script>
+</body>
+</html>

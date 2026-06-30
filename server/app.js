@@ -8,6 +8,7 @@ const path     = require('path');
 const authRouter     = require('./routes/auth');   // also registers passport strategy
 const apiRouter      = require('./routes/api');
 const subsetsRouter  = require('./routes/subsets');
+const adminRouter    = require('./routes/admin');
 const requireAuth = require('./middleware/requireAuth');
 
 const app = express();
@@ -39,6 +40,7 @@ app.use(passport.session());
 app.use('/auth', authRouter);
 
 // Protected API
+app.use('/api/admin', adminRouter);
 app.use('/api', requireAuth, apiRouter);
 app.use('/api/subsets', requireAuth, subsetsRouter);
 

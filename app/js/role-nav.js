@@ -12,7 +12,8 @@
       var p = window.location.pathname;
       var onTeacher = p.indexOf('teacher') !== -1;
       var onParent  = p.indexOf('parent')  !== -1;
-      var onMap     = !onTeacher && !onParent;
+      var onAdmin   = p.indexOf('admin')   !== -1;
+      var onMap     = !onTeacher && !onParent && !onAdmin;
 
       var isAdmin = role === 'admin' || role === 'super_admin';
       var tabs = [{ label: 'Kaart', href: 'index.html', active: onMap }];
@@ -21,6 +22,9 @@
       }
       if (role === 'parent' || isAdmin) {
         tabs.push({ label: 'Minu lapsed', href: 'parent.html', active: onParent });
+      }
+      if (role === 'super_admin') {
+        tabs.push({ label: 'Admin', href: 'admin.html', active: onAdmin });
       }
 
       banner.innerHTML = '<div class="role-switcher">' +
