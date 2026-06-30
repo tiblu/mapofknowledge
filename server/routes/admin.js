@@ -26,8 +26,8 @@ router.get('/users', async (req, res) => {
         lp.display_name,
         lp.birth_year,
         COALESCE(kp.knobits_done, 0)  AS knobits_done,
-        COALESCE(tu.token_calls, 0)   AS token_calls,
-        COALESCE(tu.total_tokens, 0)  AS total_tokens
+        COALESCE(tu.token_calls, 0)      AS token_calls,
+        COALESCE(tu.estimated_cost, 0)   AS estimated_cost
       FROM users u
       LEFT JOIN learner_passports lp ON lp.id = u.passport_id
       LEFT JOIN (
@@ -38,8 +38,8 @@ router.get('/users', async (req, res) => {
       ) kp ON kp.passport_id = u.passport_id
       LEFT JOIN (
         SELECT user_id,
-               COUNT(*)                        AS token_calls,
-               SUM(input_tokens + output_tokens) AS total_tokens
+               COUNT(*)                                               AS token_calls,
+               SUM(input_tokens * 3.0 + output_tokens * 15.0) / 1e6 AS estimated_cost
         FROM token_usage
         GROUP BY user_id
       ) tu ON tu.user_id = u.id

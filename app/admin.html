@@ -98,8 +98,8 @@
             <th>Role</th>
             <th>Tier</th>
             <th title="Knobits completed">Knobits</th>
-            <th title="LLM API calls">Calls</th>
-            <th title="Total tokens used">Tokens</th>
+            <th title="LLM API calls">LLM calls</th>
+            <th title="Estimated cost: $3/M input + $15/M output (Sonnet)">Cost ($)</th>
             <th>Joined</th>
             <th>Last login</th>
             <th></th>
@@ -201,7 +201,7 @@
         + '<td>'+tierSelect+'</td>'
         + '<td class="td-num">'+fmtNum(u.knobits_done)+'</td>'
         + '<td class="td-num">'+fmtNum(u.token_calls)+'</td>'
-        + '<td class="td-num">'+fmtNum(u.total_tokens)+'</td>'
+        + '<td class="td-num">'+(u.estimated_cost ? '$'+Number(u.estimated_cost).toFixed(4) : '—')+'</td>'
         + '<td class="td-date">'+fmtDate(u.created_at)+'</td>'
         + '<td class="td-date">'+fmtDate(u.last_login)+'</td>'
         + '<td>'+delBtn+'</td>';
