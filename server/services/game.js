@@ -187,7 +187,14 @@ async function getMomentum(passportId) {
   return { multiplier: mult, streakDays: m.streak_days, label: momentumLabel(mult) };
 }
 
-async function _updateMomentum(passportId) {
+const STREAK_MILESTONES = [
+  { days: 7,  title: '7-päevane seeria! 🔥', body: 'Suurepärane! Sul on maksimaalne 2× lumenite boonus.' },
+  { days: 4,  title: '4-päevane seeria!',     body: 'Hea töö! Sinu lumenite boonus on nüüd 1.5×.' },
+  { days: 2,  title: '2-päevane seeria!',     body: 'Oled tagasi! Jätka nii ja boonus kasvab.' },
+];
+
+async function _updateMomentum(passportId, userId) {
+  const { notify } = require('./notifications');
   const [rows] = await db.execute(
     'SELECT last_activity_at, streak_days FROM user_momentum WHERE passport_id = ?',
     [passportId]
@@ -206,7 +213,8 @@ async function _updateMomentum(passportId) {
   const hoursSince = (Date.now() - new Date(m.last_activity_at).getTime()) / 3600000;
   const daysSince  = Math.floor(hoursSince / 24);
 
-  let streakDays = m.streak_days;
+  const prevStreak = m.streak_days;
+  let streakDays = prevStreak;
   if (hoursSince > 72) {
     streakDays = 1;
   } else if (daysSince >= 1) {
@@ -218,6 +226,12 @@ async function _updateMomentum(passportId) {
     'UPDATE user_momentum SET last_activity_at=NOW(), streak_days=?, multiplier=?, updated_at=NOW() WHERE passport_id=?',
     [streakDays, mult, passportId]
   );
+
+  if (userId && streakDays > prevStreak) {
+    const milestone = STREAK_MILESTONES.find(m => m.days === streakDays);
+    if (milestone) notify(userId, 'streak', milestone.title, milestone.body);
+  }
+
   return mult;
 }
 
@@ -225,7 +239,7 @@ async function _updateMomentum(passportId) {
 async function awardLumens(passportId, userId, baseAmount, reason, referenceId) {
   if (!passportId || baseAmount <= 0) return 0;
   try {
-    const multiplier = await _updateMomentum(passportId);
+    const multiplier = await _updateMomentum(passportId, userId);
     const amount = Math.round(baseAmount * multiplier);
     await db.execute(
       'INSERT INTO lumen_transactions (passport_id, amount, reason, reference_id, multiplier) VALUES (?, ?, ?, ?, ?)',
