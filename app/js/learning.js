@@ -114,6 +114,8 @@
   }
 
   function _updateLiveBlock(el, block, text) {
+    // LLM output occasionally leaks a literal "\n" (two chars) instead of a real newline
+    text = text.replace(/\\n/g, '\n');
     block.content = text;
     if (!el) return;
     el.innerHTML = _escHtml(text).replace(/\n/g, '<br>');
@@ -866,7 +868,8 @@
       var safe = (block.content || '')
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/p>/gi, '\n')
-        .replace(/<[^>]*>/g, '');
+        .replace(/<[^>]*>/g, '')
+        .replace(/\\n/g, '\n'); // LLM output occasionally leaks a literal "\n" (two chars) instead of a real newline
       el.innerHTML = _escHtml(safe).replace(/\n/g, '<br>');
     } else {
       el.textContent = block.content || '';

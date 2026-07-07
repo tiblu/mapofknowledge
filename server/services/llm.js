@@ -227,7 +227,7 @@ async function generateExplainByteText(nodeLabel, knobitTitle, byteIndex, previo
     prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".
 
 Write the OPENING explanation (byte 1). Introduce the core concept clearly and simply.
-2–4 sentences. Plain prose — no headings, no bullet points. Plain text only, no HTML tags. Use \\n for line breaks.${profileBlock(profile)}${langText(locale)}`;
+2–4 sentences in a single flowing paragraph — no headings, no bullet points, no line breaks. Plain text only, no HTML tags.${profileBlock(profile)}${langText(locale)}`;
   } else {
     prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".
 
@@ -237,7 +237,7 @@ ${previousContent}
 """
 
 Write the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase what was already explained.
-2–4 sentences. Plain prose — no headings, no bullet points. Plain text only, no HTML tags. Use \\n for line breaks.${profileBlock(profile)}${langText(locale)}`;
+2–4 sentences in a single flowing paragraph — no headings, no bullet points, no line breaks. Plain text only, no HTML tags.${profileBlock(profile)}${langText(locale)}`;
   }
 
   const msg = await client.messages.create({
@@ -638,9 +638,9 @@ async function _streamText(config, userId, callType, onChunk) {
 function streamExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, profile, userId, onChunk) {
   let prompt;
   if (byteIndex === 0 || !previousContent) {
-    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nWrite the OPENING explanation (byte 1). Introduce the core concept clearly and simply.\n2–4 sentences. Plain prose — no headings, no bullet points. Plain text only, no HTML tags. Use \\n for line breaks.${profileBlock(profile)}${langText(locale)}`;
+    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nWrite the OPENING explanation (byte 1). Introduce the core concept clearly and simply.\n2–4 sentences in a single flowing paragraph — no headings, no bullet points, no line breaks. Plain text only, no HTML tags.${profileBlock(profile)}${langText(locale)}`;
   } else {
-    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nPrevious explanation the learner understood:\n"""\n${previousContent}\n"""\n\nWrite the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase what was already explained.\n2–4 sentences. Plain prose — no headings, no bullet points. Plain text only, no HTML tags. Use \\n for line breaks.${profileBlock(profile)}${langText(locale)}`;
+    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nPrevious explanation the learner understood:\n"""\n${previousContent}\n"""\n\nWrite the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase what was already explained.\n2–4 sentences in a single flowing paragraph — no headings, no bullet points, no line breaks. Plain text only, no HTML tags.${profileBlock(profile)}${langText(locale)}`;
   }
   return _streamText({ model: SONNET, max_tokens: 300, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'explain_text', onChunk);
 }
