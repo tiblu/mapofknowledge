@@ -32,13 +32,17 @@
       + '<span><strong>'+label+'</strong>'+(desc?' — '+desc:'')+'</span></div>';
   }
 
-  /* ─── Step definitions (order: sidebar → zoom → controls → learning → passport) ── */
-  var STEPS = [
+  /* ─── Step definitions (order: sidebar → zoom → controls → learning → passport) ──
+     Built lazily (not at module-load time) so window.t() reflects loaded strings —
+     strings.js's fetch is async and may not have resolved yet at parse time. */
+  var STEPS = [];
+  function _buildSteps() {
+    return [
     {
       target:   '#sidebar',
       position: 'left',
-      title:    'Welcome to KnoBitz',
-      text:     'Click any node on the map to open its sidebar. From here you can <strong>mark it as known</strong>, run a <strong>4-question knowledge test</strong>, or start a <strong>guided learning session</strong>.<br><br>The map covers the full K12 curriculum — Grades 1 through 12, all subjects. Each topic connects to what you already know and what comes next.',
+      title:    t('tour.step1_title'),
+      text:     t('tour.step1_text'),
       before: function() {
         if (window.MapView && window.MapView.openDemoNode) window.MapView.openDemoNode();
       },
@@ -50,41 +54,41 @@
     {
       target:   '#ctrl-zoom',
       position: 'left',
-      title:    'Explore the map',
+      title:    t('tour.step2_title'),
       text:     'Navigate with the controls here:<br><br>'
-        + _row(_icoZoomIn,  'Zoom in')
-        + _row(_icoZoomOut, 'Zoom out')
-        + _row(_icoTiltUp,  'Tilt', 'view the map in 3D')
-        + _row(_icoTiltDn,  'Flatten', 'return to top-down view')
-        + '<br>Drag any node to rearrange. Over 5,000 topics from the K12 national curriculum.',
+        + _row(_icoZoomIn,  t('tour.row_zoom_in'))
+        + _row(_icoZoomOut, t('tour.row_zoom_out'))
+        + _row(_icoTiltUp,  t('tour.row_tilt'), t('tour.row_tilt_desc'))
+        + _row(_icoTiltDn,  t('tour.row_flatten'), t('tour.row_flatten_desc'))
+        + '<br>' + t('tour.step2_text_tail'),
       padding: 10,
     },
     {
       target:   '#ctrl-left-stack',
       position: 'right',
-      title:    'Map controls',
-      text:     _row(_icoGlobe,  'Map view',  'reset to full overview')
-        + _row(_icoFilter, 'Filters',  'focus on a specific grade, subject, or learning goal'),
+      title:    t('tour.step3_title'),
+      text:     _row(_icoGlobe,  t('tour.row_map_view'),  t('tour.row_map_view_desc'))
+        + _row(_icoFilter, t('tour.row_filters'),  t('tour.row_filters_desc')),
       padding: 14,
     },
     {
       target:   '#learning-mode',
       position: 'overlay-center',
-      title:    'Learning mode &amp; knobits',
-      text:     'Guided learning breaks each topic into <strong>knobits</strong> — small, focused units you master one at a time. Each knobit walks you through four phases:<br><br><em>Explain → Demonstrate → Practice → Meaning</em><br><br>You set the pace. You can ask anything at any time using the field at the bottom.',
+      title:    t('tour.step4_title'),
+      text:     t('tour.step4_text'),
       before: function () {
         var lm = document.getElementById('learning-mode');
         if (lm) lm.style.zIndex = '9500';
         if (window.Learn && window.Learn.open) {
           window.Learn.open(
-            { id: 'tour-demo', label: 'Quantum Mechanics', color: '#5BC8D8' },
-            'Natural Sciences › Physics',
+            { id: 'tour-demo', label: t('tour.demo_node_label'), color: '#5BC8D8' },
+            t('tour.demo_breadcrumb'),
             [
-              { id: -1, sequence: 1, title: 'What is a quantum state?' },
-              { id: -2, sequence: 2, title: 'Wave-particle duality' },
-              { id: -3, sequence: 3, title: 'The uncertainty principle' },
-              { id: -4, sequence: 4, title: 'Quantum superposition' },
-              { id: -5, sequence: 5, title: 'Measurement and collapse' },
+              { id: -1, sequence: 1, title: t('tour.demo_knobit_1') },
+              { id: -2, sequence: 2, title: t('tour.demo_knobit_2') },
+              { id: -3, sequence: 3, title: t('tour.demo_knobit_3') },
+              { id: -4, sequence: 4, title: t('tour.demo_knobit_4') },
+              { id: -5, sequence: 5, title: t('tour.demo_knobit_5') },
             ]
           );
         }
@@ -98,11 +102,12 @@
     {
       target:   '.topbar-burger-wrap',
       position: 'bottom-left',
-      title:    'Your Learner Passport',
-      text:     'Tap the menu icon above, then click <strong>Account</strong> to open your Learner Passport — a living record of everything you learn. It tracks your progress, stores credentials, goals, and reflections across all subjects and grades.',
+      title:    t('tour.step5_title'),
+      text:     t('tour.step5_text'),
       padding:  10,
     },
-  ];
+    ];
+  }
 
   /* ─── Flash message ────────────────────────────────────────── */
   function _flashMsg(text) {
@@ -122,7 +127,7 @@
     _overlay = document.createElement('div');
     _overlay.className = 'tour-overlay';
     _overlay.addEventListener('click', function() {
-      _flashMsg('The app is available after the tour. Use Next → to continue.');
+      _flashMsg(t('tour.overlay_hint'));
     });
 
     _spot = document.createElement('div');
@@ -191,17 +196,18 @@
       dots += '<div class="tour-dot' + (i === idx ? ' active' : '') + '"></div>';
     }
 
+    var stepOf = t('tour.step_of').replace('{n}', idx + 1).replace('{total}', n);
     _tip.innerHTML =
       '<div class="tour-dots">' + dots + '</div>' +
-      '<div class="tour-step-num">Step ' + (idx + 1) + ' of ' + n + '</div>' +
+      '<div class="tour-step-num">' + stepOf + '</div>' +
       '<div class="tour-title">' + s.title + '</div>' +
       '<div class="tour-text">'  + s.text  + '</div>' +
       '<div class="tour-actions">' +
-        '<button class="tour-skip" onclick="window.Tour.skip()">Skip tour</button>' +
+        '<button class="tour-skip" onclick="window.Tour.skip()">' + t('tour.skip') + '</button>' +
         '<div class="tour-btn-group">' +
-          (idx > 0 ? '<button class="tour-btn tour-btn-secondary" onclick="window.Tour.prev()">← Back</button>' : '') +
+          (idx > 0 ? '<button class="tour-btn tour-btn-secondary" onclick="window.Tour.prev()">' + t('tour.back') + '</button>' : '') +
           '<button class="tour-btn tour-btn-primary" onclick="window.Tour.next()">' +
-            (last ? 'Done ✓' : 'Next →') +
+            (last ? t('tour.done') : t('tour.next')) +
           '</button>' +
         '</div>' +
       '</div>';
@@ -235,11 +241,13 @@
   /* ─── Public API ───────────────────────────────────────────── */
   window.Tour = {
     start: function () {
+      STEPS = _buildSteps();
       if (!_overlay) _createDOM();
       _show(0);
     },
     restart: function () {
       _markDone(false);
+      STEPS = _buildSteps();
       if (!_overlay) _createDOM();
       _show(0);
     },

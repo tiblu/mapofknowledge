@@ -16,12 +16,12 @@
       var onMap     = !onTeacher && !onParent && !onAdmin;
 
       var isAdmin = role === 'admin' || role === 'super_admin';
-      var tabs = [{ label: 'Kaart', href: 'index.html', active: onMap }];
+      var tabs = [{ label: t('nav.map'), href: 'index.html', active: onMap }];
       if (role === 'teacher' || isAdmin) {
-        tabs.push({ label: 'Minu õpilased', href: 'teacher.html', active: onTeacher });
+        tabs.push({ label: t('teacher.my_students'), href: 'teacher.html', active: onTeacher });
       }
       if (role === 'parent' || isAdmin) {
-        tabs.push({ label: 'Minu lapsed', href: 'parent.html', active: onParent });
+        tabs.push({ label: t('parent.my_children'), href: 'parent.html', active: onParent });
       }
       banner.innerHTML = '<div class="role-switcher">' +
         tabs.map(function (t) {

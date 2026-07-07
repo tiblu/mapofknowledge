@@ -221,7 +221,7 @@
 
     const hasDates  = _evFilter.dateFrom || _evFilter.dateTo;
     const clearBtn  = hasDates
-      ? `<button onclick="window.clearEvDates()" title="Clear date filter" class="p-ev-clear-btn">✕</button>`
+      ? `<button onclick="window.clearEvDates()" title="${t('btn.clear_date_filter')}" class="p-ev-clear-btn">✕</button>`
       : '';
 
     const filterRow = `
@@ -834,14 +834,14 @@
         </div>
         <div class="p-kv-label">
           ${t('label.culture')}
-          <span class="p-tip" data-tip="We use this to personalise your learning content. It can indicate your nationality, geographic region, religion, or other cultural context — leave blank if you prefer not to share.">ⓘ</span>
+          <span class="p-tip" data-tip="${esc(t('tip.cultural_background'))}">ⓘ</span>
         </div>
         <div class="p-kv-value">
           <input class="p-edit-input" data-field="cultural_background" value="${esc(vals.cultural_background || '')}" placeholder="${esc(t('placeholder.optional'))}">
         </div>
         <div class="p-kv-label">
           ${t('label.id_number')}
-          <span class="p-tip" data-tip="Your national ID, social security, driver's licence or similar. Used to resolve identity disputes, if needed.">ⓘ</span>
+          <span class="p-tip" data-tip="${esc(t('tip.id_number'))}">ⓘ</span>
         </div>
         <div class="p-kv-value">
           <input class="p-edit-input" data-field="id_number" value="${esc(vals.id_number || '')}" placeholder="${esc(t('placeholder.optional'))}">

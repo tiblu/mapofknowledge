@@ -918,7 +918,7 @@
           } else if (v.type === 'video') {
             html = '<a class="lm-visual-video" href="' + _escHtml(v.url) + '" target="_blank" rel="noopener">' +
                    '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.5" stroke="currentColor" stroke-width="1.1"/><path d="M5.5 4.5l5 2.5-5 2.5V4.5z" fill="currentColor"/></svg>' +
-                   _escHtml(v.caption || 'Watch video') + '</a>';
+                   _escHtml(v.caption || t('label.watch_video')) + '</a>';
             if (html) {
               loaderEl.className = 'block block-visual';
               loaderEl.innerHTML = html;
