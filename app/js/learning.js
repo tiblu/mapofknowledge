@@ -42,6 +42,7 @@
   var _quitCallback   = null;
   var _resumeSession  = null;   // { knobitId, blocks: [...] } from server, or null
   var _practiceInputEl = null;  // current practice-answer textarea (each round creates a new one, same id)
+  var _activeLiveEl    = null;  // DOM element of the in-flight streaming block, cleared on success, removed on error
 
   // Tracks consecutive 'simpler' or 'complex' clicks; reset on 'ok'/'no' or new knobit
   var _rephraseRun = { type: null, count: 0 };
@@ -111,6 +112,7 @@
   function _appendLiveBlock(type) {
     var block = { type: type, content: '' };
     var el = _appendBlock(block);
+    _activeLiveEl = el;
     return { el: el, block: block };
   }
 
@@ -500,7 +502,7 @@
       if (!live) { _removeLoadingBlock(); live = _appendLiveBlock('byte'); }
       _updateLiveBlock(live.el, live.block, fullText);
     }).then(function () {
-      _starting = false; _retryFn = null;
+      _starting = false; _retryFn = null; _activeLiveEl = null;
       if (!live) { _removeLoadingBlock(); _appendBlock({ type: 'byte', content: fullText }); }
       _appendVisualLoader(fullText);
       _setButtonRow('explain-options');
@@ -615,7 +617,7 @@
         if (!live2) { _removeLoadingBlock(); live2 = _appendLiveBlock('byte'); }
         _updateLiveBlock(live2.el, live2.block, fullText2);
       }).then(function () {
-        _retryFn = null;
+        _retryFn = null; _activeLiveEl = null;
         if (!live2) { _removeLoadingBlock(); _appendBlock({ type: 'byte', content: fullText2 }); }
         if (capturedWantVisual) _appendVisualLoader(fullText2);
         _setButtonRow('explain-options');
@@ -748,7 +750,7 @@
       if (!live) { _removeLoadingBlock(); live = _appendLiveBlock('meaning'); }
       _updateLiveBlock(live.el, live.block, fullText);
     }).then(function () {
-      _retryFn = null;
+      _retryFn = null; _activeLiveEl = null;
       if (!live) { _removeLoadingBlock(); _appendBlock({ type: 'meaning', content: fullText }); }
       _setButtonRow('meaning-options');
     }).catch(_onApiError);
@@ -780,7 +782,7 @@
         if (!live2) { _removeLoadingBlock(); live2 = _appendLiveBlock('meaning'); }
         _updateLiveBlock(live2.el, live2.block, fullText2);
       }).then(function () {
-        _retryFn = null;
+        _retryFn = null; _activeLiveEl = null;
         if (!live2) { _removeLoadingBlock(); _appendBlock({ type: 'meaning', content: fullText2 }); }
         _setButtonRow('meaning-options');
       }).catch(_onApiError);
@@ -837,7 +839,7 @@
         if (!live2) { _removeLoadingBlock(); live2 = _appendLiveBlock('note'); }
         _updateLiveBlock(live2.el, live2.block, fullText2);
       }).then(function () {
-        _retryFn = null;
+        _retryFn = null; _activeLiveEl = null;
         if (!live2) { _removeLoadingBlock(); _appendBlock({ type: 'note', content: fullText2 }); }
         if (capturedPhase === 'explain') _setButtonRow('explain-options');
         if (capturedPhase === 'meaning') _setButtonRow('meaning-options');
@@ -1102,6 +1104,13 @@
 
   function _onApiError() {
     _removeLoadingBlock();
+    // A stream that broke mid-response leaves a half-written block behind — discard it
+    // so a retry doesn't leave the incomplete fragment sitting above the fresh one.
+    if (_activeLiveEl) {
+      if (_activeLiveEl.parentNode) _activeLiveEl.parentNode.removeChild(_activeLiveEl);
+      if (_streamBlocks.length && _streamBlocks[_streamBlocks.length - 1]) _streamBlocks.pop();
+      _activeLiveEl = null;
+    }
     if (_retryFn && _autoRetryCount < _MAX_AUTO_RETRY) {
       _autoRetryCount++;
       _showLoadingBlock();
