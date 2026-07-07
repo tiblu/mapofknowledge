@@ -362,9 +362,29 @@ router.post('/nodes/:id/learn', async (req, res) => {
       }
     }
 
-    // Translate titles for non-English locales
+    // Translate titles for non-English locales — cached in knobit_translations so the
+    // wording stays stable across visits instead of being (non-deterministically)
+    // re-translated by the LLM on every single request.
     if (locale !== 'en') {
-      knobits = await llm.translateKnobitTitles(knobits, locale);
+      const ids = knobits.map(k => k.id);
+      const [cachedRows] = await db.execute(
+        `SELECT knobit_id, title FROM knobit_translations WHERE locale = ? AND knobit_id IN (${ids.map(() => '?').join(',')})`,
+        [locale, ...ids]
+      );
+      const cache = new Map(cachedRows.map(r => [r.knobit_id, r.title]));
+      const missing = knobits.filter(k => !cache.has(k.id));
+      if (missing.length) {
+        const translated = await llm.translateKnobitTitles(missing, locale);
+        for (const k of translated) {
+          await db.execute(
+            `INSERT INTO knobit_translations (knobit_id, locale, title) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE title = VALUES(title)`,
+            [k.id, locale, k.title]
+          );
+          cache.set(k.id, k.title);
+        }
+      }
+      knobits = knobits.map(k => ({ ...k, title: cache.get(k.id) || k.title }));
     }
 
     // Attach progress: mark which knobits are already done
