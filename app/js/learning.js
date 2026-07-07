@@ -441,9 +441,9 @@
         _byteIdx = row.block_index;
       } else if (row.block_type === 'example') {
         var ex = JSON.parse(row.content || '{}');
-        var html = '<strong>Example ' + (row.block_index + 1) + '</strong><br>' +
+        var html = '<strong>' + _escHtml(t('label.example')) + ' ' + (row.block_index + 1) + '</strong><br>' +
                    _escHtml(ex.body || '') +
-                   (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">What I did: ' + _escHtml(ex.whatIDid) + '</em>' : '');
+                   (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">' + _escHtml(t('label.what_i_did')) + ' ' + _escHtml(ex.whatIDid) + '</em>' : '');
         _appendBlock({ type: 'example', rawHtml: html });
         _demoIdx = row.block_index;
       } else if (row.block_type === 'practice') {
@@ -636,9 +636,9 @@
         _retryFn = null;
         _removeLoadingBlock();
         var ex   = d.demonstrate || {};
-        var html = '<strong>Example ' + (_demoIdx + 1) + '</strong><br>' +
+        var html = '<strong>' + _escHtml(t('label.example')) + ' ' + (_demoIdx + 1) + '</strong><br>' +
                    _escHtml(ex.body || '') +
-                   (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">What I did: ' + _escHtml(ex.whatIDid) + '</em>' : '');
+                   (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">' + _escHtml(t('label.what_i_did')) + ' ' + _escHtml(ex.whatIDid) + '</em>' : '');
         _appendBlock({ type: 'example', rawHtml: html });
         var rowType = _demoIdx === 0 ? 'demo-1' : _demoIdx === 1 ? 'demo-2' : 'demo-3';
         _setButtonRow(rowType);

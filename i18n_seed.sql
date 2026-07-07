@@ -86,6 +86,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Labels
 ('label.knobits',           'en', 'knobits'),
 ('label.continue',          'en', 'Continue'),
+('label.example',           'en', 'Example'),
+('label.example',           'et', 'Näide'),
+('label.what_i_did',        'en', 'What I did:'),
+('label.what_i_did',        'et', 'Mida ma tegin:'),
 ('label.tested',            'en', 'Tested'),
 ('label.self_reported',     'en', 'Self-reported'),
 ('label.estimated',         'en', 'Estimated'),
