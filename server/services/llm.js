@@ -227,7 +227,7 @@ async function generateExplainByteText(nodeLabel, knobitTitle, byteIndex, previo
     prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".
 
 Write the OPENING explanation (byte 1). Introduce the core concept clearly and simply.
-2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only, no HTML tags.${profileBlock(profile)}${langText(locale)}`;
+2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   } else {
     prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".
 
@@ -237,7 +237,7 @@ ${previousContent}
 """
 
 Write the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase what was already explained.
-2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only, no HTML tags.${profileBlock(profile)}${langText(locale)}`;
+2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   }
 
   const msg = await client.messages.create({
@@ -334,7 +334,7 @@ ${originalByte}
 
 ${instructions}
 
-Write the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead.${profileBlock(profile)}${langText(locale)}`,
+Write the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead. Plain text only — no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`,
     }],
   });
   _logUsage(userId, 'rephrase', msg.usage, SONNET);
@@ -642,9 +642,9 @@ async function _streamText(config, userId, callType, onChunk) {
 function streamExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, profile, userId, onChunk) {
   let prompt;
   if (byteIndex === 0 || !previousContent) {
-    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nWrite the OPENING explanation (byte 1). Introduce the core concept clearly and simply.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only, no HTML tags.${profileBlock(profile)}${langText(locale)}`;
+    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nWrite the OPENING explanation (byte 1). Introduce the core concept clearly and simply.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   } else {
-    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nPrevious explanation the learner understood:\n"""\n${previousContent}\n"""\n\nWrite the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase what was already explained.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only, no HTML tags.${profileBlock(profile)}${langText(locale)}`;
+    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nPrevious explanation the learner understood:\n"""\n${previousContent}\n"""\n\nWrite the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase what was already explained.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   }
   return _streamText({ model: SONNET, max_tokens: 300, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'explain_text', onChunk);
 }
@@ -655,7 +655,7 @@ function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, prof
     simpler:  `The learner found this too simplistic.\nRewrite using more precise, formal, expert-level vocabulary and phrasing — elevate the WORDING only.\nSTRICT rules: keep the SAME number of sentences as the original, do not add sentences.\nDo NOT introduce additional concepts, categories, sub-types, or examples beyond what the original already covered.\nSame core idea, same scope, same length — just phrased the way a domain expert would say it.`,
     complex:  `The learner found this too complex.\nRewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.\nMaximum 3 sentences per paragraph. No jargon — replace every technical term with a plain everyday word.\nUse one concrete real-life example (something a child could picture).\nSame core concept — maximally accessible.`,
   }[mode] || 'Rewrite this explanation from a different angle.';
-  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead.${profileBlock(profile)}${langText(locale)}`;
+  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead. Plain text only — no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   return _streamText({ model: SONNET, max_tokens: 350, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'rephrase', onChunk);
 }
 

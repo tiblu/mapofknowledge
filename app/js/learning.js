@@ -1102,6 +1102,13 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  // The LLM is told not to use markdown, but occasionally slips in **bold** anyway —
+  // render it properly instead of showing literal asterisks. Safe to run post-escape
+  // since escaping never introduces new "**" sequences.
+  function _mdBold(escapedText) {
+    return escapedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+
   // Renders byte/note text, turning "- item" / "1. item" lines into a real <ul>/<ol>
   // (the LLM is allowed to use lists for genuine enumeration — see llm.js prompts).
   // Everything else stays flowing prose with <br> between lines, same as before.
@@ -1117,14 +1124,14 @@
       var numberMatch = line.match(/^\d+\.\s+(.*)/);
       if (bulletMatch) {
         if (listType !== 'ul') { closeList(); html += '<ul class="kn-byte-list">'; listType = 'ul'; }
-        html += '<li>' + _escHtml(bulletMatch[1]) + '</li>';
+        html += '<li>' + _mdBold(_escHtml(bulletMatch[1])) + '</li>';
       } else if (numberMatch) {
         if (listType !== 'ol') { closeList(); html += '<ol class="kn-byte-list">'; listType = 'ol'; }
-        html += '<li>' + _escHtml(numberMatch[1]) + '</li>';
+        html += '<li>' + _mdBold(_escHtml(numberMatch[1])) + '</li>';
       } else {
         closeList();
         if (line.trim() === '') return;
-        html += _escHtml(line) + '<br>';
+        html += _mdBold(_escHtml(line)) + '<br>';
       }
     });
     closeList();
