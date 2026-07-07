@@ -320,7 +320,7 @@ Same core concept — maximally accessible.`,
 
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 200,
+    max_tokens: 350,
     system: TUTOR_SYSTEM,
     messages: [{
       role: 'user',
@@ -652,7 +652,7 @@ function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, prof
     complex:  `The learner found this too complex.\nRewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.\nMaximum 3 sentences per paragraph. No jargon — replace every technical term with a plain everyday word.\nUse one concrete real-life example (something a child could picture).\nSame core concept — maximally accessible.`,
   }[mode] || 'Rewrite this explanation from a different angle.';
   const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement paragraph only — 2–4 sentences, no headings.${profileBlock(profile)}${langText(locale)}`;
-  return _streamText({ model: SONNET, max_tokens: 200, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'rephrase', onChunk);
+  return _streamText({ model: SONNET, max_tokens: 350, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'rephrase', onChunk);
 }
 
 function streamMeaning(nodeLabel, knobitTitle, locale, userId, onChunk) {
