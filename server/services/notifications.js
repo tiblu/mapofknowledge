@@ -22,6 +22,7 @@ const TYPE_COLOR = {
   admin:            'lavender',
   badge:            'amber',
   streak:           'amber',
+  achievement:      'amber',
 };
 
 async function notify(userId, type, title, body) {
