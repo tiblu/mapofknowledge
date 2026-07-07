@@ -1,4 +1,4 @@
-const { Document, Packer, Paragraph, TextRun, HeadingLevel } = require('docx');
+const { Document, Packer, Paragraph, TextRun, HeadingLevel, ExternalHyperlink } = require('docx');
 
 // Mirrors the client's phase.step_N + phase.* i18n pairs (app/js/learning.js /
 // i18n_seed.sql) so the downloaded document uses the same wording the learner saw.
@@ -14,6 +14,7 @@ const LABELS = {
   what_i_did:  { en: 'What I did:',  et: 'Mida ma tegin:' },
   problem:     { en: 'Problem',      et: 'Ülesanne' },
   your_answer: { en: 'Your answer:', et: 'Sinu vastus:' },
+  watch_video: { en: 'Watch video',  et: 'Vaata videot' },
 };
 
 function _tr(map, locale) {
@@ -79,6 +80,18 @@ async function buildKnobitDocx(rows, nodeLabel, knobitTitle, locale) {
 
     if (row.block_type === 'byte' || row.block_type === 'meaning') {
       children = children.concat(_textToParagraphs(row.content));
+    } else if (row.block_type === 'visual') {
+      var v = _safeParse(row.content);
+      if (v.url) {
+        var linkText = v.caption || (v.type === 'video' ? _tr(LABELS.watch_video, locale) : v.url);
+        var prefix = v.type === 'video' ? '🎬 ' : '🖼 ';
+        children.push(new Paragraph({
+          children: [
+            new TextRun(prefix),
+            new ExternalHyperlink({ children: [new TextRun({ text: linkText, style: 'Hyperlink' })], link: v.url }),
+          ],
+        }));
+      }
     } else if (row.block_type === 'example') {
       var ex = _safeParse(row.content);
       children.push(new Paragraph({

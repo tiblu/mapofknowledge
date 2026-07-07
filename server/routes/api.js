@@ -533,6 +533,9 @@ router.post('/learn/interact', async (req, res) => {
       } else if (action === 'visual') {
         const validUrls = Array.isArray(seenUrls) ? seenUrls.filter(u => typeof u === 'string').slice(0, 20) : [];
         result = await llm.generateExplainByteVisual(nodeLabel, title, original, locale, uid, validUrls);
+        if (result.visual) {
+          await _saveInteraction(passportId, knobitId, 'explain', 'visual', byteIndex, null, null, JSON.stringify(result.visual));
+        }
       } else {
         result = { text: await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid) };
         await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, 'ok', null, result.text);
