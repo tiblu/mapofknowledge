@@ -426,6 +426,17 @@
 .block-feedback .block-body { font-size: 13px; line-height: 1.65; color: var(--c2); }
 .block-note .block-body { font-size: 13px; }
 
+/* Lists inside byte/note blocks — used only for genuine enumeration, see llm.js prompts */
+.kn-byte-list {
+  margin: 4px 0 8px;
+  padding-left: 22px;
+  font-size: 14px;
+  color: var(--c2);
+  line-height: 1.6;
+}
+.kn-byte-list li { margin-bottom: 4px; }
+.kn-byte-list li:last-child { margin-bottom: 0; }
+
 .block-example-footer {
   font-size: 12px; color: var(--c6); line-height: 1.6;
   margin-top: 12px;

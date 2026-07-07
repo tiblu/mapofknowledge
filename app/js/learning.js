@@ -121,7 +121,7 @@
     text = text.replace(/\\n/g, '\n');
     block.content = text;
     if (!el) return;
-    el.innerHTML = _escHtml(text).replace(/\n/g, '<br>');
+    el.innerHTML = _renderTextWithLists(text);
     _scrollStream();
   }
 
@@ -877,7 +877,7 @@
         .replace(/<\/p>/gi, '\n')
         .replace(/<[^>]*>/g, '')
         .replace(/\\n/g, '\n'); // LLM output occasionally leaks a literal "\n" (two chars) instead of a real newline
-      el.innerHTML = _escHtml(safe).replace(/\n/g, '<br>');
+      el.innerHTML = _renderTextWithLists(safe);
     } else {
       el.textContent = block.content || '';
     }
@@ -1100,6 +1100,35 @@
   function _escHtml(str) {
     return String(str || '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Renders byte/note text, turning "- item" / "1. item" lines into a real <ul>/<ol>
+  // (the LLM is allowed to use lists for genuine enumeration — see llm.js prompts).
+  // Everything else stays flowing prose with <br> between lines, same as before.
+  function _renderTextWithLists(text) {
+    var lines = String(text || '').split('\n');
+    var html = '';
+    var listType = null; // 'ul' | 'ol' | null
+    function closeList() {
+      if (listType) { html += '</' + listType + '>'; listType = null; }
+    }
+    lines.forEach(function (line) {
+      var bulletMatch = line.match(/^-\s+(.*)/);
+      var numberMatch = line.match(/^\d+\.\s+(.*)/);
+      if (bulletMatch) {
+        if (listType !== 'ul') { closeList(); html += '<ul class="kn-byte-list">'; listType = 'ul'; }
+        html += '<li>' + _escHtml(bulletMatch[1]) + '</li>';
+      } else if (numberMatch) {
+        if (listType !== 'ol') { closeList(); html += '<ol class="kn-byte-list">'; listType = 'ol'; }
+        html += '<li>' + _escHtml(numberMatch[1]) + '</li>';
+      } else {
+        closeList();
+        if (line.trim() === '') return;
+        html += _escHtml(line) + '<br>';
+      }
+    });
+    closeList();
+    return html;
   }
 
   function _onApiError() {
