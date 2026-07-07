@@ -9,9 +9,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "cookie-session": "^2.1.0",
+    "docx": "^9.7.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "cookie-session": "^2.1.0",
     "mysql2": "^3.22.4",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
