@@ -1270,9 +1270,6 @@
       window.closeLearningMode();
     });
 
-    var reviewBtn = document.querySelector('.lm-complete-btn-ghost');
-    if (reviewBtn) reviewBtn.addEventListener('click', function () { showLmView('lm-path'); });
-
     var quitConfirm = document.getElementById('quit-modal-confirm');
     if (quitConfirm) quitConfirm.addEventListener('click', function () {
       var modal = document.getElementById('quit-knobit-modal');

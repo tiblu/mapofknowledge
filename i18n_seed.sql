@@ -23,7 +23,6 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.back_to_map',         'en', 'Back to the map'),
 ('btn.back_to_path',        'en', 'Back to path'),
 ('btn.back_to_path',        'et', 'Tagasi õpitee juurde'),
-('btn.review_unit',         'en', 'Review this unit'),
 ('btn.keep_learning',       'en', 'Keep learning'),
 ('btn.yes_quit',            'en', 'Yes, quit'),
 ('btn.keep_testing',        'en', 'Keep testing'),
