@@ -417,14 +417,14 @@ No markdown fences. Just the JSON object.${langJson(locale)}`,
 async function generateMeaning(nodeLabel, knobitTitle, locale, userId) {
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 180,
+    max_tokens: 250,
     system: TUTOR_SYSTEM,
     messages: [{
       role: 'user',
       content: `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"
 
 Write 2–3 sentences on why this matters in the real world.
-Be concrete: name a profession, product, decision, or daily situation where it directly applies.
+Pick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.
 No "In conclusion" — just the insight.${langText(locale)}`,
     }],
   });
@@ -660,8 +660,8 @@ function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, prof
 }
 
 function streamMeaning(nodeLabel, knobitTitle, locale, userId, onChunk) {
-  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nWrite 2–3 sentences on why this matters in the real world.\nBe concrete: name a profession, product, decision, or daily situation where it directly applies.\nNo "In conclusion" — just the insight.${langText(locale)}`;
-  return _streamText({ model: SONNET, max_tokens: 180, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'meaning', onChunk);
+  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nWrite 2–3 sentences on why this matters in the real world.\nPick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.\nNo "In conclusion" — just the insight.${langText(locale)}`;
+  return _streamText({ model: SONNET, max_tokens: 250, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'meaning', onChunk);
 }
 
 function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, locale, profile, userId, onChunk) {
