@@ -341,7 +341,10 @@ Write the replacement paragraph only — 2–4 sentences, no headings.${profileB
 }
 
 // ── Demonstrate phase ─────────────────────────────────────────────────────────
-async function generateDemonstrate(nodeLabel, knobitTitle, exampleIndex, locale, profile, userId) {
+async function generateDemonstrate(nodeLabel, knobitTitle, exampleIndex, locale, profile, userId, previousExample) {
+  const priorBlock = previousExample
+    ? `\n\nPrevious example already shown to the learner:\n"""\n${previousExample}\n"""\n\nWrite a DIFFERENT example — a distinct scenario or context, not a variation or rewording of the same one.`
+    : '';
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: 350,
@@ -349,7 +352,7 @@ async function generateDemonstrate(nodeLabel, knobitTitle, exampleIndex, locale,
     messages: [{
       role: 'user',
       content: `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"
-Worked example number: ${exampleIndex + 1}
+Worked example number: ${exampleIndex + 1}${priorBlock}
 
 Respond with valid JSON, two fields only:
 - "body": a step-by-step worked example (2–5 sentences)

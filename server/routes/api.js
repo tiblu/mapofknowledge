@@ -442,7 +442,7 @@ router.post('/learn/interact', async (req, res) => {
     knobitId, phase, action,
     byteIndex = 0, answer, priorChoices = [],
     original = '', question = '', expected = '', userAnswer = '',
-    context = '', seenUrls = [],
+    context = '', seenUrls = [], previousExample = '',
     stream: wantStream = false,
   } = req.body;
 
@@ -500,7 +500,7 @@ router.post('/learn/interact', async (req, res) => {
         await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, 'ok', null, result.text);
       }
     } else if (phase === 'demonstrate') {
-      result = { demonstrate: await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid) };
+      result = { demonstrate: await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid, previousExample) };
       await _saveInteraction(passportId, knobitId, 'demonstrate', 'example', byteIndex, null, null, JSON.stringify(result.demonstrate));
     } else if (phase === 'practice') {
       if (action === 'grade') {

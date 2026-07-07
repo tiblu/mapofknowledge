@@ -32,6 +32,7 @@
   var _autoRetryCount   = 0;
   var _MAX_AUTO_RETRY   = 3;
   var _pendingPractice = null;
+  var _lastDemoBody    = '';   // previous example's body, sent so the next example doesn't repeat it
 
   var _PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
   var MAX_EXPLAIN_BYTES = 6;
@@ -406,6 +407,7 @@
     _rephraseRun      = { type: null, count: 0 };
     _seenVisualUrls   = [];
     _practiceInputEl  = null;
+    _lastDemoBody     = '';
 
     _setPhase('explain');
     _setButtonRow('');
@@ -424,6 +426,7 @@
     _rephraseRun      = { type: null, count: 0 };
     _seenVisualUrls   = [];
     _practiceInputEl  = null;
+    _lastDemoBody     = '';
 
     var lastPhase = null;
     var lastBlockType = null;
@@ -446,6 +449,7 @@
                    (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">' + _escHtml(t('label.what_i_did')) + ' ' + _escHtml(ex.whatIDid) + '</em>' : '');
         _appendBlock({ type: 'example', rawHtml: html });
         _demoIdx = row.block_index;
+        _lastDemoBody = ex.body || '';
       } else if (row.block_type === 'practice') {
         var prob = JSON.parse(row.content || '{}');
         _pendingPractice = prob;
@@ -631,7 +635,7 @@
   function _fetchDemo() {
     _retryFn = _fetchDemo;
     _showLoadingBlock();
-    apiInteract({ phase: 'demonstrate', byteIndex: _demoIdx })
+    apiInteract({ phase: 'demonstrate', byteIndex: _demoIdx, previousExample: _lastDemoBody })
       .then(function (d) {
         _retryFn = null;
         _removeLoadingBlock();
@@ -640,6 +644,7 @@
                    _escHtml(ex.body || '') +
                    (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">' + _escHtml(t('label.what_i_did')) + ' ' + _escHtml(ex.whatIDid) + '</em>' : '');
         _appendBlock({ type: 'example', rawHtml: html });
+        _lastDemoBody = ex.body || '';
         var rowType = _demoIdx === 0 ? 'demo-1' : _demoIdx === 1 ? 'demo-2' : 'demo-3';
         _setButtonRow(rowType);
       }).catch(_onApiError);
