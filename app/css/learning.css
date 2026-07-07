@@ -131,6 +131,16 @@
 }
 .lm-knobit-item.locked:hover { background: transparent; }
 
+.lm-knobit-resume-badge {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--lm-accent);
+}
+
 /* index circle */
 .kn-index {
   width: 30px; height: 30px; border-radius: 50%;

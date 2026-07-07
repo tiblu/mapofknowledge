@@ -39,6 +39,8 @@
   var _knobitStarted  = false;
   var _streamButtonEl = null;
   var _quitCallback   = null;
+  var _resumeSession  = null;   // { knobitId, blocks: [...] } from server, or null
+  var _practiceInputEl = null;  // current practice-answer textarea (each round creates a new one, same id)
 
   // Tracks consecutive 'simpler' or 'complex' clicks; reset on 'ok'/'no' or new knobit
   var _rephraseRun = { type: null, count: 0 };
@@ -139,7 +141,7 @@
   /* ─── Entry / exit ────────────────────────────────────────────── */
   var _searchWrap = null;
 
-  window.openLearningMode = function (node, crumb, knobits) {
+  window.openLearningMode = function (node, crumb, knobits, resumeSession) {
     // Hide search box — meaningless in learning view
     _searchWrap = document.querySelector('.topbar-search-wrap');
     if (_searchWrap) _searchWrap.style.display = 'none';
@@ -149,6 +151,7 @@
     KNOBIT_TOTAL       = KNOBITS.length;
     KNOBIT_DONE_COUNT  = KNOBITS.filter(function(k) { return k.done; }).length;
     CURRENT_KNOBIT_IDX = KNOBIT_DONE_COUNT < KNOBIT_TOTAL ? KNOBIT_DONE_COUNT : 0;
+    _resumeSession     = resumeSession || null;
 
     // Accent colours from node — set on #learning-mode so CSS palette default wins before a node is chosen
     var hex   = (node && node.color) ? node.color : '#C4826A';
@@ -360,6 +363,12 @@
 
       if (current) {
         item.addEventListener('click', window.startKnobit);
+        if (_resumeSession && _resumeSession.knobitId === k.id && _resumeSession.blocks && _resumeSession.blocks.length) {
+          var resumeBadge = document.createElement('div');
+          resumeBadge.className = 'lm-knobit-resume-badge';
+          resumeBadge.textContent = t('label.continue');
+          item.appendChild(resumeBadge);
+        }
       }
       listEl.appendChild(item);
     });
@@ -373,6 +382,19 @@
     _streamButtonEl = null;
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
 
+    var stream = document.getElementById('kn-stream');
+    if (stream) stream.innerHTML = '';
+    var navLabel = document.getElementById('lm-knobit-nav-label');
+    if (navLabel) navLabel.textContent = k.title || '';
+
+    showLmView('lm-knobit');
+
+    if (_resumeSession && _resumeSession.knobitId === k.id && _resumeSession.blocks && _resumeSession.blocks.length) {
+      _resumeFromSession(_resumeSession);
+      _starting = false;
+      return;
+    }
+
     _streamBlocks   = [];
     _priorChoices   = [];
     _byteIdx        = 0;
@@ -381,19 +403,87 @@
     _pendingPractice  = null;
     _rephraseRun      = { type: null, count: 0 };
     _seenVisualUrls   = [];
-
-    var stream = document.getElementById('kn-stream');
-    if (stream) stream.innerHTML = '';
-    var navLabel = document.getElementById('lm-knobit-nav-label');
-    if (navLabel) navLabel.textContent = k.title || '';
+    _practiceInputEl  = null;
 
     _setPhase('explain');
-    showLmView('lm-knobit');
-
     _setButtonRow('');
     _appendPhaseDivider(t('phase.step_1'));
     _fetchInitialExplain();
   };
+
+  // Reconstruct the DOM from stored knobit_interactions rows — no LLM calls.
+  function _resumeFromSession(session) {
+    _streamBlocks   = [];
+    _priorChoices   = [];
+    _byteIdx        = 0;
+    _demoIdx        = 0;
+    _practiceIdx    = 0;
+    _pendingPractice  = null;
+    _rephraseRun      = { type: null, count: 0 };
+    _seenVisualUrls   = [];
+    _practiceInputEl  = null;
+
+    var lastPhase = null;
+    var lastBlockType = null;
+    var blocks = session.blocks;
+
+    blocks.forEach(function (row) {
+      if (row.phase !== lastPhase) {
+        _appendPhaseDivider(t('phase.step_' + (_PHASES.indexOf(row.phase) + 1)));
+        _setPhase(row.phase);
+        lastPhase = row.phase;
+      }
+
+      if (row.block_type === 'byte') {
+        _appendBlock({ type: 'byte', content: row.content });
+        _byteIdx = row.block_index;
+      } else if (row.block_type === 'example') {
+        var ex = JSON.parse(row.content || '{}');
+        var html = '<strong>Example ' + (row.block_index + 1) + '</strong><br>' +
+                   _escHtml(ex.body || '') +
+                   (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">What I did: ' + _escHtml(ex.whatIDid) + '</em>' : '');
+        _appendBlock({ type: 'example', rawHtml: html });
+        _demoIdx = row.block_index;
+      } else if (row.block_type === 'practice') {
+        var prob = JSON.parse(row.content || '{}');
+        _pendingPractice = prob;
+        _practiceIdx = row.block_index;
+        var wrapper = _appendBlock({ type: 'practice', content: 'Problem ' + (row.block_index + 1) + ': ' + (prob.question || '') });
+        if (wrapper) {
+          var inp         = document.createElement('textarea');
+          inp.id          = 'kn-practice-input';
+          inp.className   = 'kn-answer-input';
+          inp.placeholder = t('placeholder.your_answer');
+          inp.rows        = 2;
+          wrapper.appendChild(inp);
+          _practiceInputEl = inp;
+        }
+      } else if (row.block_type === 'feedback') {
+        var grade = JSON.parse(row.content || '{}');
+        _appendBlock({ type: 'feedback', content: (grade.correct ? '✓ ' : '✗ ') + (grade.feedback || '') });
+        if (_practiceInputEl) { _practiceInputEl.value = row.answer_text || ''; _practiceInputEl.disabled = true; }
+      } else if (row.block_type === 'meaning') {
+        _appendBlock({ type: 'meaning', content: row.content });
+      }
+
+      lastBlockType = row.block_type;
+    });
+
+    if (lastBlockType === 'byte') {
+      _setButtonRow('explain-options');
+    } else if (lastBlockType === 'example') {
+      _setButtonRow(_demoIdx === 0 ? 'demo-1' : _demoIdx === 1 ? 'demo-2' : 'demo-3');
+    } else if (lastBlockType === 'practice') {
+      _setButtonRow('practice-submit');
+    } else if (lastBlockType === 'feedback') {
+      _setButtonRow('practice-next');
+    } else if (lastBlockType === 'meaning') {
+      _setButtonRow('meaning-options');
+    }
+
+    _knobitStarted = true;
+    _resumeSession = null;
+  }
 
   function _fetchInitialExplain() {
     _retryFn = _fetchInitialExplain;
@@ -596,6 +686,7 @@
           inp.placeholder = t('placeholder.your_answer');
           inp.rows        = 2;
           wrapper.appendChild(inp);
+          _practiceInputEl = inp;
         }
         _retryFn = null;
         _setButtonRow('practice-submit');
@@ -603,7 +694,7 @@
   }
 
   window.practiceSubmit = function () {
-    var inp = document.getElementById('kn-practice-input');
+    var inp = _practiceInputEl;
     var ans = inp ? inp.value.trim() : '';
     if (!ans) return;
     if (inp) inp.disabled = true;
@@ -614,7 +705,7 @@
     var capturedAns = ans, capturedProb = prob;
     _retryFn = function () {
       _showLoadingBlock();
-      apiInteract({ phase: 'practice', action: 'grade', question: capturedProb.question || '', expected: capturedProb.expected || '', userAnswer: capturedAns })
+      apiInteract({ phase: 'practice', action: 'grade', byteIndex: _practiceIdx, question: capturedProb.question || '', expected: capturedProb.expected || '', userAnswer: capturedAns })
         .then(function (d) { _retryFn = null; _removeLoadingBlock(); var g = d.grade || {}; _appendBlock({ type: 'feedback', content: (g.correct ? '✓ ' : '✗ ') + (g.feedback || '') }); _setButtonRow('practice-next'); })
         .catch(_onApiError);
     };

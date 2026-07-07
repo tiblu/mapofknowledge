@@ -465,10 +465,10 @@ function init(data) {
 
         try {
           const r = await fetch(`/api/nodes/${d.id}/learn`, { method: 'POST' });
-          const { knobits } = await r.json();
+          const { knobits, resumeSession } = await r.json();
           restore();
           closeSidebar();
-          window.Learn.open(d, crumb, knobits);
+          window.Learn.open(d, crumb, knobits, resumeSession);
         } catch (err) {
           restore();
           closeSidebar();
@@ -1277,7 +1277,7 @@ function init(data) {
           }());
           fetch(`/api/nodes/${nodeId}/learn`, { method: 'POST' })
             .then(r => r.json())
-            .then(({ knobits }) => { window.Learn.open(node, crumb, knobits); })
+            .then(({ knobits, resumeSession }) => { window.Learn.open(node, crumb, knobits, resumeSession); })
             .catch(() => { window.Learn.open(node, crumb, null); });
         });
 

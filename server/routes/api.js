@@ -385,7 +385,19 @@ router.post('/nodes/:id/learn', async (req, res) => {
       knobits = knobits.map(k => ({ ...k, done: doneSet.has(k.id) }));
     }
 
-    res.json({ knobits });
+    // Attach a resumable mid-lesson session for the current (first unfinished) knobit, if any
+    let resumeSession = null;
+    const currentKnobit = knobits.find(k => !k.done);
+    if (passportId && currentKnobit) {
+      const [interactionRows] = await db.execute(
+        `SELECT phase, block_type, block_index, choice_made, answer_text, content
+         FROM knobit_interactions WHERE passport_id = ? AND knobit_id = ? ORDER BY id`,
+        [passportId, currentKnobit.id]
+      );
+      if (interactionRows.length) resumeSession = { knobitId: currentKnobit.id, blocks: interactionRows };
+    }
+
+    res.json({ knobits, resumeSession });
   } catch (err) {
     console.error('[api/nodes/learn]', err.message);
     res.status(500).json({ error: 'Failed to prepare learning session' });
@@ -393,16 +405,18 @@ router.post('/nodes/:id/learn', async (req, res) => {
 });
 
 // ── SSE helper: set headers and run an llm streaming call ───────────────────
-async function _runStream(streamFn, res) {
+async function _runStream(streamFn, res, onDone) {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
   // Keepalive: Apache buffers SSE; send every 3s so it sees traffic before timing out.
   const keepalive = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) {} }, 3000);
-  const write = (chunk) => res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n');
+  let full = '';
+  const write = (chunk) => { full += chunk; res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n'); };
   try {
     await streamFn(write);
+    if (onDone) await onDone(full);
   } catch (err) {
     console.error('[stream]', err.message);
     res.write('data: ' + JSON.stringify({ error: true }) + '\n\n');
@@ -410,6 +424,16 @@ async function _runStream(streamFn, res) {
   clearInterval(keepalive);
   res.write('data: [DONE]\n\n');
   res.end();
+}
+
+// ── Persist a knobit lesson block for mid-lesson resume ─────────────────────
+async function _saveInteraction(passportId, knobitId, phase, blockType, blockIndex, choiceMade, answerText, content) {
+  if (!passportId) return;
+  await db.execute(
+    `INSERT INTO knobit_interactions (passport_id, knobit_id, phase, block_type, block_index, choice_made, answer_text, content)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [passportId, knobitId, phase, blockType, blockIndex, choiceMade || null, answerText || null, content]
+  ).catch((err) => console.error('[knobit_interactions]', err.message));
 }
 
 // ── LLM learning interactions ────────────────────────────────────────────────
@@ -437,26 +461,29 @@ router.post('/learn/interact', async (req, res) => {
     ]);
 
     const uid = req.user?.id;
+    const passportId = req.user?.passport_id;
 
     // ── Streaming branch: text-only phases ──────────────────────────────────
     if (wantStream) {
-      let streamFn;
+      let streamFn, onDone;
       if (phase === 'explain' && action !== 'visual') {
         if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
           streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, profile, uid, cb);
         } else {
           streamFn = (cb) => llm.streamExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid, cb);
         }
+        onDone = (full) => _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, action || 'ok', null, full);
       } else if (phase === 'meaning') {
         if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
           streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, profile, uid, cb);
         } else {
           streamFn = (cb) => llm.streamMeaning(nodeLabel, title, locale, uid, cb);
         }
+        onDone = (full) => _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, action || 'ok', null, full);
       } else if (phase === 'ask') {
         streamFn = (cb) => llm.streamAnswerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid, cb);
       }
-      if (streamFn) return _runStream(streamFn, res);
+      if (streamFn) return _runStream(streamFn, res, onDone);
     }
 
     let result;
@@ -464,25 +491,32 @@ router.post('/learn/interact', async (req, res) => {
     if (phase === 'explain') {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
         result = { text: await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid) };
+        await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, action, null, result.text);
       } else if (action === 'visual') {
         const validUrls = Array.isArray(seenUrls) ? seenUrls.filter(u => typeof u === 'string').slice(0, 20) : [];
         result = await llm.generateExplainByteVisual(nodeLabel, title, original, locale, uid, validUrls);
       } else {
         result = { text: await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid) };
+        await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, 'ok', null, result.text);
       }
     } else if (phase === 'demonstrate') {
       result = { demonstrate: await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid) };
+      await _saveInteraction(passportId, knobitId, 'demonstrate', 'example', byteIndex, null, null, JSON.stringify(result.demonstrate));
     } else if (phase === 'practice') {
       if (action === 'grade') {
         result = { grade: await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid) };
+        await _saveInteraction(passportId, knobitId, 'practice', 'feedback', byteIndex, result.grade.correct ? 'correct' : 'incorrect', userAnswer, JSON.stringify(result.grade));
       } else {
         result = { practice: await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid) };
+        await _saveInteraction(passportId, knobitId, 'practice', 'practice', byteIndex, null, null, JSON.stringify(result.practice));
       }
     } else if (phase === 'meaning') {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
         result = { text: await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid) };
+        await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, action, null, result.text);
       } else {
         result = { text: await llm.generateMeaning(nodeLabel, title, locale, uid) };
+        await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, 'ok', null, result.text);
       }
     } else if (phase === 'ask') {
       result = { text: await llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid) };
@@ -510,6 +544,10 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
        ON DUPLICATE KEY UPDATE phase_reached = 'done', completed_at = NOW()`,
       [passportId, knobitId]
     );
+    await db.execute(
+      'DELETE FROM knobit_interactions WHERE passport_id = ? AND knobit_id = ?',
+      [passportId, knobitId]
+    ).catch(() => {});
 
     // Recompute node knowledge %
     const [krow] = await db.execute(
