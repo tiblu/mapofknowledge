@@ -417,7 +417,7 @@ No markdown fences. Just the JSON object.${langJson(locale)}`,
 async function generateMeaning(nodeLabel, knobitTitle, locale, userId) {
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 250,
+    max_tokens: 300,
     system: TUTOR_SYSTEM,
     messages: [{
       role: 'user',
@@ -425,6 +425,7 @@ async function generateMeaning(nodeLabel, knobitTitle, locale, userId) {
 
 Write 2–3 sentences on why this matters in the real world.
 Pick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.
+Keep each sentence short and single-clause — one idea per sentence. Do NOT chain clauses with "because"/"since"/"if...then"/semicolons/dashes into one long compound sentence.
 No "In conclusion" — just the insight.${langText(locale)}`,
     }],
   });
@@ -660,8 +661,8 @@ function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, prof
 }
 
 function streamMeaning(nodeLabel, knobitTitle, locale, userId, onChunk) {
-  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nWrite 2–3 sentences on why this matters in the real world.\nPick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.\nNo "In conclusion" — just the insight.${langText(locale)}`;
-  return _streamText({ model: SONNET, max_tokens: 250, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'meaning', onChunk);
+  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nWrite 2–3 sentences on why this matters in the real world.\nPick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.\nKeep each sentence short and single-clause — one idea per sentence. Do NOT chain clauses with "because"/"since"/"if...then"/semicolons/dashes into one long compound sentence.\nNo "In conclusion" — just the insight.${langText(locale)}`;
+  return _streamText({ model: SONNET, max_tokens: 300, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'meaning', onChunk);
 }
 
 function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, locale, profile, userId, onChunk) {
