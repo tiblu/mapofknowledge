@@ -761,7 +761,7 @@
       _lockButtons();
       _setButtonRow('');
       _rephraseRun = { type: null, count: 0 };
-      _completeKnobit();
+      _showDownloadOffer();
       return;
     }
     _lockButtons();
@@ -788,6 +788,127 @@
       }).catch(_onApiError);
     };
     _retryFn();
+  };
+
+  /* ─── Download offer (shown once, right after meaning is confirmed,
+         before the knobit is marked complete and its interaction data
+         is cleared server-side) ──────────────────────────────────── */
+  function _showDownloadOffer() {
+    var modal = document.getElementById('knobit-download-modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  var _docxLibPromise = null;
+  function _loadDocxLib() {
+    if (window.docx) return Promise.resolve(window.docx);
+    if (_docxLibPromise) return _docxLibPromise;
+    _docxLibPromise = new Promise(function (resolve, reject) {
+      var script = document.createElement('script');
+      script.src = 'https://unpkg.com/docx@9/dist/index.umd.cjs';
+      script.onload = function () { resolve(window.docx); };
+      script.onerror = function () { _docxLibPromise = null; reject(new Error('docx lib failed to load')); };
+      document.head.appendChild(script);
+    });
+    return _docxLibPromise;
+  }
+
+  // Reads the already-rendered #kn-stream DOM (not _streamBlocks) so the download
+  // exactly matches what the learner saw — including rendered lists and, for
+  // practice blocks, the learner's own typed answer (only ever held in the
+  // textarea's value, never mirrored into a JS variable long-term).
+  function _buildTranscriptSections() {
+    var streamEl = document.getElementById('kn-stream');
+    var sections = [];
+    var current  = null;
+    if (!streamEl) return sections;
+
+    Array.prototype.forEach.call(streamEl.children, function (child) {
+      if (child.classList.contains('phase-divider')) {
+        current = { phase: child.textContent.trim(), blocks: [] };
+        sections.push(current);
+        return;
+      }
+      if (child.classList.contains('kn-button-row')) return;
+      if (!current) { current = { phase: '', blocks: [] }; sections.push(current); }
+
+      var typeMatch = child.className.match(/block-(\S+)/);
+      var type = typeMatch ? typeMatch[1] : 'note';
+
+      var listItems = [];
+      child.querySelectorAll(':scope > ul > li, :scope > ol > li').forEach(function (li) {
+        listItems.push(li.textContent.trim());
+      });
+
+      var htmlNoLists = child.innerHTML.replace(/<ul[\s\S]*?<\/ul>|<ol[\s\S]*?<\/ol>/g, '');
+      var tmp = document.createElement('div');
+      tmp.innerHTML = htmlNoLists.replace(/<br\s*\/?>/gi, '\n');
+      var paraText = tmp.textContent.replace(/\n{2,}/g, '\n').trim();
+
+      var answer = null;
+      var textarea = child.querySelector('textarea');
+      if (textarea) answer = textarea.value;
+
+      sections[sections.length - 1].blocks.push({ type: type, paraText: paraText, listItems: listItems, answer: answer });
+    });
+    return sections;
+  }
+
+  function _generateKnobitDocx(docxLib, sections, nodeLabel, knobitTitle) {
+    var Document = docxLib.Document, Paragraph = docxLib.Paragraph,
+        TextRun = docxLib.TextRun, HeadingLevel = docxLib.HeadingLevel, Packer = docxLib.Packer;
+
+    var children = [
+      new Paragraph({ text: nodeLabel || '', heading: HeadingLevel.TITLE }),
+      new Paragraph({ text: knobitTitle || '', heading: HeadingLevel.HEADING_1 }),
+    ];
+
+    sections.forEach(function (sec) {
+      if (sec.phase) children.push(new Paragraph({ text: sec.phase, heading: HeadingLevel.HEADING_2 }));
+      sec.blocks.forEach(function (b) {
+        if (b.type === 'user') {
+          if (b.paraText) children.push(new Paragraph({ children: [new TextRun({ text: b.paraText, italics: true })] }));
+          return;
+        }
+        b.paraText.split('\n').forEach(function (line) {
+          line = line.trim();
+          if (line) children.push(new Paragraph({ text: line }));
+        });
+        b.listItems.forEach(function (item) {
+          children.push(new Paragraph({ text: item, bullet: { level: 0 } }));
+        });
+        if (b.answer !== null && b.answer !== '') {
+          children.push(new Paragraph({ children: [new TextRun({ text: t('label.your_answer'), bold: true }), new TextRun(' ' + b.answer)] }));
+        }
+      });
+    });
+
+    var doc = new Document({ sections: [{ children: children }] });
+    return Packer.toBlob(doc);
+  }
+
+  window._downloadKnobitTranscript = function () {
+    var btn = document.getElementById('knobit-download-btn');
+    if (btn) { btn.disabled = true; }
+    var k = KNOBITS[CURRENT_KNOBIT_IDX];
+    var sections = _buildTranscriptSections();
+    _loadDocxLib().then(function (docxLib) {
+      return _generateKnobitDocx(docxLib, sections, _node ? _node.label : '', k ? k.title : '');
+    }).then(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      // Strip only filesystem-unsafe characters — keep Estonian/other diacritics intact.
+      var safeName = ((k && k.title) || 'knobit').replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim().replace(/\s+/g, '_');
+      a.href = url;
+      a.download = safeName + '.docx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }).catch(function () {
+      // Non-critical — the learner can still continue without a download.
+    }).finally(function () {
+      if (btn) btn.disabled = false;
+    });
   };
 
   /* ─── Knobit completion ───────────────────────────────────────── */
@@ -1229,6 +1350,18 @@
       var modal = document.getElementById('quit-knobit-modal');
       if (modal) modal.style.display = 'none';
       _quitCallback = null;
+    });
+
+    var downloadBtn = document.getElementById('knobit-download-btn');
+    if (downloadBtn) downloadBtn.addEventListener('click', function () {
+      window._downloadKnobitTranscript();
+    });
+
+    var downloadContinue = document.getElementById('knobit-download-continue');
+    if (downloadContinue) downloadContinue.addEventListener('click', function () {
+      var modal = document.getElementById('knobit-download-modal');
+      if (modal) modal.style.display = 'none';
+      _completeKnobit();
     });
 
     window.addEventListener('beforeunload', function (e) {
