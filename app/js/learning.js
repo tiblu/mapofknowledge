@@ -456,7 +456,7 @@
         var prob = JSON.parse(row.content || '{}');
         _pendingPractice = prob;
         _practiceIdx = row.block_index;
-        var wrapper = _appendBlock({ type: 'practice', content: 'Problem ' + (row.block_index + 1) + ': ' + (prob.question || '') });
+        var wrapper = _appendBlock({ type: 'practice', content: t('label.problem') + ' ' + (row.block_index + 1) + ': ' + (prob.question || '') });
         if (wrapper) {
           var inp         = document.createElement('textarea');
           inp.id          = 'kn-practice-input';
@@ -687,7 +687,7 @@
         var prob = d.practice || {};
         _pendingPractice = prob;
 
-        var wrapper = _appendBlock({ type: 'practice', content: 'Problem ' + (_practiceIdx + 1) + ': ' + (prob.question || '') });
+        var wrapper = _appendBlock({ type: 'practice', content: t('label.problem') + ' ' + (_practiceIdx + 1) + ': ' + (prob.question || '') });
         if (wrapper) {
           var inp         = document.createElement('textarea');
           inp.id          = 'kn-practice-input';

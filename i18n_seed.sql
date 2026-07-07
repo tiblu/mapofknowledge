@@ -90,6 +90,8 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('label.continue',          'en', 'Continue'),
 ('label.example',           'en', 'Example'),
 ('label.example',           'et', 'Näide'),
+('label.problem',           'en', 'Problem'),
+('label.problem',           'et', 'Ülesanne'),
 ('label.what_i_did',        'en', 'What I did:'),
 ('label.what_i_did',        'et', 'Mida ma tegin:'),
 ('label.tested',            'en', 'Tested'),
