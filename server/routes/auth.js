@@ -3,7 +3,7 @@ const passport = require('passport');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const { randomUUID } = require('crypto');
 const db       = require('../db');
-const { notify } = require('../services/notifications');
+const { notify, getUserLocale } = require('../services/notifications');
 const router   = express.Router();
 
 // ── Passport setup ────────────────────────────────────────────────────────────
@@ -57,8 +57,12 @@ passport.use(new GoogleStrategy(
 
           req.session.pendingSignup = null;
 
-          notify(userId, 'welcome', 'Tere tulemast KnoBitz-i!',
-            'Oleme rõõmsad, et oled siin. Alusta kaardi uurimisega ja jõua teadmistes kaugemale!');
+          const signupLocale = await getUserLocale(userId);
+          notify(userId, 'welcome',
+            signupLocale === 'et' ? 'Tere tulemast KnoBitz-i!' : 'Welcome to KnoBitz!',
+            signupLocale === 'et'
+              ? 'Oleme rõõmsad, et oled siin. Alusta kaardi uurimisega ja jõua teadmistes kaugemale!'
+              : "We're glad you're here. Start exploring the map and go further in your knowledge!");
 
           const [newUsers] = await conn.execute(
             'SELECT * FROM users WHERE id = ?', [userId]
@@ -71,8 +75,12 @@ passport.use(new GoogleStrategy(
         const isFirstLogin = !user.last_login;
         await conn.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
         if (isFirstLogin) {
-          notify(user.id, 'welcome', 'Tere tulemast KnoBitz-i!',
-            'Oleme rõõmsad, et oled siin. Alusta kaardi uurimisega!');
+          const loginLocale = await getUserLocale(user.id);
+          notify(user.id, 'welcome',
+            loginLocale === 'et' ? 'Tere tulemast KnoBitz-i!' : 'Welcome to KnoBitz!',
+            loginLocale === 'et'
+              ? 'Oleme rõõmsad, et oled siin. Alusta kaardi uurimisega!'
+              : "We're glad you're here. Start exploring the map!");
         }
         done(null, user);
       } finally {

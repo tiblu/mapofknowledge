@@ -188,13 +188,16 @@ async function getMomentum(passportId) {
 }
 
 const STREAK_MILESTONES = [
-  { days: 7,  title: '7-päevane seeria! 🔥', body: 'Suurepärane! Sul on maksimaalne 2× lumenite boonus.' },
-  { days: 4,  title: '4-päevane seeria!',     body: 'Hea töö! Sinu lumenite boonus on nüüd 1.5×.' },
-  { days: 2,  title: '2-päevane seeria!',     body: 'Oled tagasi! Jätka nii ja boonus kasvab.' },
+  { days: 7,  title_en: '7-day streak! 🔥',  body_en: 'Amazing! You have the maximum 2× lumen bonus.',
+              title_et: '7-päevane seeria! 🔥', body_et: 'Suurepärane! Sul on maksimaalne 2× lumenite boonus.' },
+  { days: 4,  title_en: '4-day streak!',      body_en: 'Nice work! Your lumen bonus is now 1.5×.',
+              title_et: '4-päevane seeria!',     body_et: 'Hea töö! Sinu lumenite boonus on nüüd 1.5×.' },
+  { days: 2,  title_en: '2-day streak!',      body_en: "You're back! Keep it up and the bonus grows.",
+              title_et: '2-päevane seeria!',     body_et: 'Oled tagasi! Jätka nii ja boonus kasvab.' },
 ];
 
 async function _updateMomentum(passportId, userId) {
-  const { notify } = require('./notifications');
+  const { notify, getUserLocale } = require('./notifications');
   const [rows] = await db.execute(
     'SELECT last_activity_at, streak_days FROM user_momentum WHERE passport_id = ?',
     [passportId]
@@ -229,7 +232,12 @@ async function _updateMomentum(passportId, userId) {
 
   if (userId && streakDays > prevStreak) {
     const milestone = STREAK_MILESTONES.find(m => m.days === streakDays);
-    if (milestone) notify(userId, 'streak', milestone.title, milestone.body);
+    if (milestone) {
+      const locale = await getUserLocale(userId);
+      notify(userId, 'streak',
+        locale === 'et' ? milestone.title_et : milestone.title_en,
+        locale === 'et' ? milestone.body_et : milestone.body_en);
+    }
   }
 
   return mult;
@@ -274,10 +282,12 @@ async function checkAchievements(passportId, userId, trigger, ctx = {}) {
             'INSERT IGNORE INTO user_achievements (passport_id, achievement_key) VALUES (?, ?)',
             [passportId, key]
           );
-          const { notify } = require('./notifications');
+          const { notify, getUserLocale } = require('./notifications');
+          const locale = await getUserLocale(userId);
+          const achName = locale === 'et' ? def.name_et : def.name;
           notify(userId, 'achievement',
-            `Saavutus avatud: ${def.name_et}`,
-            `Oled teeninud "${def.name_et}" saavutuse.`
+            locale === 'et' ? `Saavutus avatud: ${achName}` : `Achievement unlocked: ${achName}`,
+            locale === 'et' ? `Oled teeninud "${achName}" saavutuse.` : `You've earned the "${achName}" achievement.`
           );
         }
       } catch { /* individual check failure is non-fatal */ }

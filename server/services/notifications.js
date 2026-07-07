@@ -1,5 +1,16 @@
 const db = require('../db');
 
+async function getUserLocale(userId) {
+  if (!userId) return 'en';
+  try {
+    const [rows] = await db.execute(
+      'SELECT value FROM user_settings WHERE user_id = ? AND key_name = ?',
+      [userId, 'ui_locale']
+    );
+    return (rows.length && rows[0].value) ? rows[0].value : 'et';
+  } catch { return 'en'; }
+}
+
 const TYPE_COLOR = {
   welcome:          'terra',
   knobit_complete:  'sage',
@@ -27,4 +38,4 @@ async function notify(userId, type, title, body) {
   }
 }
 
-module.exports = { notify };
+module.exports = { notify, getUserLocale };

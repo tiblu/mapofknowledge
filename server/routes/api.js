@@ -3,20 +3,8 @@ const router  = express.Router();
 const db      = require('../db');
 const llm     = require('../services/llm');
 const game    = require('../services/game');
-const { notify } = require('../services/notifications');
+const { notify, getUserLocale } = require('../services/notifications');
 const testlog = require('../testlog'); // TESTLOG
-
-// ── User locale helper ───────────────────────────────────────────────────────
-async function getUserLocale(userId) {
-  if (!userId) return 'en';
-  try {
-    const [rows] = await db.execute(
-      'SELECT value FROM user_settings WHERE user_id = ? AND key_name = ?',
-      [userId, 'ui_locale']
-    );
-    return (rows.length && rows[0].value) ? rows[0].value : 'et';
-  } catch { return 'en'; }
-}
 
 // ── User profile helper ──────────────────────────────────────────────────────
 async function getUserProfile(userId) {
@@ -181,20 +169,22 @@ router.get('/learn/resume', async (req, res) => {
   if (!passportId) return res.json({});
 
   try {
+    const locale = await getUserLocale(req.user?.id);
     const [rows] = await db.execute(
-      `SELECT n.external_id AS nodeId, n.label,
+      `SELECT n.external_id AS nodeId, COALESCE(tr.label, n.label) AS label,
               COUNT(k.id)          AS total,
               COUNT(kp.knobit_id)  AS done,
               MAX(kp.completed_at) AS last_activity
        FROM knobits k
        JOIN nodes n ON k.node_id = n.id
+       LEFT JOIN node_translations tr ON tr.node_external_id = n.external_id AND tr.locale = ?
        LEFT JOIN knobit_progress kp
               ON k.id = kp.knobit_id AND kp.passport_id = ?
-       GROUP BY n.id, n.external_id, n.label
+       GROUP BY n.id, n.external_id, n.label, tr.label
        HAVING done > 0 AND done < total
        ORDER BY last_activity DESC
        LIMIT 1`,
-      [passportId]
+      [locale, passportId]
     );
     res.json(rows.length ? rows[0] : {});
   } catch (err) {
@@ -261,6 +251,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport linked to account' });
 
   try {
+    const locale = await getUserLocale(req.user?.id);
     const [nodes] = await db.execute(
       'SELECT id AS db_id, level, label FROM nodes WHERE external_id = ?', [id]
     );
@@ -309,8 +300,9 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
         [passportId, eventTitle, id]
       ).catch(() => {});
       if (pct >= 100) {
-        notify(req.user?.id, 'knowledge_marked', `Marked as known: ${label}`,
-          `Added to your Learner Passport knowledge map.`);
+        notify(req.user?.id, 'knowledge_marked',
+          locale === 'et' ? `Märgitud teadaolevaks: ${label}` : `Marked as known: ${label}`,
+          locale === 'et' ? 'Lisatud sinu Learner Passport teadmiste kaardile.' : 'Added to your Learner Passport knowledge map.');
       }
     }
 
@@ -538,6 +530,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
 
   try {
+    const locale = await getUserLocale(req.user?.id);
     await db.execute(
       `INSERT INTO knobit_progress (passport_id, knobit_id, phase_reached, completed_at)
        VALUES (?, ?, 'done', NOW())
@@ -586,11 +579,15 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
 
       // Per-knobit notification
       if (totalEver === 1) {
-        notify(userId, 'knobit_complete', 'First knobit mastered!',
-          `You completed your very first learning step: "${knobitTitle}". An exciting journey begins!`);
+        notify(userId, 'knobit_complete',
+          locale === 'et' ? 'Esimene knobit läbitud!' : 'First knobit mastered!',
+          locale === 'et'
+            ? `Läbisid oma esimese õppesammu: "${knobitTitle}". Põnev teekond algab!`
+            : `You completed your very first learning step: "${knobitTitle}". An exciting journey begins!`);
       } else {
-        notify(userId, 'knobit_complete', `Knobit complete: ${knobitTitle}`,
-          `Topic: ${nodeLabel}`);
+        notify(userId, 'knobit_complete',
+          locale === 'et' ? `Knobit läbitud: ${knobitTitle}` : `Knobit complete: ${knobitTitle}`,
+          locale === 'et' ? `Teema: ${nodeLabel}` : `Topic: ${nodeLabel}`);
       }
 
       await db.execute(
@@ -629,10 +626,12 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
              VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', 'Score: 100%', ?, 'assessment', 0)`,
             [passportId, `Completed: ${nodeLabel}`, nodeExtId]
           );
-          notify(userId, 'unit_complete', `${nodeLabel} — fully mastered!`,
-            `You've completed every learning step for this topic.`);
-          notify(userId, 'credential', `New credential: ${credTitle}`,
-            `A platform credential has been added to your Learner Passport.`);
+          notify(userId, 'unit_complete',
+            locale === 'et' ? `${nodeLabel} — täielikult omandatud!` : `${nodeLabel} — fully mastered!`,
+            locale === 'et' ? 'Läbisid selle teema kõik õppesammud.' : "You've completed every learning step for this topic.");
+          notify(userId, 'credential',
+            locale === 'et' ? `Uus tunnistus: ${credTitle}` : `New credential: ${credTitle}`,
+            locale === 'et' ? 'Sinu Learner Passportile lisati platvormi tunnistus.' : 'A platform credential has been added to your Learner Passport.');
         }
       }
 
@@ -655,7 +654,9 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
             `UPDATE passport_goals SET status='completed', completed_at=NOW() WHERE id=?`,
             [goalHit[0].id]
           );
-          notify(userId, 'goal_complete', 'Eesmärk täidetud! 🎉', `Läbisid: "${nodeLabel}"`);
+          notify(userId, 'goal_complete',
+            locale === 'et' ? 'Eesmärk täidetud! 🎉' : 'Goal completed! 🎉',
+            locale === 'et' ? `Läbisid: "${nodeLabel}"` : `You finished: "${nodeLabel}"`);
           return res.json({ ok: true, goalCompleted: { nodeLabel, nodeExtId } });
         }
       }
@@ -917,6 +918,7 @@ router.post('/profile/goals/:id/complete', async (req, res) => {
   const passportId = req.user?.passport_id;
   if (!passportId) return res.status(400).json({ error: 'No passport' });
   try {
+    const locale = await getUserLocale(req.user?.id);
     const [goals] = await db.execute(
       'SELECT text, node_external_id, node_breadcrumb FROM passport_goals WHERE id = ? AND passport_id = ?',
       [req.params.id, passportId]
@@ -928,7 +930,9 @@ router.post('/profile/goals/:id/complete', async (req, res) => {
     if (goals.length) {
       const g = goals[0];
       const label = g.node_breadcrumb || g.text;
-      notify(req.user?.id, 'goal_complete', 'Eesmärk täidetud! 🎉', `Läbisid: "${label}"`);
+      notify(req.user?.id, 'goal_complete',
+        locale === 'et' ? 'Eesmärk täidetud! 🎉' : 'Goal completed! 🎉',
+        locale === 'et' ? `Läbisid: "${label}"` : `You finished: "${label}"`);
     }
     res.json({ ok: true });
   } catch (err) {
