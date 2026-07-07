@@ -369,7 +369,7 @@
 
     <!-- sub-nav bar -->
     <div class="kn-nav">
-      <button class="kn-nav-back" onclick="tryLeaveKnobit()" title="Back to path">
+      <button class="kn-nav-back" onclick="tryLeaveKnobit()" data-i18n-title="btn.back_to_path" title="Back to path">
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
           <path d="M8 2L3 6.5 8 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -477,6 +477,18 @@
     </div>
   </div><!-- /lm-complete -->
 
+  <!-- Lives inside #learning-mode (not as a page-level sibling) so it still
+       renders while #learning-mode is the fullscreened element. -->
+  <div id="quit-knobit-modal" style="display:none">
+    <div class="quit-modal-box">
+      <div class="quit-modal-title" data-i18n="msg.quit_knobit_title">Leave this knobit?</div>
+      <div class="quit-modal-text" data-i18n="msg.quit_knobit_text">An uncompleted knobit cannot be continued — it must be restarted from the beginning if you quit now.</div>
+      <div class="quit-modal-btns">
+        <button class="quit-modal-cancel" id="quit-modal-cancel" data-i18n="btn.keep_learning">Keep learning</button>
+        <button class="quit-modal-confirm" id="quit-modal-confirm" data-i18n="btn.yes_quit">Yes, quit</button>
+      </div>
+    </div>
+  </div>
 
 </div><!-- /learning-mode -->
 
@@ -533,7 +545,7 @@
 
     <!-- sub-nav bar -->
     <div class="kn-nav">
-      <button class="kn-nav-back" onclick="tryLeaveTestQuestion()" title="Back to path">
+      <button class="kn-nav-back" onclick="tryLeaveTestQuestion()" data-i18n-title="btn.back_to_path" title="Back to path">
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
           <path d="M8 2L3 6.5 8 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -616,20 +628,6 @@
      ════════════════════════════════════════ -->
 <div id="page-overlay">
   <iframe id="page-overlay-frame" src="" title="Page"></iframe>
-</div>
-
-<!-- ════════════════════════════════════════
-     QUIT KNOBIT CONFIRMATION MODAL
-     ════════════════════════════════════════ -->
-<div id="quit-knobit-modal" style="display:none">
-  <div class="quit-modal-box">
-    <div class="quit-modal-title" data-i18n="msg.quit_knobit_title">Leave this knobit?</div>
-    <div class="quit-modal-text" data-i18n="msg.quit_knobit_text">An uncompleted knobit cannot be continued — it must be restarted from the beginning if you quit now.</div>
-    <div class="quit-modal-btns">
-      <button class="quit-modal-cancel" id="quit-modal-cancel" data-i18n="btn.keep_learning">Keep learning</button>
-      <button class="quit-modal-confirm" id="quit-modal-confirm" data-i18n="btn.yes_quit">Yes, quit</button>
-    </div>
-  </div>
 </div>
 
 <!-- ════════════════════════════════════════
