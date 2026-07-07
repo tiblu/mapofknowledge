@@ -449,6 +449,31 @@ async function _saveInteraction(passportId, knobitId, phase, blockType, blockInd
   ).catch((err) => console.error('[knobit_interactions]', err.message));
 }
 
+// Reconstructs what this learner has actually been taught so far in this knobit
+// (explain bytes + demonstrate example bodies), so practice questions/grading can
+// be grounded in the real lesson content instead of independently reinvented.
+async function _getLearnedContent(passportId, knobitId) {
+  if (!passportId) return '';
+  const [rows] = await db.execute(
+    `SELECT block_type, content FROM knobit_interactions
+     WHERE passport_id = ? AND knobit_id = ? AND phase IN ('explain', 'demonstrate')
+     ORDER BY id`,
+    [passportId, knobitId]
+  );
+  const parts = [];
+  for (const row of rows) {
+    if (row.block_type === 'byte') {
+      parts.push(row.content);
+    } else if (row.block_type === 'example') {
+      try {
+        const ex = JSON.parse(row.content || '{}');
+        if (ex.body) parts.push(ex.body);
+      } catch { /* malformed example JSON — skip, not worth failing the request over */ }
+    }
+  }
+  return parts.join('\n\n');
+}
+
 // ── LLM learning interactions ────────────────────────────────────────────────
 router.post('/learn/interact', async (req, res) => {
   const {
@@ -516,11 +541,12 @@ router.post('/learn/interact', async (req, res) => {
       result = { demonstrate: await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid, previousExample) };
       await _saveInteraction(passportId, knobitId, 'demonstrate', 'example', byteIndex, null, null, JSON.stringify(result.demonstrate));
     } else if (phase === 'practice') {
+      const learnedContent = await _getLearnedContent(passportId, knobitId);
       if (action === 'grade') {
-        result = { grade: await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid) };
+        result = { grade: await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid, learnedContent) };
         await _saveInteraction(passportId, knobitId, 'practice', 'feedback', byteIndex, result.grade.correct ? 'correct' : 'incorrect', userAnswer, JSON.stringify(result.grade));
       } else {
-        result = { practice: await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid) };
+        result = { practice: await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid, learnedContent) };
         await _saveInteraction(passportId, knobitId, 'practice', 'practice', byteIndex, null, null, JSON.stringify(result.practice));
       }
     } else if (phase === 'meaning') {

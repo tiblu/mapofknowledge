@@ -367,8 +367,15 @@ No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(loca
 }
 
 // ── Practice phase ────────────────────────────────────────────────────────────
-async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, profile, userId) {
+// learnedContent: the actual explain/demonstrate text generated for this learner's
+// session (see api.js's _getLearnedContent, sourced from knobit_interactions) —
+// grounds the question in what was really taught instead of inventing fresh,
+// possibly contradictory or ungrounded trivia about the topic.
+async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, profile, userId, learnedContent) {
   const difficulty = problemIndex === 0 ? 'straightforward' : problemIndex === 1 ? 'moderate' : 'challenging';
+  const contentBlock = learnedContent
+    ? `\n\nWhat the learner has actually studied so far in this knobit:\n"""\n${learnedContent}\n"""\n`
+    : '';
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: 250,
@@ -377,6 +384,8 @@ async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, pr
       role: 'user',
       content: `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"
 Practice problem ${problemIndex + 1} — difficulty: ${difficulty}
+${contentBlock}
+Base the question strictly on the content above — do not introduce facts, names, agencies, dates, or figures that are not stated there. If the content mentions a specific institution or example only illustratively, do not turn it into a "name the exact institution" quiz question — narrow factual/administrative details can change over time and are not the point being taught. Favor questions that test understanding, reasoning, or application (e.g. "what would you do if...", "why does X matter here", "what is the key difference between...") over recall of a specific name, statistic, or institution.
 
 Respond with valid JSON, two fields only:
 - "question": the problem statement (1–3 sentences)
@@ -390,7 +399,10 @@ No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(loca
 }
 
 // ── Grade a practice answer ───────────────────────────────────────────────────
-async function gradePractice(nodeLabel, knobitTitle, question, expected, userAnswer, locale, userId) {
+async function gradePractice(nodeLabel, knobitTitle, question, expected, userAnswer, locale, userId, learnedContent) {
+  const contentBlock = learnedContent
+    ? `\n\nWhat the learner has actually studied so far in this knobit:\n"""\n${learnedContent}\n"""\n`
+    : '';
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: 200,
@@ -401,6 +413,8 @@ async function gradePractice(nodeLabel, knobitTitle, question, expected, userAns
 Question: "${question}"
 Expected: "${expected}"
 Learner's answer: "${userAnswer}"
+${contentBlock}
+Grade based on whether the learner's answer is consistent with the content above, not on an exact match against "Expected" — "Expected" was generated alongside the question and may itself be imprecise, incomplete, or outdated on a narrow factual detail (e.g. a specific institution name). If the learner's answer reflects genuine understanding of what was actually taught, mark it correct even if it doesn't match "Expected" word for word or names a different specific detail.
 
 Respond with valid JSON, two fields only:
 - "correct": boolean (true if the learner captures the essential idea)
