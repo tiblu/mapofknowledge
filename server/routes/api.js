@@ -564,10 +564,15 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
 
     // Recompute node knowledge %
     const [krow] = await db.execute(
-      `SELECT k.node_id, n.external_id AS nodeExtId, n.label AS nodeLabel, k.locale, k.title AS knobitTitle
-       FROM knobits k JOIN nodes n ON k.node_id = n.id
+      `SELECT k.node_id, n.external_id AS nodeExtId,
+              COALESCE(trn.label, n.label) AS nodeLabel, k.locale,
+              COALESCE(trk.title, k.title) AS knobitTitle
+       FROM knobits k
+       JOIN nodes n ON k.node_id = n.id
+       LEFT JOIN node_translations trn ON trn.node_external_id = n.external_id AND trn.locale = ?
+       LEFT JOIN knobit_translations trk ON trk.knobit_id = k.id AND trk.locale = ?
        WHERE k.id = ?`,
-      [knobitId]
+      [locale, locale, knobitId]
     );
     if (krow.length) {
       const { node_id, nodeExtId, nodeLabel, knobitTitle } = krow[0];
