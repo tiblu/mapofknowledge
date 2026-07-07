@@ -1,8 +1,15 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const https     = require('https');
 const db        = require('../db');
 const testlog   = require('../testlog'); // TESTLOG
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// keepAlive: false — pooled/reused connections to api.anthropic.com from this host
+// intermittently die mid-response ("Premature close"); a fresh connection per
+// request avoids the reuse entirely.
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  httpAgent: new https.Agent({ keepAlive: false }),
+});
 
 function _logUsage(userId, callType, usage, model) {
   if (!userId || !usage) return;
