@@ -307,9 +307,10 @@ use a concrete real-world analogy, and build up slowly.
 Do NOT reuse the same wording. A different angle entirely.`,
 
     simpler: `The learner found this too simplistic.
-Rewrite it with professional, expert-level language. Use precise terminology,
-a more formal framing, and the kind of depth an expert or researcher would appreciate.
-Same core concept — elevated register.`,
+Rewrite using more precise, formal, expert-level vocabulary and phrasing — elevate the WORDING only.
+STRICT rules: keep the SAME number of sentences as the original, do not add sentences.
+Do NOT introduce additional concepts, categories, sub-types, or examples beyond what the original already covered.
+Same core idea, same scope, same length — just phrased the way a domain expert would say it.`,
 
     complex: `The learner found this too complex.
 Rewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.
@@ -651,7 +652,7 @@ function streamExplainByteText(nodeLabel, knobitTitle, byteIndex, previousConten
 function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, profile, userId, onChunk) {
   const instructions = {
     rephrase: `The learner did not understand this explanation. Step back further.\nExplain the same concept from first principles — start from something even more basic,\nuse a concrete real-world analogy, and build up slowly.\nDo NOT reuse the same wording. A different angle entirely.`,
-    simpler:  `The learner found this too simplistic.\nRewrite it with professional, expert-level language. Use precise terminology,\na more formal framing, and the kind of depth an expert or researcher would appreciate.\nSame core concept — elevated register.`,
+    simpler:  `The learner found this too simplistic.\nRewrite using more precise, formal, expert-level vocabulary and phrasing — elevate the WORDING only.\nSTRICT rules: keep the SAME number of sentences as the original, do not add sentences.\nDo NOT introduce additional concepts, categories, sub-types, or examples beyond what the original already covered.\nSame core idea, same scope, same length — just phrased the way a domain expert would say it.`,
     complex:  `The learner found this too complex.\nRewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.\nMaximum 3 sentences per paragraph. No jargon — replace every technical term with a plain everyday word.\nUse one concrete real-life example (something a child could picture).\nSame core concept — maximally accessible.`,
   }[mode] || 'Rewrite this explanation from a different angle.';
   const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement paragraph only — 2–4 sentences, no headings.${profileBlock(profile)}${langText(locale)}`;
