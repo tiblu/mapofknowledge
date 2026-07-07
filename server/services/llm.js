@@ -386,9 +386,10 @@ async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, pr
 Practice problem ${problemIndex + 1} — difficulty: ${difficulty}
 ${contentBlock}
 Base the question strictly on the content above — do not introduce facts, names, agencies, dates, or figures that are not stated there. If the content mentions a specific institution or example only illustratively, do not turn it into a "name the exact institution" quiz question — narrow factual/administrative details can change over time and are not the point being taught. Favor questions that test understanding, reasoning, or application (e.g. "what would you do if...", "why does X matter here", "what is the key difference between...") over recall of a specific name, statistic, or institution.
+Ask exactly ONE question. A short setup sentence for context is fine, but do NOT stack a second question onto it — no "and", no em dash, no semicolon joining two separate things being asked. There must be exactly one thing the learner needs to answer, with exactly one expected answer.
 
 Respond with valid JSON, two fields only:
-- "question": the problem statement (1–3 sentences)
+- "question": the problem statement — one short setup (optional) plus exactly one question (1–3 sentences total)
 - "expected": the correct answer (brief — a number, term, or short phrase)
 
 No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(locale)}`,
