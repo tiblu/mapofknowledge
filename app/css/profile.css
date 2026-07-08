@@ -404,10 +404,6 @@ a.p-event-node-link:hover { border-bottom-color: var(--accent); }
 
 /* ── Internal credential extras ──────────── */
 .p-cred-icon.internal { background: rgba(91,168,216,0.18); }
-.p-cred-hash {
-  font-size: 10px; color: var(--c7); margin-top: 3px;
-  font-family: 'Courier New', monospace; letter-spacing: 0.3px;
-}
 .p-cred-verify {
   display: inline-block; margin-top: 3px;
   font-size: 11px; color: #5088C0; text-decoration: none; font-weight: 500;

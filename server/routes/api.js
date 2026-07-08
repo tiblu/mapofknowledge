@@ -704,16 +704,11 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
           [passportId, credTitle]
         );
         if (!existing) {
-          const crypto = require('crypto');
-          const hash = crypto.createHash('sha256')
-            .update(`${passportId}-${nodeExtId}-${Date.now()}`)
-            .digest('hex')
-            .substring(0, 16);
           await db.execute(
             `INSERT INTO passport_credentials
-               (passport_id, type, title, issuer, awarded_date, blockchain_hash, sort_order)
-             VALUES (?, 'platform', ?, 'KnoBitz platvorm', CURDATE(), ?, 0)`,
-            [passportId, credTitle, '0x' + hash]
+               (passport_id, type, title, issuer, awarded_date, sort_order)
+             VALUES (?, 'platform', ?, 'KnoBitz platvorm', CURDATE(), 0)`,
+            [passportId, credTitle]
           );
           await db.execute(
             `INSERT INTO passport_events
