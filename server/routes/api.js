@@ -443,6 +443,34 @@ async function _runStream(streamFn, res, onDone) {
   res.end();
 }
 
+// ── Persist a Q4 test-completion result (score, event log, notification, gamification) ──
+async function _saveTestResult(passportId, userId, nodeId, label, displayLabel, locale, evaluation) {
+  if (evaluation.finalScore === undefined) return;
+  await db.execute(
+    `INSERT INTO user_node_knowledge
+       (passport_id, node_external_id, percentage, source, updated_at)
+     VALUES (?, ?, ?, 'tested', NOW())
+     ON DUPLICATE KEY UPDATE
+       percentage = VALUES(percentage), source = 'tested', updated_at = NOW()`,
+    [passportId, nodeId, evaluation.finalScore]
+  );
+  updateAncestorKnowledge(passportId, nodeId).catch(() => {});
+  await db.execute(
+    `INSERT INTO passport_events
+       (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
+     VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, ?, 'assessment', 0)`,
+    [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
+  );
+  notify(userId, 'test_result',
+    locale === 'et' ? `Testi tulemus: ${displayLabel}` : `Test result: ${displayLabel}`,
+    locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+  const score      = evaluation.finalScore;
+  const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
+  const reason     = score === 100 ? 'test_perfect' : 'test_complete';
+  game.awardLumens(passportId, userId, lumensBase, reason, nodeId).catch(() => {});
+  game.checkAchievements(passportId, userId, 'test_complete', { score }).catch(() => {});
+}
+
 // ── Persist a knobit lesson block for mid-lesson resume ─────────────────────
 async function _saveInteraction(passportId, knobitId, phase, blockType, blockIndex, choiceMade, answerText, content) {
   if (!passportId) return;
@@ -1381,93 +1409,30 @@ router.post('/test/evaluate', async (req, res) => {
     testlog('route_evaluate_input', { userId: req.user?.id, nodeId, nodeLabel: label, questionNum, question, options, correctIndex, userAnswer, history }); // TESTLOG
 
     if (wantStream) {
-      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('X-Accel-Buffering', 'no');
-      res.flushHeaders();
-      let fullText = '';
-      const write = (chunk) => {
-        fullText += chunk;
-        res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n');
-      };
-      try {
-        await llm.streamTestEvaluate(label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, write);
-      } catch (err) {
-        console.error('[stream/test/evaluate]', err.message);
-        res.write('data: ' + JSON.stringify({ error: true }) + '\n\n');
-      }
-      res.write('data: [DONE]\n\n');
-      res.end();
-      testlog('route_evaluate_stream_response', { userId: req.user?.id, questionNum, raw: fullText }); // TESTLOG
-
-      // Q4 post-processing after response is sent
-      if (questionNum === 4 && passportId) {
+      const streamFn = (write) => llm.streamTestEvaluate(
+        label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, write
+      );
+      const onDone = async (fullText) => {
+        testlog('route_evaluate_stream_response', { userId: req.user?.id, questionNum, raw: fullText }); // TESTLOG
+        if (questionNum !== 4 || !passportId) return;
         try {
           const cleaned = fullText.trim()
             .replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
           const evaluation = JSON.parse(cleaned);
-          if (evaluation.finalScore !== undefined) {
-            await db.execute(
-              `INSERT INTO user_node_knowledge
-                 (passport_id, node_external_id, percentage, source, updated_at)
-               VALUES (?, ?, ?, 'tested', NOW())
-               ON DUPLICATE KEY UPDATE
-                 percentage = VALUES(percentage), source = 'tested', updated_at = NOW()`,
-              [passportId, nodeId, evaluation.finalScore]
-            );
-            updateAncestorKnowledge(passportId, nodeId).catch(() => {});
-            await db.execute(
-              `INSERT INTO passport_events
-                 (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-               VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, ?, 'assessment', 0)`,
-              [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
-            );
-            notify(req.user?.id, 'test_result',
-              locale === 'et' ? `Testi tulemus: ${display_label}` : `Test result: ${display_label}`,
-              locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
-            // ── Gamification ─────────────────────────────────────────────────
-            const score = evaluation.finalScore;
-            const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
-            const reason     = score === 100 ? 'test_perfect' : 'test_complete';
-            game.awardLumens(passportId, req.user?.id, lumensBase, reason, nodeId).catch(() => {});
-            game.checkAchievements(passportId, req.user?.id, 'test_complete', { score }).catch(() => {});
-          }
+          await _saveTestResult(passportId, req.user?.id, nodeId, label, display_label, locale, evaluation);
         } catch (e) {
           console.error('[api/test/evaluate] Q4 post-stream error', e.message);
         }
-      }
-      return;
+      };
+      return _runStream(streamFn, res, onDone);
     }
 
     const evaluation = await llm.evaluateTestAnswer(
       label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id
     );
 
-    if (questionNum === 4 && evaluation.finalScore !== undefined && passportId) {
-      await db.execute(
-        `INSERT INTO user_node_knowledge
-           (passport_id, node_external_id, percentage, source, updated_at)
-         VALUES (?, ?, ?, 'tested', NOW())
-         ON DUPLICATE KEY UPDATE
-           percentage = VALUES(percentage), source = 'tested', updated_at = NOW()`,
-        [passportId, nodeId, evaluation.finalScore]
-      );
-      updateAncestorKnowledge(passportId, nodeId).catch(() => {});
-      await db.execute(
-        `INSERT INTO passport_events
-           (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-         VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, ?, 'assessment', 0)`,
-        [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
-      );
-      notify(req.user?.id, 'test_result',
-        locale === 'et' ? `Testi tulemus: ${display_label}` : `Test result: ${display_label}`,
-        locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
-      // ── Gamification ───────────────────────────────────────────────────────
-      const score      = evaluation.finalScore;
-      const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
-      const reason     = score === 100 ? 'test_perfect' : 'test_complete';
-      game.awardLumens(passportId, req.user?.id, lumensBase, reason, nodeId).catch(() => {});
-      game.checkAchievements(passportId, req.user?.id, 'test_complete', { score }).catch(() => {});
+    if (questionNum === 4 && passportId) {
+      await _saveTestResult(passportId, req.user?.id, nodeId, label, display_label, locale, evaluation);
     }
 
     res.json(evaluation);
