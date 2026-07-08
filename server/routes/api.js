@@ -297,7 +297,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
       const eventTitle = pct >= 100 ? `Marked as known: ${label}` : `Unmarked as known: ${label}`;
       db.execute(
         `INSERT INTO passport_events (passport_id, event_date, title, institution, node_external_id, type, sort_order)
-         VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, 'activity', 0)`,
+         VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, 'activity', 0)`,
         [passportId, eventTitle, id]
       ).catch(() => {});
       if (pct >= 100) {
@@ -357,7 +357,7 @@ router.post('/nodes/:id/learn', async (req, res) => {
         await db.execute(
           `INSERT INTO passport_events
              (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-           VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', NULL, ?, 'activity', 0)`,
+           VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', NULL, ?, 'activity', 0)`,
           [passportId, `Started learning: ${node.label}`, id]
         ).catch(() => {});
       }
@@ -662,7 +662,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       // Log every knobit completion as a learning event
       db.execute(
         `INSERT INTO passport_events (passport_id, event_date, title, institution, node_external_id, type, sort_order)
-         VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, 'activity', 0)`,
+         VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, 'activity', 0)`,
         [passportId, locale === 'et' ? `Knobit läbitud: ${knobitTitle}` : `Knobit complete: ${knobitTitle}`, nodeExtId]
       ).catch(() => {});
 
@@ -713,13 +713,13 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
             `INSERT INTO passport_credentials
                (passport_id, type, title, issuer, awarded_date, score_pct, threshold_pct,
                 blockchain_hash, sort_order)
-             VALUES (?, 'platform', ?, 'KnoBitz · KaiQ Platform', CURDATE(), 100, 80, ?, 0)`,
+             VALUES (?, 'platform', ?, 'KnoBitz platvorm', CURDATE(), 100, 80, ?, 0)`,
             [passportId, credTitle, '0x' + hash]
           );
           await db.execute(
             `INSERT INTO passport_events
                (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-             VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'evidence', 0)`,
+             VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, ?, 'evidence', 0)`,
             [passportId, locale === 'et' ? `Lõpetatud: ${nodeLabel}` : `Completed: ${nodeLabel}`,
              locale === 'et' ? 'Tulemus: 100%' : 'Score: 100%', nodeExtId]
           );
@@ -1422,7 +1422,7 @@ router.post('/test/evaluate', async (req, res) => {
             await db.execute(
               `INSERT INTO passport_events
                  (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-               VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'assessment', 0)`,
+               VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, ?, 'assessment', 0)`,
               [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
             );
             notify(req.user?.id, 'test_result',
@@ -1459,7 +1459,7 @@ router.post('/test/evaluate', async (req, res) => {
       await db.execute(
         `INSERT INTO passport_events
            (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-         VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'assessment', 0)`,
+         VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, ?, 'assessment', 0)`,
         [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
       );
       notify(req.user?.id, 'test_result',
