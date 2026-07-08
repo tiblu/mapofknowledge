@@ -711,9 +711,8 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
             .substring(0, 16);
           await db.execute(
             `INSERT INTO passport_credentials
-               (passport_id, type, title, issuer, awarded_date, score_pct, threshold_pct,
-                blockchain_hash, sort_order)
-             VALUES (?, 'platform', ?, 'KnoBitz platvorm', CURDATE(), 100, 80, ?, 0)`,
+               (passport_id, type, title, issuer, awarded_date, blockchain_hash, sort_order)
+             VALUES (?, 'platform', ?, 'KnoBitz platvorm', CURDATE(), ?, 0)`,
             [passportId, credTitle, '0x' + hash]
           );
           await db.execute(
