@@ -385,7 +385,10 @@ async function generateDemonstrate(nodeLabel, knobitTitle, exampleIndex, locale,
     : '';
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 350,
+    // Non-English locales (e.g. Estonian's case endings/compound words) need more
+    // tokens to fit the same content — 350 was tuned for English and truncated
+    // ~1 in 4 Estonian responses mid-JSON.
+    max_tokens: locale === 'en' ? 350 : 600,
     system: TUTOR_SYSTEM,
     messages: [{
       role: 'user',
