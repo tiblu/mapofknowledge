@@ -422,6 +422,10 @@ router.post('/nodes/:id/learn', async (req, res) => {
 });
 
 // ── SSE helper: set headers and run an llm streaming call ───────────────────
+// streamFn receives (write, writeStatus). Real Anthropic-streaming closures only
+// take one param (their onChunk callback) and silently ignore the extra arg.
+// writeStatus sends an out-of-band status frame — it never touches `full`, so it
+// can't pollute the accumulated text that onDone/_saveInteraction persist.
 async function _runStream(streamFn, res, onDone) {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
@@ -430,17 +434,35 @@ async function _runStream(streamFn, res, onDone) {
   // Keepalive: Apache buffers SSE; send every 3s so it sees traffic before timing out.
   const keepalive = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) {} }, 3000);
   let full = '';
-  const write = (chunk) => { full += chunk; res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n'); };
+  const write = (chunk) => { full += chunk; try { res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n'); } catch (_) {} };
+  const writeStatus = (key) => { try { res.write('data: ' + JSON.stringify({ status: key }) + '\n\n'); } catch (_) {} };
   try {
-    await streamFn(write);
+    await streamFn(write, writeStatus);
     if (onDone) await onDone(full);
   } catch (err) {
     console.error('[stream]', err.message);
-    res.write('data: ' + JSON.stringify({ error: true }) + '\n\n');
+    try { res.write('data: ' + JSON.stringify({ error: true }) + '\n\n'); } catch (_) {}
   }
   clearInterval(keepalive);
-  res.write('data: [DONE]\n\n');
-  res.end();
+  try { res.write('data: [DONE]\n\n'); res.end(); } catch (_) {}
+}
+
+// ── Fake-stream: paces an already-complete string through the SSE `write`
+// callback in small word-chunks with a short delay, so the client's real-time
+// chunk-rendering code (built for genuine token streaming) works unchanged for
+// text that was actually generated in one shot (e.g. after a second-pass edit).
+async function _fakeStreamText(text, write, res) {
+  const words = text.split(/(\s+)/);
+  let buf = '', count = 0;
+  for (const w of words) {
+    if (res.writableEnded || res.destroyed) return;
+    buf += w;
+    if (/\S/.test(w)) count++;
+    if (count >= 3 || w === words[words.length - 1]) {
+      write(buf); buf = ''; count = 0;
+      await new Promise((r) => setTimeout(r, 25 + Math.random() * 20));
+    }
+  }
 }
 
 // ── Persist a Q4 test-completion result (score, event log, notification, gamification) ──
