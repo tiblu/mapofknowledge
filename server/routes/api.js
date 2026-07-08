@@ -663,7 +663,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       db.execute(
         `INSERT INTO passport_events (passport_id, event_date, title, institution, node_external_id, type, sort_order)
          VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, 'activity', 0)`,
-        [passportId, `Knobit complete: ${knobitTitle}`, nodeExtId]
+        [passportId, locale === 'et' ? `Knobit läbitud: ${knobitTitle}` : `Knobit complete: ${knobitTitle}`, nodeExtId]
       ).catch(() => {});
 
       const userId = req.user?.id;
@@ -697,7 +697,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       updateAncestorKnowledge(passportId, nodeExtId).catch(() => {});
 
       if (pct === 100) {
-        const credTitle = `${nodeLabel} — Completed`;
+        const credTitle = locale === 'et' ? `${nodeLabel} — Lõpetatud` : `${nodeLabel} — Completed`;
         const [[existing]] = await db.execute(
           `SELECT id FROM passport_credentials
            WHERE passport_id = ? AND type = 'platform' AND title = ?`,
@@ -719,8 +719,9 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
           await db.execute(
             `INSERT INTO passport_events
                (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-             VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', 'Score: 100%', ?, 'assessment', 0)`,
-            [passportId, `Completed: ${nodeLabel}`, nodeExtId]
+             VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'assessment', 0)`,
+            [passportId, locale === 'et' ? `Lõpetatud: ${nodeLabel}` : `Completed: ${nodeLabel}`,
+             locale === 'et' ? 'Tulemus: 100%' : 'Score: 100%', nodeExtId]
           );
           notify(userId, 'unit_complete',
             locale === 'et' ? `${nodeLabel} — täielikult omandatud!` : `${nodeLabel} — fully mastered!`,
