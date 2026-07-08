@@ -85,12 +85,27 @@ router.get('/nodes/:id/overview', async (req, res) => {
 
     const locale = await getUserLocale(req.user?.id);
 
-    if (node.overview && locale === 'en') return res.json({ overview: node.overview });
+    if (locale === 'en') {
+      if (node.overview) return res.json({ overview: node.overview });
+    } else {
+      const [cached] = await db.execute(
+        'SELECT overview FROM node_overview_translations WHERE node_external_id = ? AND locale = ?',
+        [id, locale]
+      );
+      if (cached.length) return res.json({ overview: cached[0].overview });
+    }
 
-    const domain   = await getNodeDomain(node.db_id);
-    const overview = await llm.generateOverview(node.label, domain, node.level, locale, req.user?.id);
+    const domain = await getNodeDomain(node.db_id);
+    let overview = await llm.generateOverview(node.label, domain, node.level, locale, req.user?.id);
     if (locale === 'en') {
       await db.execute('UPDATE nodes SET overview = ? WHERE external_id = ?', [overview, id]);
+    } else {
+      ({ overview } = await llm.editTranslatedText({ overview }, locale, req.user?.id));
+      await db.execute(
+        `INSERT INTO node_overview_translations (node_external_id, locale, overview) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE overview = VALUES(overview)`,
+        [id, locale, overview]
+      );
     }
     res.json({ overview });
   } catch (err) {
