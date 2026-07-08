@@ -220,6 +220,43 @@ ${JSON.stringify(knobits.map(k => k.title))}`,
   return knobits.map((k, i) => ({ ...k, title: (Array.isArray(translated) && translated[i]) || k.title }));
 }
 
+// ── Second-pass language editor ───────────────────────────────────────────────
+// Locale-neutral: only locales with a configured prompt below get edited; every
+// other locale (including 'en') is a no-op. Only 'et' is configured today.
+const EDITOR_PROMPTS = {
+  et: `Sa oled eesti keele keeletoimetaja õppematerjalide jaoks. Ma annan Sulle tekstilõike, mis on loodud õppija jaoks. Palun lähtu põhimõttest, et muudad või parandad ainult juhul, kui on õigekirja- või grammatikaviga. Kui otseselt viga ei ole, siis ainult stilistilisel põhjusel korrigeerima ei hakka. Selline minimalistlik, nii vähe kui võimalik lähenemine. Kui on valida erinevate sisuliselt korrektsete terminite vahel (nt matemaatikas või mujal), tuleks eelistada termineid, mis on Eestis haridussüsteemis kasutusel.
+
+Sulle antakse JSON-objekt tekstiväljadega. Tagasta JSON täpselt samade võtmetega, väärtusteks parandatud tekst (või muutmata tekst, kui midagi parandada ei olnud). Säilita täpselt samad väljade tüübid mis sisendis (string jääb stringiks, massiiv jääb massiiviks, säilita massiivi pikkus). Ära lisa mingit muud teksti peale JSON-i.`,
+};
+
+async function editTranslatedText(fields, locale, userId) {
+  const prompt = EDITOR_PROMPTS[locale];
+  if (!prompt) return fields; // no editor configured for this locale — no-op, including 'en'
+  try {
+    const msg = await client.messages.create({
+      model: SONNET,
+      max_tokens: 1000,
+      system: [{ type: 'text', text: prompt, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: `Input JSON:\n${JSON.stringify(fields)}` }],
+    }, { timeout: 15000 });
+    _logUsage(userId, 'edit_translated', msg.usage, SONNET);
+    const corrected = parseJSON(msg.content[0].text);
+    const result = {};
+    for (const key of Object.keys(fields)) {
+      const orig = fields[key];
+      const fixed = corrected[key];
+      const typeOk = Array.isArray(orig)
+        ? (Array.isArray(fixed) && fixed.length === orig.length)
+        : typeof fixed === 'string';
+      result[key] = typeOk ? fixed : orig; // per-field fallback, not all-or-nothing
+    }
+    return result;
+  } catch (err) {
+    console.error('[editTranslatedText]', err.message);
+    return fields; // fail open — never block content delivery
+  }
+}
+
 // ── Explain phase — text only (fast, no web search) ──────────────────────────
 async function generateExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, profile, userId) {
   let prompt;
@@ -769,6 +806,7 @@ module.exports = {
   generateOverview,
   generateKnobits,
   translateKnobitTitles,
+  editTranslatedText,
   generateExplainByteText,
   generateExplainByteVisual,
   generateRephrase,
