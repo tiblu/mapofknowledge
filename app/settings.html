@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/font-scale.css">
 <link rel="stylesheet" href="css/settings.css">
-<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}window._loadedSettings=s;}).catch(function(){});</script>
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}window._loadedSettings=s;if(window._onSettingsLoaded)window._onSettingsLoaded(s);}).catch(function(){});</script>
 <script src="js/strings.js"></script>
 </head>
 <body>
@@ -593,16 +593,32 @@
   /* ── Ambient sound toggle ── */
   const ambientToggle = document.getElementById('ambient-toggle');
 
-  // Default: on (absent key = on)
-  if (window._loadedSettings && window._loadedSettings.ambient_sound === 'off') {
-    ambientToggle.classList.remove('on');
-  } else if (!window._loadedSettings) {
-    // Settings haven't loaded yet — defer check
-    document.addEventListener('DOMContentLoaded', function () {
-      if (window._loadedSettings && window._loadedSettings.ambient_sound === 'off') {
-        ambientToggle.classList.remove('on');
-      }
-    });
+  /* ── Focus timer toggle + minutes ── */
+  const focusToggle       = document.getElementById('focus-timer-toggle');
+  const focusMinutesRow   = document.getElementById('focus-timer-minutes-row');
+  const focusMinutesInput = document.getElementById('focus-timer-minutes-input');
+
+  // The bootstrap fetch at the top of <head> almost always resolves AFTER this
+  // script has already run (network round-trip vs. local parsing), and
+  // DOMContentLoaded fires as soon as parsing finishes — not once pending
+  // fetches resolve — so a DOMContentLoaded-based "wait for it" check is a
+  // race that usually loses, leaving toggles stuck on their hardcoded HTML
+  // default no matter what's actually saved. window._onSettingsLoaded is
+  // called directly from that fetch's .then(), so it always fires exactly
+  // once the real values are known, however this script happened to be timed.
+  function _applySettingsToUI(s) {
+    var settings = s || window._loadedSettings;
+    if (!settings) return;
+    ambientToggle.classList.toggle('on', settings.ambient_sound !== 'off');
+    focusToggle.classList.toggle('on', settings.focus_timer !== 'off');
+    if (settings.focus_timer_minutes) focusMinutesInput.value = settings.focus_timer_minutes;
+    focusMinutesRow.style.display = focusToggle.classList.contains('on') ? '' : 'none';
+  }
+
+  if (window._loadedSettings) {
+    _applySettingsToUI(window._loadedSettings);
+  } else {
+    window._onSettingsLoaded = _applySettingsToUI;
   }
 
   ambientToggle.addEventListener('click', function () {
@@ -613,28 +629,6 @@
       body: JSON.stringify({ key: 'ambient_sound', value: isOn ? 'on' : 'off' }),
     });
   });
-
-  /* ── Focus timer toggle + minutes ── */
-  const focusToggle       = document.getElementById('focus-timer-toggle');
-  const focusMinutesRow   = document.getElementById('focus-timer-minutes-row');
-  const focusMinutesInput = document.getElementById('focus-timer-minutes-input');
-
-  function _applyFocusTimerSettings() {
-    if (window._loadedSettings && window._loadedSettings.focus_timer === 'off') {
-      focusToggle.classList.remove('on');
-    }
-    if (window._loadedSettings && window._loadedSettings.focus_timer_minutes) {
-      focusMinutesInput.value = window._loadedSettings.focus_timer_minutes;
-    }
-    focusMinutesRow.style.display = focusToggle.classList.contains('on') ? '' : 'none';
-  }
-
-  // Default: on, 20 minutes (absent keys = defaults)
-  if (window._loadedSettings) {
-    _applyFocusTimerSettings();
-  } else {
-    document.addEventListener('DOMContentLoaded', _applyFocusTimerSettings);
-  }
 
   focusToggle.addEventListener('click', function () {
     const isOn = this.classList.toggle('on');

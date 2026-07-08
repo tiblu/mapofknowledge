@@ -691,15 +691,21 @@
     document.getElementById('page-overlay-frame').src = '';
     document.getElementById('nav-dropdown').classList.remove('open');
     if (window.refreshNotifBadge) window.refreshNotifBadge();
+    // Settings (ambient sound, focus timer, ...) may have just changed inside
+    // the overlay — refresh so anything read on-demand (not baked into the
+    // DOM at page load, e.g. _focusTimerEnabled/_ambientEnabled) picks it up
+    // immediately instead of only after a full page reload.
+    fetch('/api/settings').then(function (r) { return r.json(); })
+      .then(function (s) { window._loadedSettings = s; }).catch(function () {});
   };
 </script>
 <script src="js/topbar-notif.js"></script>
 <script src="js/role-nav.js"></script>
 <script src="js/tour.js"></script>
-<script src="js/learning.js?v=7"></script>
+<script src="js/learning.js?v=8"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/filters.js?v=4"></script>
-<script src="js/app.js?v=4"></script>
+<script src="js/app.js?v=5"></script>
 <script src="js/tilt.js?v=4"></script>
 </body>
 </html>

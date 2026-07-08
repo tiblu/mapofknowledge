@@ -347,26 +347,41 @@
     return m + ':' + (sec < 10 ? '0' : '') + sec;
   }
 
-  // Short two-tone chime, synthesized so no new audio asset is needed.
-  function _playChime() {
+  // Short two-tone chime, synthesized (no audio asset — Web Audio oscillators).
+  // Browsers create new AudioContexts in a "suspended" state unless one is
+  // created/resumed during a real user gesture; the chime otherwise fires
+  // silently since it's triggered by a setInterval, not a click. So the
+  // context is created once, eagerly, from _startFocusTimer() — which always
+  // runs inside the click-triggered startKnobit() call chain — and reused
+  // (and re-resumed, harmless if already running) here.
+  var _chimeCtx = null;
+  function _primeChimeContext() {
+    if (_chimeCtx) { _chimeCtx.resume().catch(function () {}); return; }
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      var ctx = new Ctx();
+      if (Ctx) _chimeCtx = new Ctx();
+    } catch (e) { /* Web Audio unsupported */ }
+  }
+
+  function _playChime() {
+    if (!_chimeCtx) { _primeChimeContext(); }
+    if (!_chimeCtx) return;
+    try {
+      _chimeCtx.resume().catch(function () {});
       [523.25, 659.25].forEach(function (freq, i) {
-        var osc  = ctx.createOscillator();
-        var gain = ctx.createGain();
+        var osc  = _chimeCtx.createOscillator();
+        var gain = _chimeCtx.createGain();
         osc.type = 'sine';
         osc.frequency.value = freq;
-        var start = ctx.currentTime + i * 0.18;
+        var start = _chimeCtx.currentTime + i * 0.18;
         gain.gain.setValueAtTime(0, start);
         gain.gain.linearRampToValueAtTime(0.25, start + 0.03);
         gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
-        osc.connect(gain).connect(ctx.destination);
+        osc.connect(gain).connect(_chimeCtx.destination);
         osc.start(start);
         osc.stop(start + 0.55);
       });
-    } catch (e) { /* Web Audio unsupported/blocked — silently skip the chime */ }
+    } catch (e) { /* Web Audio blocked — silently skip the chime */ }
   }
 
   function _startFocusTimer() {
@@ -376,6 +391,7 @@
     if (modal) modal.style.display = 'none';
     var el = document.getElementById('lm-focus-timer');
     if (!_focusTimerEnabled()) { if (el) el.style.display = 'none'; return; }
+    _primeChimeContext(); // unlock audio now, while still inside the click gesture that led here
     _focusSecondsLeft = _focusTimerMinutes() * 60;
     if (el) el.style.display = '';
     _updateFocusTimerDisplay();
