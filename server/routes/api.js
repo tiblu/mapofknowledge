@@ -607,36 +607,63 @@ router.post('/learn/interact', async (req, res) => {
 
     if (phase === 'explain') {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
-        result = { text: await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid) };
+        let text = await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid);
+        if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+        result = { text };
         await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, action, null, result.text);
       } else if (action === 'visual') {
         const validUrls = Array.isArray(seenUrls) ? seenUrls.filter(u => typeof u === 'string').slice(0, 20) : [];
         result = await llm.generateExplainByteVisual(nodeLabel, title, original, locale, uid, validUrls);
         if (result.visual) {
+          if (locale !== 'en' && result.visual.caption) {
+            const edited = await llm.editTranslatedText({ caption: result.visual.caption }, locale, uid);
+            result.visual = { ...result.visual, caption: edited.caption };
+          }
           await _saveInteraction(passportId, knobitId, 'explain', 'visual', byteIndex, null, null, JSON.stringify(result.visual));
         }
       } else {
-        result = { text: await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid) };
+        let text = await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid);
+        if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+        result = { text };
         await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, 'ok', null, result.text);
       }
     } else if (phase === 'demonstrate') {
-      result = { demonstrate: await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid, previousExample) };
+      let demonstrate = await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid, previousExample);
+      if (locale !== 'en') {
+        const edited = await llm.editTranslatedText({ body: demonstrate.body, whatIDid: demonstrate.whatIDid }, locale, uid);
+        demonstrate = { ...demonstrate, ...edited };
+      }
+      result = { demonstrate };
       await _saveInteraction(passportId, knobitId, 'demonstrate', 'example', byteIndex, null, null, JSON.stringify(result.demonstrate));
     } else if (phase === 'practice') {
       const learnedContent = await _getLearnedContent(passportId, knobitId);
       if (action === 'grade') {
-        result = { grade: await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid, learnedContent) };
+        let grade = await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid, learnedContent);
+        if (locale !== 'en') {
+          const edited = await llm.editTranslatedText({ feedback: grade.feedback }, locale, uid);
+          grade = { ...grade, ...edited };
+        }
+        result = { grade };
         await _saveInteraction(passportId, knobitId, 'practice', 'feedback', byteIndex, result.grade.correct ? 'correct' : 'incorrect', userAnswer, JSON.stringify(result.grade));
       } else {
-        result = { practice: await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid, learnedContent) };
+        let practice = await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid, learnedContent);
+        if (locale !== 'en') {
+          const edited = await llm.editTranslatedText({ question: practice.question }, locale, uid);
+          practice = { ...practice, ...edited };
+        }
+        result = { practice };
         await _saveInteraction(passportId, knobitId, 'practice', 'practice', byteIndex, null, null, JSON.stringify(result.practice));
       }
     } else if (phase === 'meaning') {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
-        result = { text: await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid) };
+        let text = await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid);
+        if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+        result = { text };
         await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, action, null, result.text);
       } else {
-        result = { text: await llm.generateMeaning(nodeLabel, title, locale, uid) };
+        let text = await llm.generateMeaning(nodeLabel, title, locale, uid);
+        if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+        result = { text };
         await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, 'ok', null, result.text);
       }
     } else if (phase === 'ask') {
@@ -1421,7 +1448,13 @@ router.post('/test/question', async (req, res) => {
     if (wantStream) {
       return _runStream((cb) => llm.streamTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, cb), res);
     }
-    const result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id);
+    let result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id);
+    if (locale !== 'en') {
+      const editFields = { question: result.question };
+      if (result.type === 'mcq' && Array.isArray(result.options)) editFields.options = result.options;
+      const edited = await llm.editTranslatedText(editFields, locale, req.user?.id);
+      result = { ...result, ...edited };
+    }
     testlog('route_question_generated', { userId: req.user?.id, nodeId, nodeLabel: label, questionNum, history, result }); // TESTLOG
     res.json(result);
   } catch (err) {
@@ -1489,9 +1522,15 @@ router.post('/test/evaluate', async (req, res) => {
       return _runStream(streamFn, res, onDone);
     }
 
-    const evaluation = await llm.evaluateTestAnswer(
+    let evaluation = await llm.evaluateTestAnswer(
       label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id
     );
+    if (locale !== 'en') {
+      const editFields = { feedback: evaluation.feedback };
+      if (questionNum === 4 && evaluation.scoreBreakdown) editFields.scoreBreakdown = evaluation.scoreBreakdown;
+      const edited = await llm.editTranslatedText(editFields, locale, req.user?.id);
+      evaluation = { ...evaluation, ...edited };
+    }
 
     if (questionNum === 4 && passportId) {
       await _saveTestResult(passportId, req.user?.id, nodeId, label, display_label, locale, evaluation);
