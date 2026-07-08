@@ -523,6 +523,14 @@ async function _saveTestResult(passportId, userId, nodeId, label, displayLabel, 
   game.checkAchievements(passportId, userId, 'test_complete', { score }).catch(() => {});
 }
 
+// The 'ask' request phase isn't itself a valid knobit_interactions.phase ENUM
+// value — an ask-bar question is asked *during* one of the four real phases,
+// so it's persisted under that phase instead. `action` carries which one.
+const _KNOBIT_PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
+function _askDbPhase(action) {
+  return _KNOBIT_PHASES.includes(action) ? action : 'explain';
+}
+
 // ── Persist a knobit lesson block for mid-lesson resume ─────────────────────
 async function _saveInteraction(passportId, knobitId, phase, blockType, blockIndex, choiceMade, answerText, content) {
   if (!passportId) return;
@@ -615,7 +623,17 @@ router.post('/learn/interact', async (req, res) => {
         }
         onDone = (full) => _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, action || 'ok', null, full);
       } else if (phase === 'ask') {
-        streamFn = (cb) => llm.streamAnswerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid, cb);
+        const generateFn = () => llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid);
+        if (locale !== 'en') {
+          streamFn = _editedStreamFn(generateFn, locale, uid, res);
+        } else {
+          streamFn = (cb) => llm.streamAnswerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid, cb);
+        }
+        onDone = async (full) => {
+          const dbPhase = _askDbPhase(action);
+          await _saveInteraction(passportId, knobitId, dbPhase, 'user', 0, null, null, question);
+          await _saveInteraction(passportId, knobitId, dbPhase, 'note', 0, null, null, full);
+        };
       }
       if (streamFn) return _runStream(streamFn, res, onDone);
     }
@@ -684,7 +702,12 @@ router.post('/learn/interact', async (req, res) => {
         await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, 'ok', null, result.text);
       }
     } else if (phase === 'ask') {
-      result = { text: await llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid) };
+      let text = await llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid);
+      if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+      result = { text };
+      const dbPhase = _askDbPhase(action);
+      await _saveInteraction(passportId, knobitId, dbPhase, 'user', 0, null, null, question);
+      await _saveInteraction(passportId, knobitId, dbPhase, 'note', 0, null, null, result.text);
     } else {
       return res.status(400).json({ error: `Unknown phase: ${phase}` });
     }

@@ -15,6 +15,7 @@ const LABELS = {
   problem:     { en: 'Problem',      et: 'Ülesanne' },
   your_answer: { en: 'Your answer:', et: 'Sinu vastus:' },
   watch_video: { en: 'Watch video',  et: 'Vaata videot' },
+  you_asked:   { en: 'You asked:',   et: 'Sa küsisid:' },
 };
 
 function _tr(map, locale) {
@@ -119,9 +120,16 @@ async function buildKnobitDocx(rows, nodeLabel, knobitTitle, locale) {
         }));
       }
       children.push(new Paragraph({ text: (grade.correct ? '✓ ' : '✗ ') + (grade.feedback || '') }));
+    } else if (row.block_type === 'user') {
+      children.push(new Paragraph({
+        children: [
+          new TextRun({ text: _tr(LABELS.you_asked, locale) + ' ', bold: true, italics: true }),
+          new TextRun({ text: row.content || '', italics: true }),
+        ],
+      }));
+    } else if (row.block_type === 'note') {
+      children = children.concat(_textToParagraphs(row.content));
     }
-    // 'user' / 'note' (ask-bar chat) is intentionally not persisted to knobit_interactions,
-    // so there's nothing to render for those types here.
   });
 
   var doc = new Document({ sections: [{ children: children }] });

@@ -488,11 +488,14 @@
         if (_practiceInputEl) { _practiceInputEl.value = row.answer_text || ''; _practiceInputEl.disabled = true; }
       } else if (row.block_type === 'meaning') {
         _appendBlock({ type: 'meaning', content: row.content });
+      } else if (row.block_type === 'user' || row.block_type === 'note') {
+        _appendBlock({ type: row.block_type, content: row.content });
       }
 
-      // A visual is a decorative addition to the current byte, not a phase
-      // advancement — don't let it override which button row to restore.
-      if (row.block_type !== 'visual') lastBlockType = row.block_type;
+      // A visual is a decorative addition to the current byte, and an ask-bar
+      // question/answer is a side conversation — neither is a phase
+      // advancement, so don't let them override which button row to restore.
+      if (row.block_type !== 'visual' && row.block_type !== 'user' && row.block_type !== 'note') lastBlockType = row.block_type;
     });
 
     if (lastBlockType === 'byte') {
