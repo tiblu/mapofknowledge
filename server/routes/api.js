@@ -718,10 +718,9 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
           );
           await db.execute(
             `INSERT INTO passport_events
-               (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-             VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, ?, 'evidence', 0)`,
-            [passportId, locale === 'et' ? `Lõpetatud: ${nodeLabel}` : `Completed: ${nodeLabel}`,
-             locale === 'et' ? 'Tulemus: 100%' : 'Score: 100%', nodeExtId]
+               (passport_id, event_date, title, institution, node_external_id, type, sort_order)
+             VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, 'evidence', 0)`,
+            [passportId, locale === 'et' ? `Lõpetatud: ${nodeLabel}` : `Completed: ${nodeLabel}`, nodeExtId]
           );
           notify(userId, 'unit_complete',
             locale === 'et' ? `${nodeLabel} — täielikult omandatud!` : `${nodeLabel} — fully mastered!`,
