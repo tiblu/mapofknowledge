@@ -401,6 +401,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('lm.video_reflection_prompt', 'et', 'Pärast vaatamist: mis oli üks asi, mis oli sulle uus või huvitav?'),
 ('msg.saved',                  'en', 'Saved ✓'),
 ('msg.saved',                  'et', 'Salvestatud ✓'),
+('status.generating_text',     'en', 'Preparing text.'),
+('status.generating_text',     'et', 'Koostan teksti.'),
+('status.checking_language',   'en', 'Checking translation.'),
+('status.checking_language',   'et', 'Kontrollin eesti keele tõlget.'),
 
 -- Game UI labels (et)
 ('game.lumens',          'et', 'Luumenid'),

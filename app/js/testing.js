@@ -36,7 +36,7 @@
 
   /* ─── API helpers ─────────────────────────────────────────────── */
   // Streams raw JSON tokens, accumulates, parses on [DONE].
-  function _apiStream(url, body) {
+  function _apiStream(url, body, onStatus) {
     return fetch(url, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,6 +66,7 @@
               var obj = JSON.parse(data);
               if (obj.error) throw new Error('stream-error');
               if (obj.t) fullText += obj.t;
+              else if (obj.status && onStatus) onStatus(obj.status);
             } catch (e) {
               if (e.message === 'stream-error') throw e;
             }
@@ -97,7 +98,7 @@
       userAnswer:   userAnswer,
       history:      history,
       correctIndex: typeof correctIndex === 'number' ? correctIndex : undefined,
-    });
+    }, _setLoadingStatus);
   }
 
   /* ─── Entry / exit ────────────────────────────────────────────── */
@@ -503,9 +504,19 @@
     var d = document.createElement('div');
     d.id        = 'tn-loading-block';
     d.className = 'block block-loading';
-    d.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>';
+    d.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>' +
+                  '<span class="loading-status"></span>';
     s.appendChild(d);
     _scrollStream();
+  }
+
+  // Mirrors learning.js's _setLoadingStatus — updates the text next to the
+  // loading dots while a non-English second pass runs.
+  function _setLoadingStatus(key) {
+    var el = document.getElementById('tn-loading-block');
+    if (!el) return;
+    var span = el.querySelector('.loading-status');
+    if (span) span.textContent = t('status.' + key);
   }
 
   function _removeLoadingBlock() {

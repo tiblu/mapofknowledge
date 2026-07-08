@@ -66,8 +66,11 @@
   }
 
   // Streaming variant: calls the same endpoint with stream:true.
-  // Calls onChunk(text) for each token. Returns a Promise that resolves when done.
-  function apiInteractStream(params, onChunk) {
+  // Calls onChunk(text) for each token, and optionally onStatus(key) for
+  // out-of-band progress updates (e.g. while a non-English locale runs its
+  // generate-then-edit pass before any real content chunk arrives).
+  // Returns a Promise that resolves when done.
+  function apiInteractStream(params, onChunk, onStatus) {
     var knobit = KNOBITS[CURRENT_KNOBIT_IDX];
     if (!knobit) return Promise.reject(new Error('No knobit'));
     var body = Object.assign({ knobitId: knobit.id, stream: true }, params);
@@ -96,6 +99,7 @@
               var obj = JSON.parse(data);
               if (obj.error) throw new Error('stream-error');
               if (obj.t) onChunk(obj.t);
+              else if (obj.status && onStatus) onStatus(obj.status);
             } catch (e) {
               if (e.message === 'stream-error') throw e;
             }
@@ -515,7 +519,7 @@
       fullText += chunk;
       if (!live) { _removeLoadingBlock(); live = _appendLiveBlock('byte'); }
       _updateLiveBlock(live.el, live.block, fullText);
-    }).then(function () {
+    }, _setLoadingStatus).then(function () {
       _starting = false; _retryFn = null; _activeLiveEl = null;
       if (!live) { _removeLoadingBlock(); _appendBlock({ type: 'byte', content: fullText }); }
       _appendVisualLoader(fullText);
@@ -630,7 +634,7 @@
         fullText2 += chunk;
         if (!live2) { _removeLoadingBlock(); live2 = _appendLiveBlock('byte'); }
         _updateLiveBlock(live2.el, live2.block, fullText2);
-      }).then(function () {
+      }, _setLoadingStatus).then(function () {
         _retryFn = null; _activeLiveEl = null;
         if (!live2) { _removeLoadingBlock(); _appendBlock({ type: 'byte', content: fullText2 }); }
         if (capturedWantVisual) _appendVisualLoader(fullText2);
@@ -763,7 +767,7 @@
       fullText += chunk;
       if (!live) { _removeLoadingBlock(); live = _appendLiveBlock('meaning'); }
       _updateLiveBlock(live.el, live.block, fullText);
-    }).then(function () {
+    }, _setLoadingStatus).then(function () {
       _retryFn = null; _activeLiveEl = null;
       if (!live) { _removeLoadingBlock(); _appendBlock({ type: 'meaning', content: fullText }); }
       _setButtonRow('meaning-options');
@@ -795,7 +799,7 @@
         fullText2 += chunk;
         if (!live2) { _removeLoadingBlock(); live2 = _appendLiveBlock('meaning'); }
         _updateLiveBlock(live2.el, live2.block, fullText2);
-      }).then(function () {
+      }, _setLoadingStatus).then(function () {
         _retryFn = null; _activeLiveEl = null;
         if (!live2) { _removeLoadingBlock(); _appendBlock({ type: 'meaning', content: fullText2 }); }
         _setButtonRow('meaning-options');
@@ -1120,9 +1124,21 @@
     var d       = document.createElement('div');
     d.id        = 'loading-block';
     d.className = 'block block-loading';
-    d.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>';
+    d.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>' +
+                  '<span class="loading-status"></span>';
     s.appendChild(d);
     _scrollStream();
+  }
+
+  // Updates the text next to the loading dots (e.g. while a non-English second
+  // pass runs before any real content chunk arrives). No-op if the loading
+  // block isn't showing — a status frame arriving after content has already
+  // started should never resurrect it.
+  function _setLoadingStatus(key) {
+    var el = document.getElementById('loading-block');
+    if (!el) return;
+    var span = el.querySelector('.loading-status');
+    if (span) span.textContent = t('status.' + key);
   }
 
   function _removeLoadingBlock() {
