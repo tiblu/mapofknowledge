@@ -728,7 +728,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
             locale === 'et' ? 'Läbisid selle teema kõik õppesammud.' : "You've completed every learning step for this topic.");
           notify(userId, 'credential',
             locale === 'et' ? `Uus tunnistus: ${credTitle}` : `New credential: ${credTitle}`,
-            locale === 'et' ? 'Sinu Learner Passportile lisati platvormi tunnistus.' : 'A platform credential has been added to your Learner Passport.');
+            locale === 'et' ? 'Sinu õppija passi lisati platvormi tunnistus.' : 'A platform credential has been added to your Learner Passport.');
         }
       }
 
