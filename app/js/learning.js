@@ -190,6 +190,7 @@
     _knobitStarted = false;
     if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
     _ambientStop();
+    _stopFocusTimer();
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.remove('active');
     // Restore search box — always, whether hidden by learning or test mode
@@ -322,6 +323,111 @@
     _updateAmbientBtn();
   };
 
+  /* ─── Focus timer (evidence-based focus/break cycling) ───────────── */
+  var _focusInterval    = null;
+  var _breakInterval    = null;
+  var _focusSecondsLeft = 0;
+  var _breakSecondsLeft = 0;
+  var BREAK_SECONDS     = 600; // 10 minutes, fixed
+
+  function _focusTimerEnabled() {
+    // Default: on. Disabled only if user explicitly set 'off'.
+    return !(window._loadedSettings && window._loadedSettings.focus_timer === 'off');
+  }
+
+  function _focusTimerMinutes() {
+    var m = window._loadedSettings && parseInt(window._loadedSettings.focus_timer_minutes, 10);
+    return (m && m > 0) ? m : 20;
+  }
+
+  function _formatMMSS(totalSeconds) {
+    var s = Math.max(0, totalSeconds);
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  // Short two-tone chime, synthesized so no new audio asset is needed.
+  function _playChime() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      [523.25, 659.25].forEach(function (freq, i) {
+        var osc  = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        var start = ctx.currentTime + i * 0.18;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.25, start + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.55);
+      });
+    } catch (e) { /* Web Audio unsupported/blocked — silently skip the chime */ }
+  }
+
+  function _startFocusTimer() {
+    clearInterval(_focusInterval);
+    clearInterval(_breakInterval);
+    var modal = document.getElementById('focus-break-modal');
+    if (modal) modal.style.display = 'none';
+    var el = document.getElementById('lm-focus-timer');
+    if (!_focusTimerEnabled()) { if (el) el.style.display = 'none'; return; }
+    _focusSecondsLeft = _focusTimerMinutes() * 60;
+    if (el) el.style.display = '';
+    _updateFocusTimerDisplay();
+    _focusInterval = setInterval(function () {
+      _focusSecondsLeft--;
+      _updateFocusTimerDisplay();
+      if (_focusSecondsLeft <= 0) {
+        clearInterval(_focusInterval);
+        _showBreakDialog();
+      }
+    }, 1000);
+  }
+
+  function _stopFocusTimer() {
+    clearInterval(_focusInterval);
+    clearInterval(_breakInterval);
+    var el = document.getElementById('lm-focus-timer');
+    if (el) el.style.display = 'none';
+    var modal = document.getElementById('focus-break-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function _updateFocusTimerDisplay() {
+    var el = document.getElementById('lm-focus-timer-text');
+    if (el) el.textContent = _formatMMSS(_focusSecondsLeft);
+  }
+
+  function _showBreakDialog() {
+    var el = document.getElementById('lm-focus-timer');
+    if (el) el.style.display = 'none';
+    var modal = document.getElementById('focus-break-modal');
+    if (modal) modal.style.display = 'flex';
+    _breakSecondsLeft = BREAK_SECONDS;
+    _updateBreakTimerDisplay();
+    _breakInterval = setInterval(function () {
+      _breakSecondsLeft--;
+      _updateBreakTimerDisplay();
+      if (_breakSecondsLeft <= 0) {
+        clearInterval(_breakInterval);
+        _playChime();
+        var m = document.getElementById('focus-break-modal');
+        if (m) m.style.display = 'none';
+        _startFocusTimer();
+      }
+    }, 1000);
+  }
+
+  function _updateBreakTimerDisplay() {
+    var el = document.getElementById('focus-break-countdown');
+    if (el) el.textContent = _formatMMSS(_breakSecondsLeft);
+  }
+
   /* ─── View switching ──────────────────────────────────────────── */
   window.showLmView = function (id) {
     ['lm-path', 'lm-knobit', 'lm-complete'].forEach(function (v) {
@@ -397,6 +503,7 @@
     if (navLabel) navLabel.textContent = k.title || '';
 
     showLmView('lm-knobit');
+    _startFocusTimer();
 
     if (_resumeSession && _resumeSession.knobitId === k.id && _resumeSession.blocks && _resumeSession.blocks.length) {
       _resumeFromSession(_resumeSession);
@@ -857,6 +964,7 @@
   /* ─── Knobit completion ───────────────────────────────────────── */
   function _completeKnobit() {
     _knobitStarted = false;
+    _stopFocusTimer();
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
     KNOBIT_DONE_COUNT++;
     apiComplete(k.id);
@@ -1294,7 +1402,13 @@
       var modal = document.getElementById('quit-knobit-modal');
       if (modal) modal.style.display = 'none';
       _knobitStarted = false;
+      _stopFocusTimer();
       if (_quitCallback) { _quitCallback(); _quitCallback = null; }
+    });
+
+    var breakIgnore = document.getElementById('focus-break-ignore');
+    if (breakIgnore) breakIgnore.addEventListener('click', function () {
+      _startFocusTimer(); // resets and restarts the focus cycle
     });
 
     var quitCancel = document.getElementById('quit-modal-cancel');

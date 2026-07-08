@@ -884,6 +884,11 @@
   font-size: 14px; color: var(--c3);
   line-height: 1.65; margin-bottom: 22px;
 }
+.lm-break-countdown {
+  font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--c1); text-align: center;
+  margin-bottom: 22px;
+}
 .quit-modal-btns {
   display: flex; flex-direction: column; gap: 9px;
 }
@@ -1055,6 +1060,20 @@
   margin-left: 4px;
 }
 .lm-fs-btn:hover { background: var(--i13); color: var(--c2); }
+
+/* ── Focus timer pill (in kn-nav) ── */
+.lm-focus-timer {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  background: var(--i07);
+  color: var(--c4);
+  display: flex; align-items: center; gap: 5px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 /* ── Fullscreen tip strip ── */
 .lm-fs-tip {

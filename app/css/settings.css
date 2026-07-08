@@ -196,6 +196,9 @@ body {
 }
 .sf-input:focus { border-color: var(--accent); }
 .sf-input::placeholder { color: var(--c7); }
+.st-number-input {
+  width: 72px; text-align: center;
+}
 .sf-form-actions {
   display: flex; gap: 8px; justify-content: flex-end;
 }
