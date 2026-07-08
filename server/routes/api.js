@@ -303,7 +303,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
       if (pct >= 100) {
         notify(req.user?.id, 'knowledge_marked',
           locale === 'et' ? `Märgitud teadaolevaks: ${label}` : `Marked as known: ${label}`,
-          locale === 'et' ? 'Lisatud sinu Learner Passport teadmiste kaardile.' : 'Added to your Learner Passport knowledge map.');
+          locale === 'et' ? 'Lisatud sinu õppija passi teadmiste kaardile.' : 'Added to your Learner Passport knowledge map.');
       }
     }
 
