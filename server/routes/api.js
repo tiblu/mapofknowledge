@@ -719,7 +719,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
           await db.execute(
             `INSERT INTO passport_events
                (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-             VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'assessment', 0)`,
+             VALUES (?, CURDATE(), ?, 'KnoBitz · KaiQ Platform', ?, ?, 'evidence', 0)`,
             [passportId, locale === 'et' ? `Lõpetatud: ${nodeLabel}` : `Completed: ${nodeLabel}`,
              locale === 'et' ? 'Tulemus: 100%' : 'Score: 100%', nodeExtId]
           );
