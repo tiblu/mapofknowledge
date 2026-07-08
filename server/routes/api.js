@@ -227,6 +227,23 @@ router.get('/nodes/:id/learn-progress', async (req, res) => {
   }
 });
 
+// ── Whether the current user already has this node as an active goal ────────
+router.get('/nodes/:id/goal-status', async (req, res) => {
+  const { id }     = req.params;
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.json({ hasGoal: false });
+
+  try {
+    const [rows] = await db.execute(
+      `SELECT id FROM passport_goals WHERE passport_id = ? AND node_external_id = ? AND status = 'in_progress'`,
+      [passportId, id]
+    );
+    res.json({ hasGoal: rows.length > 0 });
+  } catch (err) {
+    res.json({ hasGoal: false });
+  }
+});
+
 // ── User knowledge percentage ────────────────────────────────────────────────
 router.get('/nodes/:id/knowledge', async (req, res) => {
   const { id }      = req.params;

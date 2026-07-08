@@ -480,9 +480,24 @@ function init(data) {
     // Wire "Set as goal" button — only for L5 nodes
     const goalBtn = document.getElementById('sb-goal-btn');
     const goalLabel = document.getElementById('sb-goal-label');
+    const _markGoalSet = function () {
+      goalBtn.disabled = true;
+      goalBtn.classList.add('sb-goal-success');
+      if (goalLabel) goalLabel.textContent = t('msg.already_a_goal');
+    };
+    const _markGoalUnset = function () {
+      goalBtn.disabled = false;
+      goalBtn.classList.remove('sb-goal-success');
+      if (goalLabel) goalLabel.textContent = t('btn.set_as_goal');
+    };
     if (goalBtn) {
       if (d.level === 5) {
         goalBtn.style.display = '';
+        _markGoalUnset(); // reset from any previously-viewed node before checking this one
+        fetch(`/api/nodes/${d.id}/goal-status`)
+          .then(r => r.json())
+          .then(({ hasGoal }) => { if (hasGoal) _markGoalSet(); })
+          .catch(() => {});
         goalBtn.onclick = function () {
           const crumb = (domainNode ? domainNode.label : '') +
             (crumbParts.length ? ' › ' + crumbParts.join(' › ') : '');
@@ -496,17 +511,10 @@ function init(data) {
               node_breadcrumb: crumb ? crumb + ' › ' + nodeName : nodeName,
             }),
           }).then(function (r) { return r.json(); }).then(function (res) {
-            if (goalLabel) {
-              goalLabel.textContent = res.duplicate ? t('msg.already_a_goal') : t('msg.goal_set');
-              goalBtn.classList.add('sb-goal-btn-set');
-            }
-            setTimeout(function () {
-              goalBtn.disabled = false;
-              if (goalLabel) goalLabel.setAttribute('data-i18n', 'btn.set_as_goal');
-              if (goalLabel) goalLabel.textContent = t('btn.set_as_goal');
-              goalBtn.classList.remove('sb-goal-btn-set');
-            }, 2500);
-          }).catch(function () { goalBtn.disabled = false; });
+            if (goalLabel) goalLabel.textContent = res.duplicate ? t('msg.already_a_goal') : t('msg.goal_set');
+            goalBtn.classList.add('sb-goal-success');
+            setTimeout(_markGoalSet, 2500); // settle on the persistent "already a goal" state, not back to inviting a re-click
+          }).catch(function () { _markGoalUnset(); });
         };
       } else {
         goalBtn.style.display = 'none';
