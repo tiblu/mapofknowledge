@@ -430,7 +430,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.goal_set',          'en', 'Goal added!'),
 ('msg.goal_set',          'et', 'Eesmärk lisatud!'),
 ('msg.already_a_goal',    'en', 'Already a goal'),
-('msg.already_a_goal',    'et', 'Juba eesmärk'),
+('msg.already_a_goal',    'et', 'Juba eesmärgiks seatud'),
 ('msg.too_many_goals',    'en', 'You have {n} active goals. Consider completing some first.'),
 ('msg.too_many_goals',    'et', 'Sul on {n} aktiivset eesmärki. Kaaluge mõne lõpetamist.'),
 ('msg.goal_map_hint',     'en', 'Select a node on the map to set it as a goal.'),
