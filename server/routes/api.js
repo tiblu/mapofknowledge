@@ -465,6 +465,19 @@ async function _fakeStreamText(text, write, res) {
   }
 }
 
+// ── Builds a streamFn for a non-English locale: generate (non-streaming) →
+// second-pass edit → fake-stream the corrected text through the SSE pipe.
+// generateFn is a zero-arg async function returning the raw generated text.
+function _editedStreamFn(generateFn, locale, uid, res) {
+  return async (write, writeStatus) => {
+    writeStatus('generating_text');
+    const raw = await generateFn();
+    writeStatus('checking_language');
+    const { text } = await llm.editTranslatedText({ text: raw }, locale, uid);
+    await _fakeStreamText(text, write, res);
+  };
+}
+
 // ── Persist a Q4 test-completion result (score, event log, notification, gamification) ──
 async function _saveTestResult(passportId, userId, nodeId, label, displayLabel, locale, evaluation) {
   if (evaluation.finalScore === undefined) return;
@@ -559,14 +572,26 @@ router.post('/learn/interact', async (req, res) => {
     if (wantStream) {
       let streamFn, onDone;
       if (phase === 'explain' && action !== 'visual') {
-        if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
+        const isRephrase = action === 'rephrase' || action === 'simpler' || action === 'complex';
+        const generateFn = isRephrase
+          ? () => llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid)
+          : () => llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid);
+        if (locale !== 'en') {
+          streamFn = _editedStreamFn(generateFn, locale, uid, res);
+        } else if (isRephrase) {
           streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, profile, uid, cb);
         } else {
           streamFn = (cb) => llm.streamExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid, cb);
         }
         onDone = (full) => _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, action || 'ok', null, full);
       } else if (phase === 'meaning') {
-        if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
+        const isRephrase = action === 'rephrase' || action === 'simpler' || action === 'complex';
+        const generateFn = isRephrase
+          ? () => llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid)
+          : () => llm.generateMeaning(nodeLabel, title, locale, uid);
+        if (locale !== 'en') {
+          streamFn = _editedStreamFn(generateFn, locale, uid, res);
+        } else if (isRephrase) {
           streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, profile, uid, cb);
         } else {
           streamFn = (cb) => llm.streamMeaning(nodeLabel, title, locale, uid, cb);
@@ -1431,9 +1456,24 @@ router.post('/test/evaluate', async (req, res) => {
     testlog('route_evaluate_input', { userId: req.user?.id, nodeId, nodeLabel: label, questionNum, question, options, correctIndex, userAnswer, history }); // TESTLOG
 
     if (wantStream) {
-      const streamFn = (write) => llm.streamTestEvaluate(
-        label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, write
-      );
+      let streamFn;
+      if (locale !== 'en') {
+        streamFn = async (write, writeStatus) => {
+          writeStatus('generating_text');
+          const evaluation = await llm.evaluateTestAnswer(
+            label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id
+          );
+          writeStatus('checking_language');
+          const editFields = { feedback: evaluation.feedback };
+          if (questionNum === 4 && evaluation.scoreBreakdown) editFields.scoreBreakdown = evaluation.scoreBreakdown;
+          const edited = await llm.editTranslatedText(editFields, locale, req.user?.id);
+          await _fakeStreamText(JSON.stringify({ ...evaluation, ...edited }), write, res);
+        };
+      } else {
+        streamFn = (write) => llm.streamTestEvaluate(
+          label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, write
+        );
+      }
       const onDone = async (fullText) => {
         testlog('route_evaluate_stream_response', { userId: req.user?.id, questionNum, raw: fullText }); // TESTLOG
         if (questionNum !== 4 || !passportId) return;
