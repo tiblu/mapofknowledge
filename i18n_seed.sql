@@ -19,7 +19,9 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.start_test',          'en', 'Start test'),
 ('btn.start_learning',      'en', 'Start learning'),
 ('btn.learn_this',          'en', 'Learn this'),
+('btn.learn_this',          'et', 'Õpin seda'),
 ('btn.test_me',             'en', 'Test me'),
+('btn.test_me',             'et', 'Teen testi'),
 ('btn.back_to_map',         'en', 'Back to the map'),
 ('btn.back_to_path',        'en', 'Back to path'),
 ('btn.back_to_path',        'et', 'Tagasi õpitee juurde'),
@@ -157,8 +159,6 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Sidebar
 ('sidebar.your_knowledge',  'en', 'Your Knowledge'),
 ('sidebar.i_know_this',     'en', 'I know this'),
-('sidebar.inactive_hint',   'en', 'Learning and testing are available at the most detailed level — explore deeper into this topic.'),
-('sidebar.inactive_hint',   'et', 'Õppimine ja testimine on võimalikud alles kõige detailsemal tasemel — liigu teemas sügavamale.'),
 ('sidebar.l1_hint',         'en', 'Choose a subtopic to start learning.'),
 ('sidebar.l1_hint',         'et', 'Õppimiseks vali mõni alateema.'),
 ('sidebar.overview',        'en', 'Overview'),

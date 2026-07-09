@@ -362,28 +362,6 @@ function init(data) {
   // ── Sidebar ────────────────────────────────────────────────────────────────
   const sidebar = document.getElementById("sidebar");
 
-  // Flash hint text when disabled learn/test buttons are hovered or clicked
-  (function () {
-    var hint = document.getElementById('sb-inactive-hint');
-    function flashHint(btn) {
-      if (!btn || !btn.disabled || !hint) return;
-      hint.classList.remove('flash');
-      void hint.offsetWidth; // force reflow to restart animation
-      hint.classList.add('flash');
-    }
-    function wireFlash(sel) {
-      var btn = document.querySelector(sel);
-      if (!btn) return;
-      btn.addEventListener('mouseenter',   function () { flashHint(btn); });
-      btn.addEventListener('pointerdown', function () { flashHint(btn); });
-    }
-    wireFlash('.sb-learn-btn');
-    wireFlash('.sb-test-btn');
-    document.addEventListener('animationend', function (e) {
-      if (e.target === hint) hint.classList.remove('flash');
-    });
-  }());
-
   // ── "I know this" confirmation modal ─────────────────────────────────────
   let _knowThisCallback = null;
   (function () {
@@ -536,16 +514,18 @@ function init(data) {
     const learnBtnEl = document.querySelector('.sb-learn-btn');
     const nodeExtId  = d.id;
 
-    // Inactive hint — L1 (no subtopic chosen yet) gets a distinct message from
-    // L2-4 (mid-tree, buttons visible but disabled until you reach a leaf).
+    // Inactive hint — L1 only now (no subtopic chosen yet). L2-4 buttons are
+    // active-looking (though not yet wired to anything), so there's nothing
+    // to explain there anymore.
     const inactiveHint = document.getElementById('sb-inactive-hint');
     if (inactiveHint) {
-      inactiveHint.classList.toggle('visible', d.level < 5);
+      inactiveHint.classList.toggle('visible', d.level === 1);
       if (d.level === 1) inactiveHint.textContent = t('sidebar.l1_hint');
-      else if (d.level < 5) inactiveHint.textContent = t('sidebar.inactive_hint');
     }
 
-    // Learn this — active for L5 nodes, hidden for L1, disabled (visible) for L2-4
+    // Learn this — active for L5 nodes, hidden for L1, active-looking but
+    // not yet wired to anything for L2-4 (the click handler wired below
+    // already no-ops for any non-L5 node).
     if (learnBtnEl) {
       const learnLabel = learnBtnEl.querySelector('.sb-learn-label');
       if (learnLabel) learnLabel.textContent = t('btn.learn_this');
@@ -565,13 +545,14 @@ function init(data) {
         learnBtnEl.style.display = 'none';
       } else {
         learnBtnEl.style.display = '';
-        learnBtnEl.disabled = true;
-        learnBtnEl.style.opacity = '0.4';
-        learnBtnEl.style.cursor = 'not-allowed';
+        learnBtnEl.disabled = false;
+        learnBtnEl.style.opacity = '';
+        learnBtnEl.style.cursor = '';
       }
     }
 
-    // Test me — active for L5 nodes, hidden for L1, disabled (visible) for L2-4
+    // Test me — active for L5 nodes, hidden for L1, active-looking but not
+    // yet wired to anything for L2-4.
     const testBtnEl = document.querySelector('.sb-test-btn');
     if (testBtnEl) {
       if (d.level === 5) {
@@ -590,9 +571,9 @@ function init(data) {
         testBtnEl.onclick = null;
       } else {
         testBtnEl.style.display = '';
-        testBtnEl.disabled = true;
-        testBtnEl.style.opacity = '0.4';
-        testBtnEl.style.cursor = 'not-allowed';
+        testBtnEl.disabled = false;
+        testBtnEl.style.opacity = '';
+        testBtnEl.style.cursor = '';
         testBtnEl.onclick = null;
       }
     }

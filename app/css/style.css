@@ -551,14 +551,6 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 }
 .sb-inactive-hint.visible { display: block; }
 
-@keyframes sb-hint-flash {
-  0%   { color: var(--c6); background: transparent; }
-  12%  { color: var(--lm-accent, #C4826A); background: rgba(196,130,106,0.20); border-radius: 6px; }
-  55%  { color: var(--lm-accent, #C4826A); background: rgba(196,130,106,0.10); border-radius: 6px; }
-  100% { color: var(--c6); background: transparent; }
-}
-.sb-inactive-hint.flash { animation: sb-hint-flash 1.5s ease-out forwards; }
-
 /* Loading dots inside the Learn button */
 .sb-learn-dots {
   display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;
