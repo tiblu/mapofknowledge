@@ -8,7 +8,6 @@
             window.MapView.clearKnowledgeFilter()
             window.MapView.resetZoom()
             window.MapView.refreshProgress()
-            window.MapView.setTilt(angle)    [called by tilt.js]
    Calls  : window.Learn.open/close
    Never  : implement learning or test flow — delegate to those modules
    ═══════════════════════════════════════════════════════════════ */
@@ -197,12 +196,6 @@ function init(data) {
 
   let currentTransform = d3.zoomIdentity;
 
-  // ── 3-D tilt projection ────────────────────────────────────────────────────
-  let tiltAngle = 0;
-  function projectY(worldY, z) {
-    return (worldY - h / 2) * Math.cos(tiltAngle) - z * Math.sin(tiltAngle) + h / 2;
-  }
-
   const zoomBehaviour = d3.zoom()
     .scaleExtent([0.1, 5])
     .on("zoom", e => {
@@ -210,9 +203,7 @@ function init(data) {
       currentTransform = e.transform;
       updateLabels();
       repositionLabels();
-      const tiltDeg = Math.round((window.currentTilt || 0) * 180 / Math.PI);
-      document.getElementById("zoom-level").textContent =
-        tiltDeg > 0 ? `zoom: ${e.transform.k.toFixed(2)}  tilt: ${tiltDeg}°` : `zoom: ${e.transform.k.toFixed(2)}`;
+      document.getElementById("zoom-level").textContent = `zoom: ${e.transform.k.toFixed(2)}`;
     });
   svg.call(zoomBehaviour);
 
@@ -857,16 +848,16 @@ function init(data) {
 
   function ticked() {
     if (link) link
-      .attr("x1", d => d.source.x).attr("y1", d => projectY(d.source.y, 0))
-      .attr("x2", d => d.target.x).attr("y2", d => projectY(d.target.y, 0));
-    if (node) node.attr("cx", d => d.x).attr("cy", d => projectY(d.y, 0));
+      .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+    if (node) node.attr("cx", d => d.x).attr("cy", d => d.y);
     if (expander) expander
       .attr("x", d => d.x)
-      .attr("y", d => projectY(d.y, 0))
+      .attr("y", d => d.y)
       .text(d => d.expanded ? "−" : "+");
     gRings.selectAll('circle.filter-ring')
       .attr('cx', d => d.x)
-      .attr('cy', d => projectY(d.y, 0));
+      .attr('cy', d => d.y);
     repositionLabels();
   }
 
@@ -874,7 +865,7 @@ function init(data) {
     if (!label) return;
     label
       .attr("x", d => currentTransform.applyX(d.x))
-      .attr("y", d => currentTransform.applyY(projectY(d.y, 0)) - (NODE_OFFSET[d.level] || 10));
+      .attr("y", d => currentTransform.applyY(d.y) - (NODE_OFFSET[d.level] || 10));
   }
 
   function updateLabels() {
@@ -1086,7 +1077,7 @@ function init(data) {
         gRings.append('circle')
           .datum(d)
           .attr('cx', d.x)
-          .attr('cy', projectY(d.y, 0))
+          .attr('cy', d.y)
           .attr('r', nodeRadius(d) * 1.7)
           .attr('fill', 'none')
           .attr('stroke', desc.ringColor || '#9B8FB5')
@@ -1186,14 +1177,6 @@ function init(data) {
     refreshFilterRings();
   };
 
-  // ── Tilt API (called by tilt.js) ──────────────────────────────────────────
-  window.setTilt = function (angle) {
-    tiltAngle = angle;
-    window.currentTilt = angle;
-    ticked();
-  };
-  window.currentTilt = 0;
-
   // ── Public MapView namespace (avoid 'Map' — that's a JS built-in) ────────────
   window.MapView = {
     setFilter:            function(descs)    { window.setMapFilter(descs); },
@@ -1202,7 +1185,6 @@ function init(data) {
     updateRingColor:      function(fid, c)  { window.updateRingColor(fid, c); },
     resetZoom:            function()         { window.resetMapZoom(); },
     refreshProgress:      function()         { loadProgress(); },
-    setTilt:              function(angle)    { window.setTilt(angle); },
     openDemoNode:         function()         {
       var target = simNodes.find(function(n) { return n.level === 4 && n.x; });
       if (!target) return;
@@ -1236,7 +1218,7 @@ function init(data) {
         .catch(() => {});
     },
   };
-  // Keep legacy aliases so filters.js / tilt.js / HTML inline calls still work
+  // Keep legacy aliases so filters.js / HTML inline calls still work
   window.refreshProgress = window.MapView.refreshProgress;
 
   // ── Node navigation (shared by deep-link and search) ─────────────────────

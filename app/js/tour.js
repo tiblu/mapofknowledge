@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    ONBOARDING TOUR  —  tour.js
    ───────────────────────────────────────────────────────────────
-   Self-contained 5-step product tour. No external dependencies.
+   Self-contained 4-step product tour. No external dependencies.
    Roll back: remove tour.css + tour.js from index.html.
    Exposes: window.Tour.start()  window.Tour.restart()
             window._tourCheckAutoStart(settings)
@@ -23,8 +23,6 @@
   var _icoFilter  = _ico('<path d="M2 4.5h11M4 7.5h7M6 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>');
   var _icoZoomIn  = _ico('<circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M6 4v4M4 6h4M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>');
   var _icoZoomOut = _ico('<circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M4 6h4M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>');
-  var _icoTiltUp  = _ico('<ellipse cx="7.5" cy="10" rx="5.5" ry="2" stroke="currentColor" stroke-width="1.2"/><ellipse cx="7.5" cy="7" rx="5.5" ry="2" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/><path d="M7.5 4V1M6 2.5l1.5-1.5 1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>');
-  var _icoTiltDn  = _ico('<ellipse cx="7.5" cy="5" rx="5.5" ry="2" stroke="currentColor" stroke-width="1.2"/><ellipse cx="7.5" cy="8" rx="5.5" ry="2" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/><path d="M7.5 11v3M6 12.5l1.5 1.5 1.5-1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>');
 
   function _row(icon, label, desc) {
     return '<div class="tour-row">'
@@ -32,7 +30,7 @@
       + '<span><strong>'+label+'</strong>'+(desc?' — '+desc:'')+'</span></div>';
   }
 
-  /* ─── Step definitions (order: sidebar → zoom → controls → learning → passport) ──
+  /* ─── Step definitions (order: sidebar → controls → learning → passport) ──
      Built lazily (not at module-load time) so window.t() reflects loaded strings —
      strings.js's fetch is async and may not have resolved yet at parse time. */
   var STEPS = [];
@@ -52,23 +50,14 @@
       padding: 0,
     },
     {
-      target:   '#ctrl-zoom',
-      position: 'left',
-      title:    t('tour.step2_title'),
-      text:     'Navigate with the controls here:<br><br>'
-        + _row(_icoZoomIn,  t('tour.row_zoom_in'))
-        + _row(_icoZoomOut, t('tour.row_zoom_out'))
-        + _row(_icoTiltUp,  t('tour.row_tilt'), t('tour.row_tilt_desc'))
-        + _row(_icoTiltDn,  t('tour.row_flatten'), t('tour.row_flatten_desc'))
-        + '<br>' + t('tour.step2_text_tail'),
-      padding: 10,
-    },
-    {
       target:   '#ctrl-left-stack',
       position: 'right',
       title:    t('tour.step3_title'),
-      text:     _row(_icoGlobe,  t('tour.row_map_view'),  t('tour.row_map_view_desc'))
-        + _row(_icoFilter, t('tour.row_filters'),  t('tour.row_filters_desc')),
+      text:     _row(_icoZoomIn,  t('tour.row_zoom_in'))
+        + _row(_icoZoomOut, t('tour.row_zoom_out'))
+        + _row(_icoGlobe,  t('tour.row_map_view'),  t('tour.row_map_view_desc'))
+        + _row(_icoFilter, t('tour.row_filters'),  t('tour.row_filters_desc'))
+        + '<br>' + t('tour.step2_text_tail'),
       padding: 14,
     },
     {

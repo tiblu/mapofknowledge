@@ -384,15 +384,8 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 .fp-list { max-height: 260px; overflow-y: auto; padding-bottom: 4px; }
 
 
-/* ── BOTTOM-RIGHT ZOOM ── */
-#ctrl-zoom {
-  position: fixed; bottom: 24px; right: 20px;
-  display: flex; flex-direction: column;
-  z-index: 300;
-}
-#ctrl-zoom .ctrl-btn {
+#zoom-in, #zoom-out {
   font-size: 20px; font-weight: 300; line-height: 1;
-  width: 34px; height: 34px;
 }
 
 /* ═══════════════════════════════════════════

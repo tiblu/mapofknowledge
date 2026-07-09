@@ -152,6 +152,12 @@
       </svg>
     </button>
 
+    <div class="ctrl-divider"></div>
+
+    <button class="ctrl-btn" id="zoom-in" data-i18n-title="btn.zoom_in" title="Zoom in">+</button>
+    <div class="ctrl-divider"></div>
+    <button class="ctrl-btn" id="zoom-out" data-i18n-title="btn.zoom_out" title="Zoom out">−</button>
+
   </div>
 
 </div>
@@ -189,30 +195,6 @@
   </div>
 </div>
 
-
-<!-- ════════════════════════════════════════
-     BOTTOM-RIGHT ZOOM
-     ════════════════════════════════════════ -->
-<div id="ctrl-zoom" class="ctrl-card">
-  <button class="ctrl-btn" id="zoom-in" data-i18n-title="btn.zoom_in" title="Zoom in">+</button>
-  <div class="ctrl-divider"></div>
-  <button class="ctrl-btn" id="zoom-out" data-i18n-title="btn.zoom_out" title="Zoom out">−</button>
-  <div class="ctrl-divider"></div>
-  <button class="ctrl-btn" id="tilt-more" data-i18n-title="btn.tilt_more" title="Tilt toward edge-on">
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-      <ellipse cx="7.5" cy="10" rx="5.5" ry="2" stroke="currentColor" stroke-width="1.2"/>
-      <ellipse cx="7.5" cy="7"  rx="5.5" ry="2" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
-      <path d="M7.5 4V1M6 2.5l1.5-1.5 1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </button>
-  <button class="ctrl-btn" id="tilt-less" data-i18n-title="btn.tilt_less" title="Tilt back toward top-down">
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-      <ellipse cx="7.5" cy="5"  rx="5.5" ry="2" stroke="currentColor" stroke-width="1.2"/>
-      <ellipse cx="7.5" cy="8"  rx="5.5" ry="2" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
-      <path d="M7.5 11v3M6 12.5l1.5 1.5 1.5-1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  </button>
-</div>
 
 
 <!-- ════════════════════════════════════════
@@ -705,7 +687,6 @@
 <script src="js/learning.js?v=8"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/filters.js?v=4"></script>
-<script src="js/app.js?v=5"></script>
-<script src="js/tilt.js?v=4"></script>
+<script src="js/app.js?v=6"></script>
 </body>
 </html>
