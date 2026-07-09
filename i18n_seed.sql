@@ -684,6 +684,6 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 
 -- Anne (mentor chat widget)
 ('anne.input_placeholder', 'en', 'Ask Anne...'),
-('anne.input_placeholder', 'et', 'Küsi Anne''lt...')
+('anne.input_placeholder', 'et', 'Küsi Annelt...')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
