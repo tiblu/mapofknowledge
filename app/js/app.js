@@ -539,11 +539,16 @@ function init(data) {
     const learnBtnEl = document.querySelector('.sb-learn-btn');
     const nodeExtId  = d.id;
 
-    // Inactive hint
+    // Inactive hint — L1 (no subtopic chosen yet) gets a distinct message from
+    // L2-4 (mid-tree, buttons visible but disabled until you reach a leaf).
     const inactiveHint = document.getElementById('sb-inactive-hint');
-    if (inactiveHint) inactiveHint.classList.toggle('visible', d.level < 5);
+    if (inactiveHint) {
+      inactiveHint.classList.toggle('visible', d.level < 5);
+      if (d.level === 1) inactiveHint.textContent = t('sidebar.l1_hint');
+      else if (d.level < 5) inactiveHint.textContent = t('sidebar.inactive_hint');
+    }
 
-    // Learn this — only active for L5 nodes
+    // Learn this — active for L5 nodes, hidden for L1, disabled (visible) for L2-4
     if (learnBtnEl) {
       const learnLabel = learnBtnEl.querySelector('.sb-learn-label');
       if (learnLabel) learnLabel.textContent = t('btn.learn_this');
@@ -559,12 +564,17 @@ function init(data) {
               learnLabel.textContent = t('label.continue') + ' (' + done + '/' + total + ')';
             }
           }).catch(() => {});
-      } else {
+      } else if (d.level === 1) {
         learnBtnEl.style.display = 'none';
+      } else {
+        learnBtnEl.style.display = '';
+        learnBtnEl.disabled = true;
+        learnBtnEl.style.opacity = '0.4';
+        learnBtnEl.style.cursor = 'not-allowed';
       }
     }
 
-    // Test me — active for L5 nodes
+    // Test me — active for L5 nodes, hidden for L1, disabled (visible) for L2-4
     const testBtnEl = document.querySelector('.sb-test-btn');
     if (testBtnEl) {
       if (d.level === 5) {
@@ -578,8 +588,14 @@ function init(data) {
           closeSidebar();
           window.Test.open(d, testCrumb);
         };
-      } else {
+      } else if (d.level === 1) {
         testBtnEl.style.display = 'none';
+        testBtnEl.onclick = null;
+      } else {
+        testBtnEl.style.display = '';
+        testBtnEl.disabled = true;
+        testBtnEl.style.opacity = '0.4';
+        testBtnEl.style.cursor = 'not-allowed';
         testBtnEl.onclick = null;
       }
     }

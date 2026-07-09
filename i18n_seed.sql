@@ -157,8 +157,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Sidebar
 ('sidebar.your_knowledge',  'en', 'Your Knowledge'),
 ('sidebar.i_know_this',     'en', 'I know this'),
-('sidebar.inactive_hint',   'en', 'Choose a subtopic to start learning.'),
-('sidebar.inactive_hint',   'et', 'Õppimiseks vali mõni alateema.'),
+('sidebar.inactive_hint',   'en', 'Learning and testing are available at the most detailed level — explore deeper into this topic.'),
+('sidebar.inactive_hint',   'et', 'Õppimine ja testimine on võimalikud alles kõige detailsemal tasemel — liigu teemas sügavamale.'),
+('sidebar.l1_hint',         'en', 'Choose a subtopic to start learning.'),
+('sidebar.l1_hint',         'et', 'Õppimiseks vali mõni alateema.'),
 ('sidebar.overview',        'en', 'Overview'),
 
 -- Tabs
