@@ -431,12 +431,17 @@ function init(data) {
     document.getElementById("sb-breadcrumb-text").textContent =
       crumbParts.length ? crumbParts.join(" › ") : (domainNode ? domainNode.label : "");
 
-    // Domain tag
+    // Domain tag — only meaningful above a node that has an actual parent
+    // domain; a true L1 node (no incoming hierarchy edge) shows nothing here
+    // instead of leftover text from whichever node was viewed previously.
     const domainTag = document.getElementById("sb-domain-tag");
     if (domainNode) {
+      domainTag.style.display = '';
       domainTag.textContent = domainNode.label.toUpperCase();
       domainTag.style.color = d.color;
       domainTag.style.background = d.color + "1A";
+    } else {
+      domainTag.style.display = 'none';
     }
 
     // Title
