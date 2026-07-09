@@ -410,17 +410,24 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
   padding: 20px 20px 0;
   position: relative;
 }
-.sb-breadcrumb {
+.sb-crumbs {
+  display: flex; flex-direction: column; gap: 3px;
+  margin-bottom: 10px;
+}
+.sb-crumb-line {
   font-size: 11px; color: var(--c7);
   letter-spacing: 0.3px;
-  margin-bottom: 8px;
+  line-height: 1.3;
 }
-.sb-domain-tag {
-  display: inline-flex; align-items: center;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.9px;
+.sb-crumb-line.sb-crumb-domain {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
   text-transform: uppercase;
-  padding: 3px 9px; border-radius: 4px;
-  margin-bottom: 10px;
+  color: var(--c3);
+}
+.sb-crumb-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex-shrink: 0;
 }
 .sb-title {
   font-size: 22px; font-weight: 720;

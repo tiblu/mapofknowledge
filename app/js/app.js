@@ -419,21 +419,27 @@ function init(data) {
 
     // Breadcrumb: L2 up to (but not including) the clicked node
     const crumbParts = chain.slice(1).map(n => n.label);
-    document.getElementById("sb-breadcrumb-text").textContent =
-      crumbParts.length ? crumbParts.join(" › ") : (domainNode ? domainNode.label : "");
 
-    // Domain tag — only meaningful above a node that has an actual parent
-    // domain; a true L1 node (no incoming hierarchy edge) shows nothing here
-    // instead of leftover text from whichever node was viewed previously.
-    const domainTag = document.getElementById("sb-domain-tag");
-    if (domainNode) {
-      domainTag.style.display = '';
-      domainTag.textContent = domainNode.label.toUpperCase();
-      domainTag.style.color = d.color;
-      domainTag.style.background = d.color + "1A";
-    } else {
-      domainTag.style.display = 'none';
-    }
+    // Stacked breadcrumb trail — one line per ancestor, L1 down to the
+    // immediate parent. A true L1 node has an empty chain, so nothing
+    // renders here at all. The domain (first) line carries the node's
+    // color as a dot instead of the old filled pill.
+    const crumbsEl = document.getElementById("sb-crumbs");
+    crumbsEl.innerHTML = '';
+    chain.forEach((n, i) => {
+      const line = document.createElement('div');
+      line.className = 'sb-crumb-line' + (i === 0 ? ' sb-crumb-domain' : '');
+      if (i === 0) {
+        const dot = document.createElement('span');
+        dot.className = 'sb-crumb-dot';
+        dot.style.background = d.color;
+        line.appendChild(dot);
+        line.appendChild(document.createTextNode(n.label));
+      } else {
+        line.textContent = n.label;
+      }
+      crumbsEl.appendChild(line);
+    });
 
     // Title
     document.getElementById("sb-title").textContent = d.label;
