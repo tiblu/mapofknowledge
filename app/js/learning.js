@@ -176,6 +176,7 @@
     showLmView('lm-path');
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.add('active');
+    if (window.Anne) window.Anne.setVisible(false);
 
     // Show one-time fullscreen tip
     if (!localStorage.getItem(window.lsKey('lm_fs_tip_shown'))) {
@@ -193,6 +194,7 @@
     _stopFocusTimer();
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.remove('active');
+    if (window.Anne) window.Anne.setVisible(true);
     // Restore search box — always, whether hidden by learning or test mode
     var sw = _searchWrap || document.querySelector('.topbar-search-wrap');
     if (sw) sw.style.display = '';

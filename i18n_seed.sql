@@ -680,6 +680,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('tour.done',              'en', 'Done ✓'),
 ('tour.done',              'et', 'Valmis ✓'),
 ('tour.overlay_hint',      'en', 'The app is available after the tour. Use Next → to continue.'),
-('tour.overlay_hint',      'et', 'Rakendus on saadaval pärast tuuri lõppu. Jätka nupuga Edasi →.')
+('tour.overlay_hint',      'et', 'Rakendus on saadaval pärast tuuri lõppu. Jätka nupuga Edasi →.'),
+
+-- Anne (mentor chat widget)
+('anne.input_placeholder', 'en', 'Ask Anne...'),
+('anne.input_placeholder', 'et', 'Küsi Anne''lt...')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
