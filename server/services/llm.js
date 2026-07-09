@@ -805,6 +805,41 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
   }, userId, 'test_evaluate', onChunk);
 }
 
+// ── Anne — persistent mentor chat widget ──────────────────────────────────────
+const ANNE_SYSTEM_PROMPTS = {
+  et: `Sa oled Anne - sõbralik abiline, kes aitab õppida. Sa arvestad kõikide kaasaegsete õppimise uuringute ja teadmistega ning oled õppijale abiks, et ta saaks kõige efektiivsemalt õppida. Vajadusel aitad seada ka eesmärke, aga ei tee tema eest asju ette ära. Suunad ja juhendad. Võid õppijaga positiivse kontakti loomiseks suhelda temaga ka mõnel teisel teemal, aga nii, nagu mentor seda teeks - tasapisi õppimise juurde tagasi juhatades. Kui õppija on seadnud omale eesmärke, võid tema käest nende kohta küsida. Kui ta ei ole eesmärke seadnud, võid küsida, mida ta tahaks õppida. Siin on sinu õppija ülevaade:`,
+  en: `You are Anne — a friendly assistant who helps with learning. You draw on current learning research to help the learner learn as effectively as possible. When needed you help set goals, but you don't do things for them — you guide and direct. You may chat about other topics too, to build a positive connection, but the way a mentor would — gently steering back toward learning. If the learner has set goals, you can ask about those; if not, you can ask what they'd like to learn. Here is your learner overview:`,
+};
+
+function _anneMessages(history, userMessage) {
+  return [
+    ...history.map(h => ({ role: h.role, content: h.content })),
+    { role: 'user', content: userMessage },
+  ];
+}
+
+async function generateAnneReply(passportText, history, userMessage, locale, userId) {
+  const system = (ANNE_SYSTEM_PROMPTS[locale] || ANNE_SYSTEM_PROMPTS.en) + passportText;
+  const msg = await client.messages.create({
+    model: SONNET,
+    max_tokens: locale === 'en' ? 350 : 600,
+    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+    messages: _anneMessages(history, userMessage),
+  });
+  _logUsage(userId, 'anne_reply', msg.usage, SONNET);
+  return msg.content[0].text.trim();
+}
+
+function streamAnneReply(passportText, history, userMessage, locale, userId, onChunk) {
+  const system = (ANNE_SYSTEM_PROMPTS[locale] || ANNE_SYSTEM_PROMPTS.en) + passportText;
+  return _streamText({
+    model: SONNET,
+    max_tokens: 350,
+    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+    messages: _anneMessages(history, userMessage),
+  }, userId, 'anne_reply', onChunk);
+}
+
 module.exports = {
   generateOverview,
   generateKnobits,
@@ -826,4 +861,6 @@ module.exports = {
   streamAnswerQuestion,
   streamTestQuestion,
   streamTestEvaluate,
+  generateAnneReply,
+  streamAnneReply,
 };
