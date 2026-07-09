@@ -543,6 +543,7 @@ function init(data) {
       const learnLabel = learnBtnEl.querySelector('.sb-learn-label');
       if (learnLabel) learnLabel.textContent = t('btn.learn_this');
       if (d.level === 5) {
+        learnBtnEl.style.display = '';
         learnBtnEl.disabled = false;
         learnBtnEl.style.opacity = '';
         learnBtnEl.style.cursor = '';
@@ -554,9 +555,7 @@ function init(data) {
             }
           }).catch(() => {});
       } else {
-        learnBtnEl.disabled = true;
-        learnBtnEl.style.opacity = '0.4';
-        learnBtnEl.style.cursor = 'not-allowed';
+        learnBtnEl.style.display = 'none';
       }
     }
 
@@ -564,6 +563,7 @@ function init(data) {
     const testBtnEl = document.querySelector('.sb-test-btn');
     if (testBtnEl) {
       if (d.level === 5) {
+        testBtnEl.style.display = '';
         testBtnEl.disabled = false;
         testBtnEl.style.opacity = '';
         testBtnEl.style.cursor = '';
@@ -574,9 +574,7 @@ function init(data) {
           window.Test.open(d, testCrumb);
         };
       } else {
-        testBtnEl.disabled = true;
-        testBtnEl.style.opacity = '0.4';
-        testBtnEl.style.cursor = 'not-allowed';
+        testBtnEl.style.display = 'none';
         testBtnEl.onclick = null;
       }
     }
