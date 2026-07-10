@@ -1,5 +1,9 @@
 /* ── Admin panel ──────────────────────────────────────────────────────────── */
 
+/* style.css sets body { overflow: hidden } for the map view's own pan/zoom —
+   override here so this page can scroll past one viewport of table rows. */
+body { overflow-y: auto; }
+
 .admin-wrap {
   padding: 24px 28px;
   max-width: 1200px;
