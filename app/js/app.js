@@ -551,11 +551,10 @@ function init(data) {
       }
     }
 
-    // Test me — active for L5 nodes, hidden for L1, active-looking but not
-    // yet wired to anything for L2-4.
+    // Test me — active for L4 and L5 nodes, hidden for L1-L3.
     const testBtnEl = document.querySelector('.sb-test-btn');
     if (testBtnEl) {
-      if (d.level === 5) {
+      if (d.level === 4 || d.level === 5) {
         testBtnEl.style.display = '';
         testBtnEl.disabled = false;
         testBtnEl.style.opacity = '';
@@ -566,14 +565,8 @@ function init(data) {
           closeSidebar();
           window.Test.open(d, testCrumb);
         };
-      } else if (d.level === 1) {
-        testBtnEl.style.display = 'none';
-        testBtnEl.onclick = null;
       } else {
-        testBtnEl.style.display = '';
-        testBtnEl.disabled = false;
-        testBtnEl.style.opacity = '';
-        testBtnEl.style.cursor = '';
+        testBtnEl.style.display = 'none';
         testBtnEl.onclick = null;
       }
     }
