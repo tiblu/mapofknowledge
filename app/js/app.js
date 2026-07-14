@@ -460,7 +460,7 @@ function init(data) {
       };
     }
 
-    // Wire "Set as goal" button — only for L5 nodes
+    // Wire "Set as goal" button — for L3, L4, and L5 nodes
     const goalBtn = document.getElementById('sb-goal-btn');
     const goalLabel = document.getElementById('sb-goal-label');
     const _markGoalSet = function () {
@@ -474,7 +474,7 @@ function init(data) {
       if (goalLabel) goalLabel.textContent = t('btn.set_as_goal');
     };
     if (goalBtn) {
-      if (d.level === 5) {
+      if (d.level === 3 || d.level === 4 || d.level === 5) {
         goalBtn.style.display = '';
         _markGoalUnset(); // reset from any previously-viewed node before checking this one
         fetch(`/api/nodes/${d.id}/goal-status`)
