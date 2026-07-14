@@ -472,19 +472,32 @@ function init(data) {
                 if (orderedIds.indexOf(cid) === -1 && allNodes[cid]) ordered.push({ id: cid, label: allNodes[cid].label });
               });
 
+              // Same as clicking "Õpin seda" directly in that L3's own sidebar —
+              // opens the learning tree, not just the sidebar.
+              const l3Crumb = (domainNode ? domainNode.label : '') + (d && d.label ? ' › ' + d.label : '');
+              const goLearnL3 = function (childId) {
+                const targetNode = allNodes[childId];
+                if (targetNode) {
+                  closeSidebar();
+                  window.Learn.openTree(targetNode, l3Crumb);
+                } else {
+                  navigateToNode(childId); // fallback if map data is somehow missing this node
+                }
+              };
+
               l3OrderListEl.innerHTML = '';
               ordered.forEach(child => {
                 const li = document.createElement('li');
                 li.className = 'sb-l3-order-item';
                 li.textContent = child.label;
-                li.onclick = function () { navigateToNode(child.id); };
+                li.onclick = function () { goLearnL3(child.id); };
                 l3OrderListEl.appendChild(li);
               });
 
-              // "Sobib" — acts exactly as if the first (top-recommended) L3 node were clicked
+              // "Sobib" — acts exactly as if "Õpin seda" were clicked on the first (top-recommended) L3 node
               if (sobibBtnEl && ordered.length) {
                 sobibBtnEl.style.display = '';
-                sobibBtnEl.onclick = function () { navigateToNode(ordered[0].id); };
+                sobibBtnEl.onclick = function () { goLearnL3(ordered[0].id); };
               }
             } catch (err) {
               l3OrderListEl.innerHTML = '';
