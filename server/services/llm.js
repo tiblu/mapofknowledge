@@ -171,6 +171,47 @@ No headings, no bullet points — just the 2 sentences.${langText(locale)}`,
   return msg.content[0].text.trim();
 }
 
+// ── Child ordering (pedagogical sort of a node's direct children) ──────────────
+// Sends only numbered indices, never the labels — the model returns a
+// permutation of the numbers, so it structurally cannot alter/paraphrase a
+// node name. Validated as a true 1..N permutation; falls back to the
+// original (map) order on any malformed or incomplete response.
+async function generateChildOrder(labels, userId) {
+  if (labels.length <= 1) return labels.map((_, i) => i + 1);
+
+  const numbered = labels.map((l, i) => `${i + 1}. ${l}`).join('\n');
+  const fallback = labels.map((_, i) => i + 1);
+
+  try {
+    const msg = await client.messages.create({
+      model: SONNET,
+      max_tokens: 60,
+      system: TUTOR_SYSTEM,
+      messages: [{
+        role: 'user',
+        content: `Here is a numbered list of subtopics that all sit under the same parent topic:
+
+${numbered}
+
+Determine the most pedagogically sensible order to learn them in — subtopics that are prerequisites or more foundational should come before subtopics that build on them. If there is no clear prerequisite relationship between two subtopics, keep their relative order as given.
+
+Respond with ONLY the numbers in your recommended order, separated by semicolons (example format: "3;1;2"). Do not output the subtopic names, any explanation, or anything else — numbers only.`,
+      }],
+    });
+    _logUsage(userId, 'child_order', msg.usage, SONNET);
+
+    const raw = msg.content[0].text.trim();
+    const nums = raw.split(/[^0-9]+/).filter(Boolean).map(Number);
+    const isPermutation = nums.length === labels.length &&
+      new Set(nums).size === labels.length &&
+      nums.every(n => n >= 1 && n <= labels.length);
+
+    return isPermutation ? nums : fallback;
+  } catch (err) {
+    return fallback;
+  }
+}
+
 // ── Knobit generation ─────────────────────────────────────────────────────────
 async function generateKnobits(nodeLabel, domain, breadcrumb) {
   const msg = await client.messages.create({
@@ -842,6 +883,7 @@ function streamAnneReply(passportText, history, userMessage, locale, userId, onC
 
 module.exports = {
   generateOverview,
+  generateChildOrder,
   generateKnobits,
   translateKnobitTitles,
   editTranslatedText,

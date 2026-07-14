@@ -448,6 +448,15 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 .sb-body::-webkit-scrollbar-track { background: transparent; }
 .sb-body::-webkit-scrollbar-thumb { background: var(--i14); border-radius: 2px; }
 
+/* Fade-out utility — used when a sidebar element is being replaced by
+   another view (e.g. L2 "Õpin seda" swapping in the recommended-order list) */
+.sb-fade-out {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
 /* Knowledge card */
 .sb-knowledge-card {
   background: linear-gradient(135deg, #ffffff 0%, #F8F0F5 100%);
@@ -577,6 +586,38 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 }
 .sb-overview-text {
   font-size: 13px; color: var(--c3); line-height: 1.65;
+}
+
+/* L2 "Õpin seda" -> recommended L3 learning order */
+.sb-l3-order-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  counter-reset: sb-l3-rank;
+}
+.sb-l3-order-item {
+  counter-increment: sb-l3-rank;
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, #ffffff 0%, #F8F0F5 100%);
+  border: 1px solid var(--i08);
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px; font-weight: 550; color: var(--c2);
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s, border-color 0.12s;
+}
+.sb-l3-order-item::before {
+  content: counter(sb-l3-rank);
+  flex-shrink: 0;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--i08); color: var(--c4);
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.sb-l3-order-item:hover { background: var(--i07); border-color: var(--i12); transform: translateY(-1px); }
+.sb-l3-order-loading {
+  list-style: none;
+  font-size: 12.5px; color: var(--c6); text-align: center;
+  padding: 10px 0;
 }
 
 /* Close button */

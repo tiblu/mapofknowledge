@@ -162,6 +162,8 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('sidebar.l1_hint',         'en', 'Choose a subtopic to start learning.'),
 ('sidebar.l1_hint',         'et', 'Õppimiseks vali mõni alateema.'),
 ('sidebar.overview',        'en', 'Overview'),
+('sidebar.recommended_order','en', 'Recommended learning order:'),
+('sidebar.recommended_order','et', 'Soovitan liikuda selles järjekorras:'),
 
 -- Tabs
 ('tab.all',                 'en', 'All'),

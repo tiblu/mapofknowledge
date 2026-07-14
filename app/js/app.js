@@ -427,10 +427,64 @@ function init(data) {
 
     // Wire "Learn this" button to open learning mode for this node
     const learnBtn = document.querySelector(".sb-learn-btn");
+
+    // Reset the L2 "recommended order" transformation from any previously
+    // viewed node before this node's own level-specific state is applied.
+    const knowledgeCardEl   = document.querySelector('.sb-knowledge-card');
+    const overviewSectionEl = document.querySelector('.sb-overview-section');
+    const l3OrderEl         = document.getElementById('sb-l3-order');
+    const l3OrderListEl     = document.getElementById('sb-l3-order-list');
+    [knowledgeCardEl, learnBtn, overviewSectionEl].forEach(el => {
+      if (!el) return;
+      el.classList.remove('sb-fade-out');
+      el.style.display = '';
+    });
+    if (l3OrderEl) l3OrderEl.style.display = 'none';
+    if (l3OrderListEl) l3OrderListEl.innerHTML = '';
+
     if (learnBtn) {
       const crumb = (domainNode ? domainNode.label : "") +
         (crumbParts.length ? " › " + crumbParts.join(" › ") : "");
       learnBtn.onclick = async function () {
+        if (d.level === 2) {
+          [knowledgeCardEl, learnBtn, overviewSectionEl].forEach(el => {
+            if (el) el.classList.add('sb-fade-out');
+          });
+          setTimeout(() => {
+            [knowledgeCardEl, learnBtn, overviewSectionEl].forEach(el => {
+              if (el) el.style.display = 'none';
+            });
+          }, 300);
+
+          if (l3OrderEl && l3OrderListEl) {
+            l3OrderListEl.innerHTML = '<li class="sb-l3-order-loading">' + t('msg.loading') + '</li>';
+            l3OrderEl.style.display = '';
+            try {
+              const r = await fetch(`/api/nodes/${d.id}/child-order`);
+              const { order } = await r.json();
+              const kids = childrenOf[d.id] || [];
+              const ordered = (order || [])
+                .map(cid => allNodes[cid])
+                .filter(Boolean);
+              // Any child missing from a stale cached order gets appended at the end
+              kids.forEach(cid => {
+                if (order.indexOf(cid) === -1 && allNodes[cid]) ordered.push(allNodes[cid]);
+              });
+
+              l3OrderListEl.innerHTML = '';
+              ordered.forEach(child => {
+                const li = document.createElement('li');
+                li.className = 'sb-l3-order-item';
+                li.textContent = child.label;
+                l3OrderListEl.appendChild(li);
+              });
+            } catch (err) {
+              l3OrderListEl.innerHTML = '';
+            }
+          }
+          return;
+        }
+
         if (d.level !== 5) return;
 
         // Instant feedback — API can take several seconds on first visit

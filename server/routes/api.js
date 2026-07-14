@@ -248,6 +248,48 @@ router.get('/nodes/:id/overview', async (req, res) => {
   }
 });
 
+// ── L2 -> L3 recommended learning order (cached; LLM decides order only) ────
+router.get('/nodes/:id/child-order', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [nodes] = await db.execute('SELECT id AS db_id FROM nodes WHERE external_id = ?', [id]);
+    if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
+    const { db_id } = nodes[0];
+
+    const [cached] = await db.execute(
+      `SELECT c.external_id AS id
+       FROM node_child_order o JOIN nodes c ON c.id = o.child_node_id
+       WHERE o.parent_node_id = ? ORDER BY o.position ASC`,
+      [db_id]
+    );
+    if (cached.length) return res.json({ order: cached.map(r => r.id) });
+
+    const [children] = await db.execute(
+      'SELECT id AS db_id, external_id, label FROM nodes WHERE parent_id = ? AND is_active = 1 ORDER BY id ASC',
+      [db_id]
+    );
+    if (!children.length) return res.json({ order: [] });
+
+    const positions = children.length > 1
+      ? await llm.generateChildOrder(children.map(c => c.label), req.user?.id)
+      : [1];
+    const ordered = positions.map(pos => children[pos - 1]);
+
+    await Promise.all(ordered.map((c, i) =>
+      db.execute(
+        `INSERT INTO node_child_order (parent_node_id, child_node_id, position) VALUES (?, ?, ?)
+         ON DUPLICATE KEY UPDATE position = VALUES(position)`,
+        [db_id, c.db_id, i + 1]
+      )
+    ));
+
+    res.json({ order: ordered.map(c => c.external_id) });
+  } catch (err) {
+    console.error('[api/nodes/child-order]', err.message);
+    res.status(500).json({ error: 'Failed to get child order' });
+  }
+});
+
 // ── User settings ────────────────────────────────────────────────────────────
 router.get('/settings', async (req, res) => {
   const userId = req.user?.id;
