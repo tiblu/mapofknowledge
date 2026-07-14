@@ -22,6 +22,8 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.learn_this',          'et', 'Õpin seda'),
 ('btn.test_me',             'en', 'Test me'),
 ('btn.test_me',             'et', 'Teen testi'),
+('btn.sobib',                'en', 'Sounds good'),
+('btn.sobib',                'et', 'Sobib'),
 ('btn.back_to_map',         'en', 'Back to the map'),
 ('btn.back_to_path',        'en', 'Back to path'),
 ('btn.back_to_path',        'et', 'Tagasi õpitee juurde'),
@@ -164,6 +166,8 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('sidebar.overview',        'en', 'Overview'),
 ('sidebar.recommended_order','en', 'Recommended learning order:'),
 ('sidebar.recommended_order','et', 'Soovitan liikuda selles järjekorras:'),
+('sidebar.l3_order_hint',   'en', 'If you\'d like to learn in a different order, click the topic you want to start with.'),
+('sidebar.l3_order_hint',   'et', 'Kui soovid õppida teises järjekorras, klõpsa teemal, millest alustad.'),
 
 -- Tabs
 ('tab.all',                 'en', 'All'),

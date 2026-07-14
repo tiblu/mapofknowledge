@@ -619,6 +619,29 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
   font-size: 12.5px; color: var(--c6); text-align: center;
   padding: 10px 0;
 }
+.sb-sobib-btn {
+  width: 100%; margin-top: 10px; padding: 13px 16px;
+  background: linear-gradient(135deg, #8BC17E 0%, #5E9052 100%);
+  color: #fff;
+  border: none; border-radius: 14px;
+  font-size: 14px; font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  letter-spacing: 0.1px;
+  box-shadow: 0 0 0 1px rgba(94,144,82,0.45), 0 0 22px rgba(139,193,126,0.55);
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.sb-sobib-btn:hover {
+  background: linear-gradient(135deg, #7DB570 0%, #517F46 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(94,144,82,0.6), 0 0 28px rgba(139,193,126,0.75);
+}
+.sb-sobib-btn:active { transform: translateY(0); }
+.sb-l3-order-hint {
+  font-size: 11.5px; color: var(--c6); text-align: center;
+  line-height: 1.5; margin-top: 8px; padding: 0 4px;
+}
 
 /* Close button */
 #sb-close {

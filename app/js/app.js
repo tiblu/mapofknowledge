@@ -434,6 +434,7 @@ function init(data) {
     const overviewSectionEl = document.querySelector('.sb-overview-section');
     const l3OrderEl         = document.getElementById('sb-l3-order');
     const l3OrderListEl     = document.getElementById('sb-l3-order-list');
+    const sobibBtnEl        = document.getElementById('sb-sobib-btn');
     [knowledgeCardEl, learnBtn, overviewSectionEl].forEach(el => {
       if (!el) return;
       el.classList.remove('sb-fade-out');
@@ -441,6 +442,7 @@ function init(data) {
     });
     if (l3OrderEl) l3OrderEl.style.display = 'none';
     if (l3OrderListEl) l3OrderListEl.innerHTML = '';
+    if (sobibBtnEl) { sobibBtnEl.style.display = 'none'; sobibBtnEl.onclick = null; }
 
     if (learnBtn) {
       const crumb = (domainNode ? domainNode.label : "") +
@@ -476,8 +478,15 @@ function init(data) {
                 const li = document.createElement('li');
                 li.className = 'sb-l3-order-item';
                 li.textContent = child.label;
+                li.onclick = function () { navigateToNode(child.id); };
                 l3OrderListEl.appendChild(li);
               });
+
+              // "Sobib" — acts exactly as if the first (top-recommended) L3 node were clicked
+              if (sobibBtnEl && ordered.length) {
+                sobibBtnEl.style.display = '';
+                sobibBtnEl.onclick = function () { navigateToNode(ordered[0].id); };
+              }
             } catch (err) {
               l3OrderListEl.innerHTML = '';
             }
