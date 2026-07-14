@@ -50,6 +50,11 @@
   // URLs of visuals already shown in the current knobit — sent to server to avoid duplicates
   var _seenVisualUrls = [];
 
+  // ── Tree mode (L3/L4 entry — Explorer-style table of contents) ──────────────
+  var _treeMode              = false;
+  var _activeLeafNode        = null;  // the L5 node whose knobit list is currently active, or null
+  var _treeActiveContainerEl = null;  // that L5's .lm-tree-children element, refreshed on return
+
   /* ─── API helper ──────────────────────────────────────────────── */
   function apiInteract(params) {
     var knobit = KNOBITS[CURRENT_KNOBIT_IDX];
@@ -150,17 +155,11 @@
   /* ─── Entry / exit ────────────────────────────────────────────── */
   var _searchWrap = null;
 
-  window.openLearningMode = function (node, crumb, knobits, resumeSession) {
-    // Hide search box — meaningless in learning view
+  // Shared overlay chrome — accent colour, search-box hide, Anne hide, fullscreen
+  // tip, ambient sound. Used by both flat (L5) and tree (L3/L4) entry points.
+  function _openOverlayChrome(node) {
     _searchWrap = document.querySelector('.topbar-search-wrap');
     if (_searchWrap) _searchWrap.style.display = 'none';
-    _node             = node;
-    _crumb            = crumb || '';
-    KNOBITS            = Array.isArray(knobits) && knobits.length ? knobits : [];
-    KNOBIT_TOTAL       = KNOBITS.length;
-    KNOBIT_DONE_COUNT  = KNOBITS.filter(function(k) { return k.done; }).length;
-    CURRENT_KNOBIT_IDX = KNOBIT_DONE_COUNT < KNOBIT_TOTAL ? KNOBIT_DONE_COUNT : 0;
-    _resumeSession     = resumeSession || null;
 
     // Accent colours from node — set on #learning-mode so CSS palette default wins before a node is chosen
     var hex   = (node && node.color) ? node.color : '#C4826A';
@@ -172,8 +171,6 @@
     lm.style.setProperty('--lm-accent', hex);
     lm.style.setProperty('--lm-accent-soft', 'rgba('+r+','+g+','+b+','+alpha+')');
 
-    _buildPathView();
-    showLmView('lm-path');
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.add('active');
     if (window.Anne) window.Anne.setVisible(false);
@@ -185,6 +182,38 @@
     }
 
     _ambientStart();
+  }
+
+  window.openLearningMode = function (node, crumb, knobits, resumeSession) {
+    _treeMode          = false;
+    _activeLeafNode        = null;
+    _treeActiveContainerEl = null;
+    _node             = node;
+    _crumb            = crumb || '';
+    KNOBITS            = Array.isArray(knobits) && knobits.length ? knobits : [];
+    KNOBIT_TOTAL       = KNOBITS.length;
+    KNOBIT_DONE_COUNT  = KNOBITS.filter(function(k) { return k.done; }).length;
+    CURRENT_KNOBIT_IDX = KNOBIT_DONE_COUNT < KNOBIT_TOTAL ? KNOBIT_DONE_COUNT : 0;
+    _resumeSession     = resumeSession || null;
+
+    _openOverlayChrome(node);
+    _buildPathView();
+    showLmView('lm-path');
+  };
+
+  // Entry point for L3/L4 nodes — Explorer-style nested table of contents
+  // instead of a flat knobit list. See _buildTreeRootView and friends below.
+  window.openLearningModeTree = function (node, crumb) {
+    _treeMode              = true;
+    _activeLeafNode        = null;
+    _treeActiveContainerEl = null;
+    _node  = node;
+    _crumb = crumb || '';
+    KNOBITS = [];
+
+    _openOverlayChrome(node);
+    _buildTreeRootView();
+    showLmView('lm-tree');
   };
 
   window.closeLearningMode = function () {
@@ -201,6 +230,9 @@
     _searchWrap = null;
     _node   = null;
     KNOBITS = [];
+    _treeMode              = false;
+    _activeLeafNode        = null;
+    _treeActiveContainerEl = null;
     var pending = window._pendingSuggestNode;
     if (pending) {
       window._pendingSuggestNode = null;
@@ -448,7 +480,7 @@
 
   /* ─── View switching ──────────────────────────────────────────── */
   window.showLmView = function (id) {
-    ['lm-path', 'lm-knobit', 'lm-complete'].forEach(function (v) {
+    ['lm-path', 'lm-knobit', 'lm-complete', 'lm-tree'].forEach(function (v) {
       var el = document.getElementById(v);
       if (el) el.classList.toggle('active', v === id);
     });
@@ -478,33 +510,225 @@
     }
 
     KNOBITS.forEach(function (k, i) {
-      var done    = i < KNOBIT_DONE_COUNT;
-      var current = i === CURRENT_KNOBIT_IDX;
-      var locked  = !done && !current;
-      var item    = document.createElement('div');
-      item.className = 'lm-knobit-item' + (done ? ' done' : '') + (current ? ' current' : '') + (locked ? ' locked' : '');
-
-      var num       = document.createElement('div');
-      num.className = 'lm-knobit-num';
-      num.textContent = done ? '✓' : String(i + 1);
-      item.appendChild(num);
-
-      var name       = document.createElement('div');
-      name.className = 'lm-knobit-name';
-      name.textContent = k.title || ('Knobit ' + (i + 1));
-      item.appendChild(name);
-
-      if (current) {
-        item.addEventListener('click', window.startKnobit);
-        if (_resumeSession && _resumeSession.knobitId === k.id && _resumeSession.blocks && _resumeSession.blocks.length) {
-          var resumeBadge = document.createElement('div');
-          resumeBadge.className = 'lm-knobit-resume-badge';
-          resumeBadge.textContent = t('label.continue');
-          item.appendChild(resumeBadge);
-        }
-      }
-      listEl.appendChild(item);
+      listEl.appendChild(_buildKnobitRow(k, i, KNOBIT_DONE_COUNT, CURRENT_KNOBIT_IDX, _resumeSession, window.startKnobit));
     });
+  }
+
+  // Builds one knobit row — shared by the flat path view (lm-path) and, nested
+  // inside a tree branch, the tree view's expanded L5 knobit lists.
+  function _buildKnobitRow(k, i, doneCount, currentIdx, resumeSession, onClickCurrent) {
+    var done    = i < doneCount;
+    var current = i === currentIdx;
+    var locked  = !done && !current;
+    var item    = document.createElement('div');
+    item.className = 'lm-knobit-item' + (done ? ' done' : '') + (current ? ' current' : '') + (locked ? ' locked' : '');
+
+    var num       = document.createElement('div');
+    num.className = 'lm-knobit-num';
+    num.textContent = done ? '✓' : String(i + 1);
+    item.appendChild(num);
+
+    var name       = document.createElement('div');
+    name.className = 'lm-knobit-name';
+    name.textContent = k.title || ('Knobit ' + (i + 1));
+    item.appendChild(name);
+
+    if (current) {
+      item.addEventListener('click', onClickCurrent);
+      if (resumeSession && resumeSession.knobitId === k.id && resumeSession.blocks && resumeSession.blocks.length) {
+        var resumeBadge = document.createElement('div');
+        resumeBadge.className = 'lm-knobit-resume-badge';
+        resumeBadge.textContent = t('label.continue');
+        item.appendChild(resumeBadge);
+      }
+    }
+    return item;
+  }
+
+  /* ─── View "Tree" — Explorer-style table of contents (L3/L4 entry) ──────
+     Dispatches purely on level: an L4 branch's expand fetches child-order
+     and recurses; an L5 branch's expand fetches/generates its knobit list.
+     Ordering and knobit generation both reuse existing, already-cached
+     server endpoints — nothing new is generated here beyond what those
+     endpoints already do on first request. ───────────────────────────── */
+
+  function _buildTreeRootView() {
+    var crumbEl = document.getElementById('lm-tree-crumb');
+    var titleEl = document.getElementById('lm-tree-title');
+    if (crumbEl) crumbEl.textContent = _crumb;
+    if (titleEl) titleEl.textContent = _node ? _node.label : '';
+
+    var listEl = document.getElementById('lm-tree-list');
+    if (!listEl || !_node) return;
+    listEl.innerHTML = '';
+    _loadAndRenderChildren(_node.id, _node.level + 1, listEl).then(_autoExpandFirst);
+  }
+
+  // Walks exactly one path — the first row at each level — open on initial
+  // load, so the learner lands on a populated knobit list without clicking.
+  // Everything else stays collapsed and unfetched until clicked.
+  function _autoExpandFirst(rows) {
+    if (!rows || !rows.length) return;
+    rows[0].expand().then(function (childRows) {
+      if (Array.isArray(childRows)) _autoExpandFirst(childRows);
+    });
+  }
+
+  // Fetches and renders one level of ordered children into containerEl.
+  // Returns a Promise resolving to the created row objects (for further
+  // auto-expand cascading), or [] on empty/error.
+  function _loadAndRenderChildren(parentExtId, childLevel, containerEl) {
+    containerEl.innerHTML = '<div class="lm-tree-loading">' + t('msg.loading') + '</div>';
+    return fetch('/api/nodes/' + encodeURIComponent(parentExtId) + '/child-order')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var order = data.order || [];
+        containerEl.innerHTML = '';
+        if (!order.length) {
+          containerEl.innerHTML = '<div class="lm-tree-empty">' + t('msg.no_content_yet') + '</div>';
+          return [];
+        }
+        return order.map(function (child) {
+          var rowObj = _buildTreeRow(child, childLevel);
+          containerEl.appendChild(rowObj.el);
+          return rowObj;
+        });
+      })
+      .catch(function () {
+        containerEl.innerHTML = '<div class="lm-tree-empty">' + t('msg.connection_error') + '</div>';
+        return [];
+      });
+  }
+
+  // One expandable row: a branch (level < 5, expands into more rows) or a
+  // leaf (level === 5, expands into its knobit list). expand() is idempotent
+  // and returns a Promise so callers can chain/cascade off it.
+  function _buildTreeRow(node, level) {
+    var branch = document.createElement('div');
+    branch.className = 'lm-tree-branch';
+
+    var row = document.createElement('div');
+    row.className = 'lm-tree-row';
+    row.tabIndex  = 0;
+
+    var chevron = document.createElement('span');
+    chevron.className = 'lm-tree-chevron';
+    row.appendChild(chevron);
+
+    // Empty placeholder — a completion checkmark/icon can be dropped in here later
+    // once per-node progress rollup exists; intentionally inert for now.
+    var status = document.createElement('span');
+    status.className = 'lm-tree-status';
+    row.appendChild(status);
+
+    var labelEl = document.createElement('span');
+    labelEl.className = 'lm-tree-label';
+    labelEl.textContent = node.label;
+    row.appendChild(labelEl);
+
+    var childrenEl = document.createElement('div');
+    childrenEl.className = 'lm-tree-children';
+    childrenEl.style.display = 'none';
+
+    var expanded = false;
+    var loaded   = false;
+
+    function expand() {
+      if (expanded) return Promise.resolve();
+      expanded = true;
+      row.classList.add('expanded');
+      childrenEl.style.display = '';
+      if (loaded) return Promise.resolve();
+      loaded = true;
+      if (level === 5) {
+        return _loadLeafKnobits(node, childrenEl).then(function () { return null; });
+      }
+      return _loadAndRenderChildren(node.id, level + 1, childrenEl);
+    }
+    function collapse() {
+      expanded = false;
+      row.classList.remove('expanded');
+      childrenEl.style.display = 'none';
+    }
+
+    row.addEventListener('click', function () {
+      if (expanded) collapse(); else expand();
+    });
+
+    branch.appendChild(row);
+    branch.appendChild(childrenEl);
+    return { el: branch, expand: expand, node: node, level: level };
+  }
+
+  // Fetches (generating on first request, same as the flat L5 flow) the
+  // knobit list + resume session for one L5 leaf, then renders it inline.
+  function _loadLeafKnobits(node, containerEl) {
+    containerEl.innerHTML = '<div class="lm-tree-loading">' + t('msg.loading') + '</div>';
+    return fetch('/api/nodes/' + encodeURIComponent(node.id) + '/learn', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var knobits       = Array.isArray(data.knobits) ? data.knobits : [];
+        var resumeSession = data.resumeSession || null;
+        _renderLeafKnobitList(node, knobits, resumeSession, containerEl);
+      })
+      .catch(function () {
+        containerEl.innerHTML = '<div class="lm-tree-empty">' + t('msg.connection_error') + '</div>';
+      });
+  }
+
+  function _renderLeafKnobitList(node, knobits, resumeSession, containerEl) {
+    containerEl.innerHTML = '';
+    if (!knobits.length) {
+      containerEl.innerHTML = '<div class="lm-tree-empty">' + t('msg.no_content_yet') + '</div>';
+      return;
+    }
+    var doneCount  = knobits.filter(function (k) { return k.done; }).length;
+    var currentIdx = doneCount < knobits.length ? doneCount : 0;
+
+    var wrap = document.createElement('div');
+    wrap.className = 'lm-tree-knobits';
+
+    // Same "already started" signal the L5 sidebar button already uses to relabel
+    // itself — here it surfaces as a standalone pill above that leaf's knobit rows.
+    if (doneCount > 0 && doneCount < knobits.length) {
+      var pill = document.createElement('button');
+      pill.className   = 'lm-tree-jatka-btn';
+      pill.textContent = t('label.continue') + ' (' + doneCount + '/' + knobits.length + ')';
+      pill.addEventListener('click', function () {
+        _startLeafKnobit(node, knobits, resumeSession, currentIdx, containerEl);
+      });
+      wrap.appendChild(pill);
+    }
+
+    knobits.forEach(function (k, i) {
+      wrap.appendChild(_buildKnobitRow(k, i, doneCount, currentIdx, resumeSession, function () {
+        _startLeafKnobit(node, knobits, resumeSession, i, containerEl);
+      }));
+    });
+
+    containerEl.appendChild(wrap);
+  }
+
+  function _startLeafKnobit(node, knobits, resumeSession, idx, containerEl) {
+    _activeLeafNode        = node;
+    _treeActiveContainerEl = containerEl;
+    KNOBITS            = knobits;
+    KNOBIT_TOTAL       = knobits.length;
+    KNOBIT_DONE_COUNT  = knobits.filter(function (k) { return k.done; }).length;
+    CURRENT_KNOBIT_IDX = idx;
+    _resumeSession = (resumeSession && resumeSession.knobitId === knobits[idx].id) ? resumeSession : null;
+    window.startKnobit();
+  }
+
+  // Back from an active knobit (leave or complete) while in tree mode — re-fetch
+  // that leaf's fresh progress (cheap: knobits already exist, no LLM call) and
+  // re-render its rows in place, rather than rebuilding the whole tree.
+  function _returnToTree() {
+    showLmView('lm-tree');
+    var node = _activeLeafNode, containerEl = _treeActiveContainerEl;
+    _activeLeafNode        = null;
+    _treeActiveContainerEl = null;
+    if (node && containerEl) _loadLeafKnobits(node, containerEl);
   }
 
   /* ─── View 2 — Knobit lesson ──────────────────────────────────── */
@@ -810,7 +1034,7 @@
       _fetchDemo();
     } else {
       _lockButtons();
-      _appendBlock({ type: 'note', content: t('msg.try_youtube') + ' "' + (_node ? _node.label : '') + ' ' + t('msg.explained') + '"' });
+      _appendBlock({ type: 'note', content: t('msg.try_youtube') + ' "' + ((_activeLeafNode || _node) ? (_activeLeafNode || _node).label : '') + ' ' + t('msg.explained') + '"' });
       _setButtonRow('');
       setTimeout(_enterPractice, 1200);
     }
@@ -987,6 +1211,14 @@
     KNOBIT_DONE_COUNT++;
     apiComplete(k.id);
 
+    if (_treeMode) {
+      // Finishing one L5's knobits doesn't mean the whole tree is done — other
+      // branches may still be untouched — so just return to the tree instead
+      // of the flat "unit complete" screen.
+      _returnToTree();
+      return;
+    }
+
     if (CURRENT_KNOBIT_IDX + 1 >= KNOBIT_TOTAL) {
       _showUnitComplete();
     } else {
@@ -1139,7 +1371,8 @@
     _appendBlock({ type: 'note', content: t(isComplex ? 'lm.limit_reached_complex' : 'lm.limit_reached_simple') });
 
     var dir = isComplex ? 'easier' : 'harder';
-    var nodeId = _node && _node.id;
+    var activeNode = _activeLeafNode || _node;
+    var nodeId = activeNode && activeNode.id;
     if (!nodeId) { _appendSuggestionCard(null, direction, phase); return; }
 
     fetch('/api/nodes/' + encodeURIComponent(nodeId) + '/suggest?direction=' + dir)
@@ -1379,8 +1612,12 @@
 
   window.tryLeaveKnobit = function () {
     _quitGuard(function () {
-      _buildPathView();
-      showLmView('lm-path');
+      if (_treeMode) {
+        _returnToTree();
+      } else {
+        _buildPathView();
+        showLmView('lm-path');
+      }
     });
   };
 
@@ -1462,6 +1699,7 @@
    Other modules call window.Learn.*  — never openLearningMode directly */
 window.Learn = {
   open:     window.openLearningMode,
+  openTree: window.openLearningModeTree,
   close:    window.closeLearningMode,
   showView: window.showLmView,
 };

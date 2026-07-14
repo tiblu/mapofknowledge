@@ -255,15 +255,25 @@ router.get('/nodes/:id/child-order', async (req, res) => {
     const [nodes] = await db.execute('SELECT id AS db_id FROM nodes WHERE external_id = ?', [id]);
     if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
     const { db_id } = nodes[0];
+    const locale = await getUserLocale(req.user?.id);
 
-    const [cached] = await db.execute(
-      `SELECT c.external_id AS id
-       FROM node_child_order o JOIN nodes c ON c.id = o.child_node_id
-       WHERE o.parent_node_id = ? ORDER BY o.position ASC`,
-      [db_id]
-    );
-    if (cached.length) return res.json({ order: cached.map(r => r.id) });
+    const [cached] = locale === 'en'
+      ? await db.execute(
+          `SELECT c.external_id AS id, c.label
+           FROM node_child_order o JOIN nodes c ON c.id = o.child_node_id
+           WHERE o.parent_node_id = ? ORDER BY o.position ASC`,
+          [db_id])
+      : await db.execute(
+          `SELECT c.external_id AS id, COALESCE(tr.label, c.label) AS label
+           FROM node_child_order o
+           JOIN nodes c ON c.id = o.child_node_id
+           LEFT JOIN node_translations tr ON tr.node_external_id = c.external_id AND tr.locale = ?
+           WHERE o.parent_node_id = ? ORDER BY o.position ASC`,
+          [locale, db_id]);
+    if (cached.length) return res.json({ order: cached });
 
+    // Ordering is decided once per node (locale-independent — pedagogical order
+    // doesn't change per language), using the canonical English label.
     const [children] = await db.execute(
       'SELECT id AS db_id, external_id, label FROM nodes WHERE parent_id = ? AND is_active = 1 ORDER BY id ASC',
       [db_id]
@@ -283,7 +293,15 @@ router.get('/nodes/:id/child-order', async (req, res) => {
       )
     ));
 
-    res.json({ order: ordered.map(c => c.external_id) });
+    if (locale === 'en') {
+      return res.json({ order: ordered.map(c => ({ id: c.external_id, label: c.label })) });
+    }
+    const [trRows] = await db.execute(
+      `SELECT node_external_id, label FROM node_translations WHERE locale = ? AND node_external_id IN (${ordered.map(() => '?').join(',')})`,
+      [locale, ...ordered.map(c => c.external_id)]
+    );
+    const trMap = new Map(trRows.map(r => [r.node_external_id, r.label]));
+    res.json({ order: ordered.map(c => ({ id: c.external_id, label: trMap.get(c.external_id) || c.label })) });
   } catch (err) {
     console.error('[api/nodes/child-order]', err.message);
     res.status(500).json({ error: 'Failed to get child order' });

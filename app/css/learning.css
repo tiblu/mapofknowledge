@@ -171,6 +171,26 @@
 }
 .kn-arrow { color: #C4B8B0; flex-shrink: 0; }
 
+/* index circle + name — actual classes used by _buildKnobitRow() in learning.js */
+.lm-knobit-num {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+  background: var(--i08);
+  color: var(--c3);
+  transition: background 0.13s;
+}
+.lm-knobit-item.current .lm-knobit-num { background: var(--lm-accent); color: #fff; }
+.lm-knobit-item.done .lm-knobit-num { background: rgba(139,173,126,0.25); color: #5E9052; }
+.lm-knobit-item.locked .lm-knobit-num { background: var(--i05); color: var(--c7); }
+
+.lm-knobit-name {
+  flex: 1; min-width: 0;
+  font-size: 14px; font-weight: 550;
+  color: var(--c1); line-height: 1.3;
+}
+
 /* ── start button (bottom of path view) ── */
 .lm-start-bar {
   flex-shrink: 0;
@@ -195,6 +215,95 @@
 }
 .lm-start-btn:hover { opacity: 0.92; transform: translateY(-1px); }
 .lm-start-btn:active { transform: translateY(0); }
+
+
+/* ═══════════════════════════════════════════
+   VIEW 4  —  LEARNING TREE  (#lm-tree)
+   Explorer-style nested table of contents for L3/L4 entry.
+   Reuses .lm-path-header / .lm-knobit-item from view 1 above.
+   ═══════════════════════════════════════════ */
+#lm-tree {
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lm-tree-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 28px 32px;
+}
+.lm-tree-list::-webkit-scrollbar { width: 3px; }
+.lm-tree-list::-webkit-scrollbar-thumb { background: var(--i14); border-radius: 2px; }
+
+.lm-tree-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13.5px; font-weight: 600; color: var(--c2);
+  transition: background 0.12s;
+}
+.lm-tree-row:hover { background: var(--i06); }
+
+.lm-tree-chevron {
+  flex-shrink: 0;
+  width: 14px; height: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--c6);
+  font-size: 12px; line-height: 1;
+  transition: transform 0.15s ease;
+}
+.lm-tree-chevron::before { content: '›'; }
+.lm-tree-row.expanded .lm-tree-chevron { transform: rotate(90deg); }
+
+/* Empty for now — a completion checkmark/icon can be dropped in here later */
+.lm-tree-status {
+  flex-shrink: 0;
+  width: 14px; height: 14px;
+}
+
+.lm-tree-label { flex: 1; min-width: 0; }
+
+.lm-tree-children {
+  margin-left: 19px;
+  padding-left: 12px;
+  border-left: 1px solid var(--i08);
+}
+.lm-tree-children .lm-tree-row {
+  font-size: 13px; font-weight: 550;
+}
+
+.lm-tree-loading, .lm-tree-empty {
+  font-size: 12.5px; color: var(--c6);
+  padding: 8px 10px;
+}
+
+.lm-tree-knobits {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 4px 0 10px;
+}
+.lm-tree-knobits .lm-knobit-item { margin-bottom: 0; }
+
+/* "Jätka" — same glowing-green language as .lm-start-btn above, scaled down to a pill */
+.lm-tree-jatka-btn {
+  align-self: flex-start;
+  margin: 2px 0 6px;
+  padding: 8px 18px;
+  border: none; border-radius: 20px;
+  background: linear-gradient(135deg, #6BAF6B 0%, #4E9A4E 100%);
+  color: #fff;
+  font-size: 12.5px; font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 0 16px rgba(78,154,78,0.45);
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.lm-tree-jatka-btn:hover {
+  opacity: 0.92;
+  transform: translateY(-1px);
+  box-shadow: 0 0 22px rgba(78,154,78,0.62);
+}
+.lm-tree-jatka-btn:active { transform: translateY(0); }
 
 
 /* ═══════════════════════════════════════════

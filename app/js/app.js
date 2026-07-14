@@ -465,12 +465,11 @@ function init(data) {
               const r = await fetch(`/api/nodes/${d.id}/child-order`);
               const { order } = await r.json();
               const kids = childrenOf[d.id] || [];
-              const ordered = (order || [])
-                .map(cid => allNodes[cid])
-                .filter(Boolean);
+              const orderedIds = (order || []).map(o => o.id);
+              const ordered = (order || []).slice();
               // Any child missing from a stale cached order gets appended at the end
               kids.forEach(cid => {
-                if (order.indexOf(cid) === -1 && allNodes[cid]) ordered.push(allNodes[cid]);
+                if (orderedIds.indexOf(cid) === -1 && allNodes[cid]) ordered.push({ id: cid, label: allNodes[cid].label });
               });
 
               l3OrderListEl.innerHTML = '';
@@ -491,6 +490,12 @@ function init(data) {
               l3OrderListEl.innerHTML = '';
             }
           }
+          return;
+        }
+
+        if (d.level === 3 || d.level === 4) {
+          closeSidebar();
+          window.Learn.openTree(d, crumb);
           return;
         }
 
