@@ -16,16 +16,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #080810;
-  --panel:     #0f0f1c;
-  --cream:     #F2EDE6;
+  /* Light theme — matches the app's own Sunset palette and the landing page. */
+  --bg:        #F5EEE8;
+  --panel:     #FFFFFF;
+  --cream:     #2C2820;
   --terra:     #C4826A;
-  --terra-dim: rgba(196,130,106,0.12);
-  --muted:     rgba(242,237,230,0.45);
-  --border:    rgba(255,255,255,0.07);
-  --border-hi: rgba(255,255,255,0.13);
-  --teal:      #5EA898;
-  --red-soft:  #c46a5a;
+  --terra-dim: rgba(196,130,106,0.13);
+  --muted:     rgba(44,40,32,0.55);
+  --border:    rgba(44,40,32,0.08);
+  --border-hi: rgba(44,40,32,0.14);
+  --teal:      #3F8778;
+  --red-soft:  #B5573F;
 }
 
 html { scroll-behavior: smooth; }
@@ -46,7 +47,7 @@ a { color: inherit; text-decoration: none; }
 .su-nav {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   height: 56px;
-  background: rgba(8,8,16,0.88);
+  background: rgba(245,238,232,0.88);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--border);
@@ -87,6 +88,7 @@ a { color: inherit; text-decoration: none; }
   border: 1px solid var(--border-hi);
   border-radius: 20px;
   padding: 36px 40px 40px;
+  box-shadow: 0 4px 32px rgba(44,40,32,0.07);
 }
 
 /* ── Step dots ──────────────────────────────────────────────────────── */
@@ -128,7 +130,7 @@ a { color: inherit; text-decoration: none; }
 /* ── Text input ─────────────────────────────────────────────────────── */
 .su-input {
   width: 100%;
-  background: rgba(255,255,255,0.04);
+  background: rgba(44,40,32,0.035);
   border: 1.5px solid var(--border-hi);
   border-radius: 10px;
   color: var(--cream);
@@ -138,14 +140,14 @@ a { color: inherit; text-decoration: none; }
   font-family: inherit;
   transition: border-color 0.15s;
 }
-.su-input::placeholder { letter-spacing: 1px; font-size: 16px; font-weight: 400; color: rgba(242,237,230,0.25); }
+.su-input::placeholder { letter-spacing: 1px; font-size: 16px; font-weight: 400; color: rgba(44,40,32,0.3); }
 .su-input:focus  { border-color: rgba(196,130,106,0.5); }
 .su-input.valid  { border-color: rgba(94,168,152,0.6); }
 .su-input.err    { border-color: rgba(196,106,90,0.6); }
 
 .su-input-sm {
   flex: 1;
-  background: rgba(255,255,255,0.04);
+  background: rgba(44,40,32,0.035);
   border: 1px solid var(--border-hi);
   border-radius: 8px;
   color: var(--cream);
@@ -208,7 +210,7 @@ a { color: inherit; text-decoration: none; }
 .cc-icon {
   width: 38px; height: 38px; flex-shrink: 0;
   border-radius: 9px;
-  background: rgba(255,255,255,0.04);
+  background: rgba(44,40,32,0.04);
   border: 1px solid var(--border-hi);
   display: flex; align-items: center; justify-content: center;
   color: var(--muted);
@@ -301,7 +303,7 @@ a { color: inherit; text-decoration: none; }
 .card-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
 
 .payment-disclaimer {
-  font-size: 11px; color: rgba(242,237,230,0.28);
+  font-size: 11px; color: rgba(44,40,32,0.35);
   text-align: center; margin-bottom: 24px;
   display: flex; align-items: center; justify-content: center; gap: 5px;
 }
@@ -318,7 +320,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .signup-summary {
-  background: rgba(255,255,255,0.03);
+  background: rgba(44,40,32,0.03);
   border: 1px solid var(--border-hi);
   border-radius: 10px;
   padding: 13px 16px;
@@ -330,7 +332,7 @@ a { color: inherit; text-decoration: none; }
 .signup-summary strong { color: var(--cream); font-weight: 600; }
 
 .terms-notice {
-  font-size: 11px; color: rgba(242,237,230,0.28);
+  font-size: 11px; color: rgba(44,40,32,0.35);
   text-align: center; margin-top: 14px;
 }
 .terms-notice a { color: rgba(196,130,106,0.55); }
@@ -362,7 +364,7 @@ a { color: inherit; text-decoration: none; }
   cursor: pointer; font-family: inherit;
   transition: color 0.15s, border-color 0.15s;
 }
-.btn-ghost:hover { color: var(--cream); border-color: rgba(255,255,255,0.22); }
+.btn-ghost:hover { color: var(--cream); border-color: rgba(44,40,32,0.26); }
 
 .btn-ghost-sm {
   background: transparent; color: var(--muted);
