@@ -18,11 +18,15 @@ const { notify } = require('./services/notifications');
 setInterval(async () => {
   try {
     const [stale] = await db.execute(`
-      SELECT DISTINCT u.id AS user_id, n.label AS node_label
+      SELECT DISTINCT u.id AS user_id,
+        COALESCE(tr.label, n.label) AS node_label
       FROM passport_goals pg
       JOIN learner_passports lp ON pg.passport_id = lp.id
       JOIN users u ON u.passport_id = lp.id
       JOIN nodes n ON n.external_id = pg.node_external_id
+      LEFT JOIN user_settings us ON us.user_id = u.id AND us.key_name = 'ui_locale'
+      LEFT JOIN node_translations tr
+        ON tr.node_external_id = n.external_id AND tr.locale = COALESCE(us.value, 'et')
       WHERE pg.status = 'in_progress'
         AND pg.node_external_id IS NOT NULL
         AND (
