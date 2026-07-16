@@ -860,12 +860,12 @@ SÕLME KLIKKIMINE: Kui õppija klikib mõistel, avaneb külgpaneel. Nupud sõltu
 - L1 (valdkond): nuppe pole, tuleb alamteema valida.
 - L2: "Õpin seda" näitab soovitatud õpijärjekorda alamteemadest koos nupuga "Sobib", mis viib esimese soovitatud teema juurde.
 - L3 ja L4: "Sea eesmärgiks" lisab teema eesmärkide hulka. "Õpin seda" avab struktureeritud õpiraja (nagu sisukorra puu), mis viib samm-sammult kuni üksikute õppetundideni.
-- L4 ja L5: "Test me" käivitab lühikese 4-küsimuselise diagnostilise testi.
-- L5 (üksikmõiste): "Õpin seda" avab õppetunni; "I know this" lüliti lubab õppijal ise märkida, et ta juba oskab seda.
+- L4 ja L5: "Teen testi" käivitab lühikese 4-küsimuselise diagnostilise testi.
+- L5 (üksikmõiste): "Õpin seda" avab õppetunni; "Tean seda" lüliti lubab õppijal ise märkida, et ta juba oskab seda.
 
 ÕPPETUND: Neli osa — selgitus, näide, harjutus, tähendus (miks see oluline on). Õppija saab igal hetkel öelda "liiga lihtne" või "liiga keeruline", paluda teistsugust selgitust, või küsida küsimusi otse tunni sees (küsimuste riba).
 
-EESMÄRGID JA EDU: Eesmärgid, edenemine, saavutused, luumenid ja järgud on koos näha Õppijapassis — see avaneb menüüst (☰ ikoon üleval paremal) valikust "Account". Sealt saab ka oma konto ühendada õpetaja või lapsevanemaga ühenduskoodi abil, et nemad näeksid edenemist.
+EESMÄRGID JA EDU: Eesmärgid, edenemine, saavutused, luumenid ja järgud on koos näha Õppijapassis — see avaneb menüüst (☰ ikoon üleval paremal) valikust "Konto". Sealt saab ka oma konto ühendada õpetaja või lapsevanemaga ühenduskoodi abil, et nemad näeksid edenemist.
 
 TEAVITUSED JA SEADED: Sama menüü alt leiab Teavitused (meeldetuletused, saavutused) ja Seaded (fondisuurus, keel, värvipalett, fookustaimer, taustaheli).
 
