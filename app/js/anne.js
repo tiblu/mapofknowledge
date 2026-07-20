@@ -23,15 +23,19 @@
   var _sending        = false;
 
   /* ─── Open / close ───────────────────────────────────────────────────── */
+  function _openPanel() {
+    panel.classList.add('open');
+    if (!_historyLoaded) _loadHistory();
+    setTimeout(function () { input.focus(); }, 160);
+  }
+
   avatar.addEventListener('click', function (e) {
     e.stopPropagation();
     if (panel.classList.contains('open')) {
       panel.classList.remove('open');
       return;
     }
-    panel.classList.add('open');
-    if (!_historyLoaded) _loadHistory();
-    setTimeout(function () { input.focus(); }, 160);
+    _openPanel();
   });
 
   minimize.addEventListener('click', function (e) {
@@ -186,5 +190,8 @@
     widget.style.display = visible ? '' : 'none';
     if (!visible) panel.classList.remove('open');
   };
+  // Called cross-frame from the Help page's "Ask Anne" card — opens the
+  // chat panel directly instead of requiring a click on the avatar itself.
+  window.Anne.open = _openPanel;
 
 })();

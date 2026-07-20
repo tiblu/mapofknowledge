@@ -6,45 +6,79 @@ body {
   min-height: 100vh;
 }
 .help-page {
-  max-width: 600px;
+  max-width: 680px;
   margin: 0 auto;
   padding: 72px 20px 80px;
 }
 
-/* ── "ask Anne" hero ── */
-.help-hero {
+/* ── intro ── */
+.help-intro {
   text-align: center;
+  margin-bottom: 26px;
+}
+.help-intro h1 {
+  font-size: 24px; font-weight: 720; letter-spacing: -0.4px;
+  color: var(--c1); margin-bottom: 8px;
+}
+.help-intro p {
+  font-size: 14px; color: var(--c4);
+}
+
+/* ── four parallel option cards ── */
+.help-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 36px;
+}
+.help-option {
+  position: relative;
+  display: flex; flex-direction: column; align-items: flex-start;
+  text-align: left;
   background: rgba(255,255,255,0.65);
   border: 1px solid var(--i08);
-  border-radius: 18px;
+  border-radius: 16px;
   box-shadow: 0 2px 10px var(--i05);
-  padding: 32px 28px;
+  padding: 22px 20px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
-.help-hero-icon {
-  width: 52px; height: 52px; margin: 0 auto 16px;
+.help-option:hover {
+  border-color: var(--accent-m);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px var(--i08);
+}
+.help-option-icon {
+  width: 44px; height: 44px; margin-bottom: 14px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--accent-m);
   color: var(--accent);
 }
-.help-hero-title {
-  font-size: 22px; font-weight: 720; letter-spacing: -0.4px;
-  color: var(--c1); margin-bottom: 10px;
+.help-option-title {
+  font-size: 15px; font-weight: 700; color: var(--c1);
+  letter-spacing: -0.2px; margin-bottom: 6px;
 }
-.help-hero-sub {
-  font-size: 14px; line-height: 1.65; color: var(--c4);
-  max-width: 420px; margin: 0 auto;
+.help-option-desc {
+  font-size: 12.5px; line-height: 1.55; color: var(--c4);
 }
-
-/* ── divider between "ask Anne" and the written guide ── */
-.help-divider {
-  display: flex; align-items: center; gap: 14px;
-  margin: 36px 0 28px;
-  font-size: 12px; color: var(--c7);
-  text-align: center;
+.help-option-disabled {
+  cursor: default;
+  opacity: 0.6;
 }
-.help-divider::before, .help-divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--i10);
+.help-option-disabled:hover {
+  border-color: var(--i08);
+  transform: none;
+  box-shadow: 0 2px 10px var(--i05);
+}
+.help-option-badge {
+  position: absolute; top: 16px; right: 16px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+  color: var(--c4);
+  background: var(--i06);
+  border-radius: 20px;
+  padding: 3px 9px;
 }
 
 /* ── written guide ── */
@@ -75,31 +109,7 @@ body {
   border-radius: 9px;
 }
 
-/* ── guided-tour restart row ── */
-.help-action-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  background: rgba(255,255,255,0.65);
-  border: 1px solid var(--i08);
-  border-radius: 14px;
-  padding: 18px 22px;
-  box-shadow: 0 2px 10px var(--i05);
-}
-.help-action-label {
-  font-size: 14px; font-weight: 650; color: var(--c1);
-}
-.help-action-desc {
-  font-size: 12.5px; color: var(--c4); margin-top: 2px;
-}
-.help-action-btn {
-  background: var(--accent-s); color: var(--accent-dark);
-  border: 1px solid var(--accent-m); border-radius: 9px;
-  padding: 9px 16px; font-size: 13px; font-weight: 620;
-  cursor: pointer; white-space: nowrap; font-family: inherit;
-}
-.help-action-btn:hover { background: var(--accent-m); }
-
-@media (max-width: 520px) {
+@media (max-width: 560px) {
   .help-page { padding: 60px 16px 60px; }
-  .help-hero { padding: 26px 20px; }
-  .help-action-row { flex-direction: column; align-items: stretch; text-align: center; }
+  .help-options { grid-template-columns: 1fr; }
 }

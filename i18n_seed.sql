@@ -772,6 +772,29 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('help.notif_settings_title', 'en', 'Notifications and settings'),
 ('help.notif_settings_title', 'et', 'Teavitused ja seaded'),
 ('help.notif_settings_body',  'en', 'The same menu has Notifications (reminders and achievements) and Settings (font size, language, colour palette, focus timer, ambient sound).'),
-('help.notif_settings_body',  'et', 'Sama menüü alt leiad ka Teavitused (meeldetuletused ja saavutused) ning Seaded (fondisuurus, keel, värvipalett, fookustaimer, taustaheli).')
+('help.notif_settings_body',  'et', 'Sama menüü alt leiad ka Teavitused (meeldetuletused ja saavutused) ning Seaded (fondisuurus, keel, värvipalett, fookustaimer, taustaheli).'),
+-- Four-alternatives redesign of the Help page (replaces the old hero/divider layout).
+('help.page_title',           'en', 'How can we help?'),
+('help.page_title',           'et', 'Kuidas saame aidata?'),
+('help.page_sub',             'en', 'Pick whichever fits how you like to get up to speed.'),
+('help.page_sub',             'et', 'Vali endale sobivaim viis, kuidas kiiresti kohaneda.'),
+('help.opt_anne_title',       'en', 'Ask Anne'),
+('help.opt_anne_title',       'et', 'Küsi Annelt'),
+('help.opt_anne_desc',        'en', 'She knows the app, your own learning, and the subjects — and answers right away.'),
+('help.opt_anne_desc',        'et', 'Ta teab nii äppi, sinu õppimist kui ka õppeaineid — ja vastab kohe.'),
+('help.opt_tour_title',       'en', 'Take the tour'),
+('help.opt_tour_title',       'et', 'Vaata tutvustust'),
+('help.opt_tour_desc',        'en', 'A short guided walkthrough of the app, right on the map.'),
+('help.opt_tour_desc',        'et', 'Lühike juhitud tutvustus otse kaardil.'),
+('help.opt_doc_title',        'en', 'Read the guide'),
+('help.opt_doc_title',        'et', 'Loe juhendit'),
+('help.opt_doc_desc',         'en', 'A written, step-by-step overview you can skim at your own pace.'),
+('help.opt_doc_desc',         'et', 'Kirjalik samm-sammuline ülevaade, mida saad lugeda oma tempos.'),
+('help.opt_video_title',      'en', 'Watch the video'),
+('help.opt_video_title',      'et', 'Vaata videot'),
+('help.opt_video_desc',       'en', 'A short video walkthrough.'),
+('help.opt_video_desc',       'et', 'Lühike videotutvustus.'),
+('help.soon',                 'en', 'Coming soon'),
+('help.soon',                 'et', 'Peagi')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
