@@ -1625,10 +1625,14 @@ router.post('/test/question', async (req, res) => {
     if (level < 4) return res.status(400).json({ error: 'Test only available for L4 and L5 nodes' });
     const breadcrumb = await getNodeBreadcrumb(db_id);
     const locale = await getUserLocale(req.user?.id);
+    // Age-based wording simplification — opt-in only. Unknown age or 18+
+    // leaves the prompt completely unchanged (age stays null/undefined).
+    const profile = await getUserProfile(req.user?.id);
+    const age = profile?.birth_year ? new Date().getFullYear() - profile.birth_year : null;
     if (wantStream) {
-      return _runStream((cb) => llm.streamTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, cb), res);
+      return _runStream((cb) => llm.streamTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, cb, age), res);
     }
-    let result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id);
+    let result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, age);
     if (locale !== 'en') {
       const editFields = { question: result.question };
       if (result.type === 'mcq' && Array.isArray(result.options)) editFields.options = result.options;

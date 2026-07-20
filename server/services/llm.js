@@ -630,7 +630,16 @@ function _mcqEvalBlock(userAnswer, options, correctIndex) {
     `Verdict: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`,
   ].join('\n');
 }
-async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId) {
+// Test question wording — age-based, opt-in only. Default (age unknown or 18+)
+// is completely unchanged: this returns '' and the prompt is byte-for-byte
+// identical to before. Only wording changes for a known under-18 learner —
+// same question, same difficulty, same structure, simpler language.
+function _simplifyWordingNote(age) {
+  if (!age || age >= 18) return '';
+  return '\n\nIMPORTANT: This learner is young. Use simple wording — short sentences, everyday vocabulary, no unnecessarily complex phrasing. Ask the exact same thing, at the exact same difficulty and depth — only the wording should be simpler.';
+}
+
+async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, age = null) {
   const tiers = [
     'Factual (Remember): one question on core terminology or a foundational definition.',
     'Conceptual (Understand): one question asking the learner to explain a mechanism or relationship. No calculations.',
@@ -650,7 +659,7 @@ async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history,
     `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}\nCorrect: ${h.correct}`
   ).join('\n\n');
 
-  const _tqPrompt = `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}`; // TESTLOG
+  const _tqPrompt = `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}${_simplifyWordingNote(age)}`; // TESTLOG
   testlog('llm_question_prompt', { userId, nodeLabel, questionNum, prompt: _tqPrompt }); // TESTLOG
 
   const msg = await client.messages.create({
@@ -777,7 +786,7 @@ function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, 
   }, userId, 'ask', onChunk);
 }
 
-function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, onChunk) {
+function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, onChunk, age = null) {
   testlog('llm_question_stream_start', { userId, nodeLabel, questionNum, historyLen: history.length }); // TESTLOG
   const tiers = [
     'Factual (Remember): one question on core terminology or a foundational definition.',
@@ -803,7 +812,7 @@ function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale,
     }],
     messages: [{
       role: 'user',
-      content: `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}`,
+      content: `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}${_simplifyWordingNote(age)}`,
     }],
   }, userId, 'test_question', onChunk);
 }
