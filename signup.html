@@ -448,6 +448,19 @@ a { color: inherit; text-decoration: none; }
       </div>
     </div>
 
+    <!-- ── Step: Name ─────────────────────────────────────────────── -->
+    <div class="step" id="step-name">
+      <h2>Sinu nimi</h2>
+      <p class="step-hint">Seda näevad õpetajad ja lapsevanemad, kellega oma konto hiljem ühendad.</p>
+      <input class="su-input" id="name-input" type="text"
+             placeholder="Eesnimi Perekonnanimi" autocomplete="name" spellcheck="false"
+             style="font-size:18px; letter-spacing:normal;">
+      <div class="step-actions">
+        <button class="btn-ghost" id="name-back">← Tagasi</button>
+        <button class="btn-primary" id="name-next" disabled>Edasi</button>
+      </div>
+    </div>
+
     <!-- ── Step 2: Role (18+ only) ────────────────────────────────── -->
     <div class="step" id="step-role">
       <h2>Kes sa oled?</h2>
@@ -604,19 +617,21 @@ a { color: inherit; text-decoration: none; }
 
   // ── State ─────────────────────────────────────────────────────────────
   var state = {
-    age:       null,
-    birthYear: null,
-    role:      'learner',
-    plan:      'free',
-    price:     10.0,
+    age:         null,
+    birthYear:   null,
+    idNumber:    null,   // raw ID code — only set via the ID-code path, never the birthdate one
+    displayName: null,
+    role:        'learner',
+    plan:        'free',
+    price:       10.0,
   };
 
   // ── Step machine ──────────────────────────────────────────────────────
-  var activeSteps = ['id', 'google'];
+  var activeSteps = ['id', 'name', 'google'];
   var stepIdx = 0;
 
   function computeSteps() {
-    var s = ['id'];
+    var s = ['id', 'name'];
     if (state.age >= 18) s.push('role');
     if (state.age >= 14) s.push('plan');
     if (state.plan === 'subscriber' && state.age >= 14) s.push('payment');
@@ -732,6 +747,7 @@ a { color: inherit; text-decoration: none; }
     var age = calcAge(parsed.dob);
     state.age       = age;
     state.birthYear = parsed.year;
+    state.idNumber  = raw;
 
     if (age <= 13) {
       state.role = 'learner';
@@ -771,12 +787,13 @@ a { color: inherit; text-decoration: none; }
     resetIdFeedback();
     idInput.value = '';
     dobInput.value = '';
+    state.idNumber = null;
     if (idMode === 'code') {
       idMode = 'dob';
       idInput.style.display = 'none';
       dobInput.style.display = '';
       idModeLink.textContent = 'Mul on isikukood';
-      idStepHint.textContent = 'Kasutame sünnikuupäeva ainult sinu vanuse kontrollimiseks. Seda ei salvestata.';
+      idStepHint.textContent = 'Kasutame sünnikuupäeva ainult sinu vanuse kontrollimiseks.';
       dobInput.focus();
     } else {
       idMode = 'code';
@@ -824,6 +841,23 @@ a { color: inherit; text-decoration: none; }
   });
 
   idNext.addEventListener('click', function () {
+    activeSteps = computeSteps();
+    renderDots();
+    next();
+  });
+
+  // ── Name step ─────────────────────────────────────────────────────────
+  var nameInput = document.getElementById('name-input');
+  var nameNext  = document.getElementById('name-next');
+
+  nameInput.addEventListener('input', function () {
+    var val = nameInput.value.trim();
+    state.displayName = val || null;
+    nameNext.disabled = val.length < 2;
+  });
+
+  document.getElementById('name-back').addEventListener('click', back);
+  nameNext.addEventListener('click', function () {
     activeSteps = computeSteps();
     renderDots();
     next();
@@ -955,9 +989,16 @@ a { color: inherit; text-decoration: none; }
   // ── Google step ───────────────────────────────────────────────────────
   var ROLE_ET = { learner: 'Õpilane', parent: 'Lapsevanem', teacher: 'Õpetaja' };
 
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
   function renderSummary() {
     var el = document.getElementById('signup-summary');
     var lines = [];
+    if (state.displayName) {
+      lines.push('<p>Nimi: <strong>' + escHtml(state.displayName) + '</strong></p>');
+    }
     var role = state.age <= 13 ? 'learner' : state.role;
     lines.push('<p>Roll: <strong>' + (ROLE_ET[role] || 'Õpilane') + '</strong></p>');
     if (state.age >= 14) {
@@ -981,9 +1022,11 @@ a { color: inherit; text-decoration: none; }
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
-        role:      state.age <= 13 ? 'learner' : state.role,
-        plan:      state.age <= 13 ? 'free' : state.plan,
-        birthYear: state.birthYear,
+        role:        state.age <= 13 ? 'learner' : state.role,
+        plan:        state.age <= 13 ? 'free' : state.plan,
+        birthYear:   state.birthYear,
+        idNumber:    state.idNumber,
+        displayName: state.displayName,
       }),
     })
     .then(function (r) {

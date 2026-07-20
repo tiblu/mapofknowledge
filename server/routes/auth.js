@@ -35,8 +35,8 @@ passport.use(new GoogleStrategy(
           const subStatus = plan === 'subscriber' ? 'subscriber' : 'free';
 
           const [pr] = await conn.execute(
-            'INSERT INTO learner_passports (public_id, birth_year) VALUES (?, ?)',
-            [randomUUID(), pending.birthYear || null]
+            'INSERT INTO learner_passports (public_id, birth_year, id_number, display_name) VALUES (?, ?, ?, ?)',
+            [randomUUID(), pending.birthYear || null, pending.idNumber || null, pending.displayName || null]
           );
           const passportId = pr.insertId;
 
@@ -133,13 +133,17 @@ router.get('/me', (req, res) => {
 
 // ── Signup prepare — stores intent in session before Google OAuth ─────────────
 router.post('/signup/prepare', (req, res) => {
-  const { role, plan, birthYear } = req.body;
+  const { role, plan, birthYear, idNumber, displayName } = req.body;
   const validRoles = ['learner', 'teacher', 'parent'];
   const validPlans = ['free', 'subscriber'];
   req.session.pendingSignup = {
-    role:      validRoles.includes(role) ? role : 'learner',
-    plan:      validPlans.includes(plan) ? plan : 'free',
-    birthYear: typeof birthYear === 'number' && birthYear > 1900 ? birthYear : null,
+    role:        validRoles.includes(role) ? role : 'learner',
+    plan:        validPlans.includes(plan) ? plan : 'free',
+    birthYear:   typeof birthYear === 'number' && birthYear > 1900 ? birthYear : null,
+    // Estonian ID code — 11 digits, already checksum-validated client-side;
+    // re-validate the shape server-side rather than trust it blindly.
+    idNumber:    typeof idNumber === 'string' && /^\d{11}$/.test(idNumber) ? idNumber : null,
+    displayName: typeof displayName === 'string' && displayName.trim() ? displayName.trim().slice(0, 255) : null,
   };
   res.json({ ok: true });
 });
