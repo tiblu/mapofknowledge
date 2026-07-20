@@ -275,7 +275,9 @@ Return a JSON array. Each object has exactly:
 - "sequence": integer starting at 1
 - "title": string (short knobit name, 3–8 words)
 
-Typically 5–12 knobits, progressing from foundational to nuanced.`,
+Base the knobit count entirely on this topic's actual conceptual complexity — there is no target number to hit. A narrow or simple topic (a single technique, fact, or short procedure — e.g. "how to fold a paper airplane") may genuinely need only 2–4 knobits. A dense, multi-faceted topic may need up to 10–12. Most fall in between.
+
+Do not pad the sequence. Never split one idea into multiple knobits just to lengthen the list, and never invent a step that isn't conceptually distinct from its neighbors — if two things are really one idea, they're one knobit.`,
     }],
   });
   return parseJSON(msg.content[0].text.trim());
