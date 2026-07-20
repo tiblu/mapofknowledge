@@ -344,15 +344,15 @@ router.post('/settings', async (req, res) => {
 });
 
 // ── UI strings (i18n) ────────────────────────────────────────────────────────
-// Per-locale in-memory cache; cleared on server restart.
+// Queried fresh every request — no server-side cache. This table used to be
+// cached in-process with no invalidation, which meant any string added or
+// edited directly in the DB (the normal way this project ships new i18n
+// keys) silently didn't show up until the server next happened to restart.
+// The Cache-Control header below still lets browsers avoid refetching within
+// a session; that's the caching layer that actually matters here.
 // Falls back to 'en' for any keys missing in the requested locale.
-const _stringsCache = {};
-
 router.get('/strings', async (req, res) => {
   const locale = (req.query.locale || 'en').replace(/[^a-zA-Z-]/g, '').slice(0, 10) || 'en';
-  if (_stringsCache[locale]) {
-    return res.set('Cache-Control', 'public, max-age=300').json(_stringsCache[locale]);
-  }
   try {
     const [rows] = await db.execute(
       'SELECT key_name, value FROM ui_strings WHERE locale = ?', [locale]
@@ -366,7 +366,6 @@ router.get('/strings', async (req, res) => {
       );
       enRows.forEach(r => { if (out[r.key_name] === undefined) out[r.key_name] = r.value; });
     }
-    _stringsCache[locale] = out;
     res.set('Cache-Control', 'public, max-age=300').json(out);
   } catch (err) {
     console.error('[api/strings]', err.message);
