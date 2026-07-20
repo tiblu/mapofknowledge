@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="et">
 <head>
 <meta charset="UTF-8">
 <!-- Google tag (gtag.js) -->
@@ -16,8 +16,11 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/profile.css">
 <link rel="stylesheet" href="css/font-scale.css">
-<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
 <script src="js/strings.js"></script>
+<!-- Anne (parent-frame widget) is only shown on the map and on help.html —
+     self-declare hidden here in case of an internal nav-hop from help.html. -->
+<script>if (window.parent !== window && window.parent.Anne) window.parent.Anne.setVisible(false);</script>
 </head>
 <body>
 
@@ -68,6 +71,14 @@
         <button class="nav-dropdown-item" onclick="window.location='settings.html'">
           <img src="images/icon-settings.svg" width="15" height="15" alt="">
           <span data-i18n="nav.settings">Settings</span>
+        </button>
+        <button class="nav-dropdown-item" onclick="window.location='help.html'">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M5.7 5.8a1.8 1.8 0 1 1 2.5 1.7c-.5.3-.7.6-.7 1.1v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <circle cx="7.5" cy="10.8" r="0.6" fill="currentColor"/>
+          </svg>
+          <span data-i18n="nav.help">Help</span>
         </button>
         <div class="nav-dropdown-divider"></div>
         <button class="nav-dropdown-item" onclick="window.top.location='/auth/logout'">

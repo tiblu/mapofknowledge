@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="et">
 <head>
 <meta charset="UTF-8">
 <!-- Google tag (gtag.js) -->
@@ -83,6 +83,14 @@
         <button class="nav-dropdown-item" onclick="openOverlay('settings.html')">
           <img src="images/icon-settings.svg" width="15" height="15" alt="">
           <span data-i18n="nav.settings">Settings</span>
+        </button>
+        <button class="nav-dropdown-item" onclick="openOverlay('help.html')">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M5.7 5.8a1.8 1.8 0 1 1 2.5 1.7c-.5.3-.7.6-.7 1.1v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <circle cx="7.5" cy="10.8" r="0.6" fill="currentColor"/>
+          </svg>
+          <span data-i18n="nav.help">Help</span>
         </button>
         <div class="nav-dropdown-divider"></div>
         <button class="nav-dropdown-item" onclick="window.location='/auth/logout'">

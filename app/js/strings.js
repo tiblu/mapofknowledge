@@ -10,7 +10,7 @@
    Locale resolution order:
      1. window._uiLocale (set by settings loader when ui_locale key exists)
      2. <html lang="..."> attribute
-     3. 'en' default
+     3. 'et' default — Estonian is KnoBitz's default locale for new users
 
    Strings are loaded once on page load. If the settings fetch resolves
    a different locale after initial load, call window.reloadStrings().

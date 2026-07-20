@@ -318,6 +318,7 @@ router.get('/settings', async (req, res) => {
     );
     const out = {};
     rows.forEach(r => { out[r.key_name] = r.value; });
+    if (!out.ui_locale) out.ui_locale = 'et'; // new users default to Estonian
     res.json(out);
   } catch (err) {
     res.json({});
