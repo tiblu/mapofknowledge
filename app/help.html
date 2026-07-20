@@ -176,5 +176,9 @@
 </main>
 
 <script src="js/topbar-notif.js"></script>
+<script>
+  document.getElementById('nav-menu').addEventListener('click', e => { e.stopPropagation(); document.getElementById('nav-dropdown').classList.toggle('open'); document.getElementById('nav-menu').classList.toggle('active'); });
+  document.addEventListener('click', () => { document.getElementById('nav-dropdown').classList.remove('open'); document.getElementById('nav-menu').classList.remove('active'); });
+</script>
 </body>
 </html>
