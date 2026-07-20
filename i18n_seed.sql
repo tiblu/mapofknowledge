@@ -257,6 +257,16 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.delete_map_confirm',  'en', 'Delete this map? This cannot be undone.'),
 ('msg.could_not_delete',    'en', 'Could not delete.'),
 ('msg.could_not_update',    'en', 'Could not update.'),
+('msg.sending',             'en', 'Sending...'),
+('msg.sending',             'et', 'Saadan...'),
+('msg.sent',                'en', 'Sent!'),
+('msg.sent',                'et', 'Saadetud!'),
+('verify.reminder',         'en', 'Please verify your email address to secure your account.'),
+('verify.reminder',         'et', 'Palun kinnita oma e-posti aadress, et konto oleks turvatud.'),
+('verify.confirmed',        'en', 'Email address verified!'),
+('verify.confirmed',        'et', 'E-posti aadress on kinnitatud!'),
+('btn.resend_verification', 'en', 'Resend link'),
+('btn.resend_verification', 'et', 'Saada uuesti'),
 
 -- Sections (profile.js rendered)
 ('section.identity',        'en', 'Identity'),

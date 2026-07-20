@@ -509,6 +509,19 @@ a { color: inherit; text-decoration: none; }
   .hero-h1 { letter-spacing: -1.5px; }
   .hero-h2 { letter-spacing: -0.8px; }
 }
+
+.verify-toast {
+  position: fixed; left: 50%; bottom: 28px; z-index: 200;
+  transform: translate(-50%, 12px);
+  background: var(--panel); color: var(--cream);
+  border: 1px solid var(--border-hi); border-radius: 12px;
+  padding: 13px 20px; font-size: 13.5px; font-weight: 500;
+  box-shadow: 0 8px 28px rgba(44,40,32,0.14);
+  opacity: 0; transition: opacity 0.25s, transform 0.25s;
+  max-width: calc(100vw - 32px);
+}
+.verify-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.verify-toast.ok { border-color: rgba(63,135,120,0.35); color: var(--teal); }
 </style>
 </head>
 <body>
@@ -536,7 +549,7 @@ a { color: inherit; text-decoration: none; }
   </nav>
 
   <div class="nav-right">
-    <a href="/auth/google" class="btn-ghost">Logi sisse</a>
+    <a href="/signup#login" class="btn-ghost">Logi sisse</a>
     <a href="/signup" class="btn-primary">Alusta tasuta</a>
   </div>
 </header>
@@ -791,7 +804,7 @@ a { color: inherit; text-decoration: none; }
       <div class="footer-col">
         <h4>Ava</h4>
         <a href="/auth/google">Kaart</a>
-        <a href="/auth/google">Logi sisse</a>
+        <a href="/signup#login">Logi sisse</a>
         <a href="/signup">Loo konto</a>
       </div>
       <div class="footer-col">
@@ -812,9 +825,30 @@ a { color: inherit; text-decoration: none; }
 
 <script>
 /* ── Auto-redirect logged-in users ─────────────────────────────────────── */
+var verifyStatus = new URLSearchParams(window.location.search).get('verify');
+
 fetch('/auth/me').then(function(r) { return r.json(); }).then(function(u) {
-  if (u && u.id) window.location.href = '/app/';
+  if (u && u.id) {
+    window.location.href = verifyStatus ? ('/app/?verify=' + verifyStatus) : '/app/';
+    return;
+  }
+  if (verifyStatus) showVerifyToast(verifyStatus);
 }).catch(function() {});
+
+function showVerifyToast(status) {
+  var messages = {
+    ok:      'E-posti aadress on kinnitatud!',
+    expired: 'Kinnituslink on aegunud. Logi sisse ja saada uus link oma kontolt.',
+    invalid: 'Kinnituslink ei ole kehtiv.',
+    error:   'Kinnitamine ebaõnnestus. Proovi hiljem uuesti.',
+  };
+  var el = document.createElement('div');
+  el.className = 'verify-toast' + (status === 'ok' ? ' ok' : '');
+  el.textContent = messages[status] || messages.error;
+  document.body.appendChild(el);
+  setTimeout(function() { el.classList.add('show'); }, 30);
+  setTimeout(function() { el.remove(); }, 6000);
+}
 
 /* ── Hero canvas — animated knowledge graph ─────────────────────────────── */
 (function() {

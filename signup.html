@@ -385,6 +385,16 @@ a { color: inherit; text-decoration: none; }
 
 .su-hidden { display: none !important; }
 
+.auth-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 0; color: var(--muted); font-size: 12px;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-hi);
+}
+
+.btn-block { width: 100%; margin-top: 10px; }
+
 @media (max-width: 520px) {
   .wizard { padding: 28px 20px 32px; border-radius: 0; border-left: none; border-right: none; }
   .plan-grid { grid-template-columns: 1fr; }
@@ -407,11 +417,11 @@ a { color: inherit; text-decoration: none; }
     </div>
     KnoBitz
   </a>
-  <a href="/auth/google" class="su-login-link">Logi sisse</a>
+  <a href="#login" class="su-login-link" id="nav-login-link">Logi sisse</a>
 </nav>
 
 <main class="su-main">
-  <div class="wizard">
+  <div class="wizard" id="signup-wizard">
     <div class="step-dots" id="step-dots"></div>
 
     <!-- ── Step 1: ID code ─────────────────────────────────────────── -->
@@ -607,7 +617,7 @@ a { color: inherit; text-decoration: none; }
         </svg>
       </div>
       <h2>Viimane samm</h2>
-      <p class="step-hint">Konto loomiseks ühenda oma Google'i konto. Sisse logimiseks kasutataksegi seda kontot.</p>
+      <p class="step-hint">Konto loomiseks ühenda oma Google'i konto, või loo konto e-posti aadressi ja parooliga.</p>
       <div class="signup-summary" id="signup-summary"></div>
       <button class="btn-google" id="google-btn">
         <svg width="18" height="18" viewBox="0 0 24 24">
@@ -618,6 +628,18 @@ a { color: inherit; text-decoration: none; }
         </svg>
         Jätka Google'iga
       </button>
+
+      <div class="auth-divider"><span>või</span></div>
+
+      <input class="su-input" id="signup-email-input" type="email"
+             placeholder="E-posti aadress" autocomplete="email" spellcheck="false"
+             style="font-size:16px; letter-spacing:normal; margin-bottom:9px;">
+      <input class="su-input" id="signup-password-input" type="password"
+             placeholder="Parool (vähemalt 8 tähemärki)" autocomplete="new-password"
+             style="font-size:16px; letter-spacing:normal;">
+      <div class="id-error" id="password-signup-error"></div>
+      <button class="btn-primary btn-block" id="password-signup-btn">Loo konto e-posti ja parooliga</button>
+
       <p class="terms-notice">
         Jätkates nõustud <a href="#">kasutustingimustega</a> ja
         <a href="#">privaatsuspoliitikaga</a>.
@@ -625,6 +647,40 @@ a { color: inherit; text-decoration: none; }
     </div>
 
   </div><!-- /wizard -->
+
+  <!-- ── Returning-user login ────────────────────────────────────────── -->
+  <div class="wizard su-hidden" id="login-panel">
+    <div class="google-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <h2>Tere tulemast tagasi</h2>
+    <p class="step-hint">Logi sisse oma KnoBitzi kontoga.</p>
+
+    <a href="/auth/google" class="btn-google">
+      <svg width="18" height="18" viewBox="0 0 24 24">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.09-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Jätka Google'iga
+    </a>
+
+    <div class="auth-divider"><span>või</span></div>
+
+    <input class="su-input" id="login-email-input" type="email"
+           placeholder="E-posti aadress" autocomplete="email" spellcheck="false"
+           style="font-size:16px; letter-spacing:normal; margin-bottom:9px;">
+    <input class="su-input" id="login-password-input" type="password"
+           placeholder="Parool" autocomplete="current-password"
+           style="font-size:16px; letter-spacing:normal;">
+    <div class="id-error" id="login-error"></div>
+    <button class="btn-primary btn-block" id="login-btn">Logi sisse</button>
+
+    <button type="button" class="id-mode-link" id="back-to-signup-link">← Pole veel kontot? Alusta siin</button>
+  </div>
 </main>
 
 <script>
@@ -1158,6 +1214,32 @@ a { color: inherit; text-decoration: none; }
     el.innerHTML = lines.join('');
   }
 
+  function buildSignupPayload() {
+    return {
+      role:        state.age <= 13 ? 'learner' : state.role,
+      plan:        state.age <= 13 ? 'free' : state.plan,
+      birthYear:   state.birthYear,
+      idNumber:    state.idNumber,
+      displayName: state.displayName,
+      about:         buildAboutText(),
+      qualification: buildQualification(),
+      linkCode:      buildLinkCode(),
+      interests:     buildInterests(),
+      values:        buildValues(),
+    };
+  }
+
+  // Shows the flagged-content error back on the interests step, wherever the
+  // triggering submit happened from (Google button or password signup).
+  function showFlaggedContentError(flagged) {
+    activeSteps = computeSteps();
+    renderDots();
+    goTo('interests');
+    interestsError.textContent = 'Palun vaata need sisestused üle: '
+      + (flagged || []).join(', ') + '. Sisesta oma tegelikud huvid ja väärtused.';
+    interestsError.classList.add('show');
+  }
+
   document.getElementById('google-btn').addEventListener('click', function () {
     var btn = document.getElementById('google-btn');
     btn.disabled = true;
@@ -1167,18 +1249,7 @@ a { color: inherit; text-decoration: none; }
     fetch('/auth/signup/prepare', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        role:        state.age <= 13 ? 'learner' : state.role,
-        plan:        state.age <= 13 ? 'free' : state.plan,
-        birthYear:   state.birthYear,
-        idNumber:    state.idNumber,
-        displayName: state.displayName,
-        about:        buildAboutText(),
-        qualification: buildQualification(),
-        linkCode:     buildLinkCode(),
-        interests:    buildInterests(),
-        values:       buildValues(),
-      }),
+      body:    JSON.stringify(buildSignupPayload()),
     })
     .then(function (r) {
       if (r.ok) {
@@ -1188,19 +1259,139 @@ a { color: inherit; text-decoration: none; }
       btn.disabled = false;
       btn.innerHTML = orig;
       r.json().then(function (d) {
-        if (d && d.error === 'flagged_content') {
-          activeSteps = computeSteps();
-          renderDots();
-          goTo('interests');
-          interestsError.textContent = 'Palun vaata need sisestused üle: '
-            + (d.flagged || []).join(', ') + '. Sisesta oma tegelikud huvid ja väärtused.';
-          interestsError.classList.add('show');
-        }
+        if (d && d.error === 'flagged_content') showFlaggedContentError(d.flagged);
       }).catch(function () {});
     })
     .catch(function () {
       btn.disabled = false;
       btn.innerHTML = orig;
+    });
+  });
+
+  // ── Email + password signup ──────────────────────────────────────────
+  var signupEmailInput    = document.getElementById('signup-email-input');
+  var signupPasswordInput = document.getElementById('signup-password-input');
+  var passwordSignupBtn   = document.getElementById('password-signup-btn');
+  var passwordSignupError = document.getElementById('password-signup-error');
+
+  passwordSignupBtn.addEventListener('click', function () {
+    var email    = signupEmailInput.value.trim();
+    var password = signupPasswordInput.value;
+    passwordSignupError.classList.remove('show');
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      passwordSignupError.textContent = 'Sisesta korrektne e-posti aadress.';
+      passwordSignupError.classList.add('show');
+      return;
+    }
+    if (password.length < 8) {
+      passwordSignupError.textContent = 'Parool peab olema vähemalt 8 tähemärki.';
+      passwordSignupError.classList.add('show');
+      return;
+    }
+
+    passwordSignupBtn.disabled = true;
+    var orig = passwordSignupBtn.textContent;
+    passwordSignupBtn.textContent = 'Loome kontot...';
+
+    var payload = buildSignupPayload();
+    payload.email = email;
+    payload.password = password;
+
+    fetch('/auth/signup/password', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        window.location.href = res.d.redirect || '/app/';
+        return;
+      }
+      passwordSignupBtn.disabled = false;
+      passwordSignupBtn.textContent = orig;
+      if (res.d && res.d.error === 'flagged_content') {
+        showFlaggedContentError(res.d.flagged);
+        return;
+      }
+      var messages = {
+        invalid_email: 'Sisesta korrektne e-posti aadress.',
+        weak_password: 'Parool peab olema vähemalt 8 tähemärki.',
+        email_taken:   'See e-posti aadress on juba kasutusel. Proovi sisse logida.',
+      };
+      passwordSignupError.textContent = messages[res.d && res.d.error] || 'Konto loomine ebaõnnestus. Proovi uuesti.';
+      passwordSignupError.classList.add('show');
+    })
+    .catch(function () {
+      passwordSignupBtn.disabled = false;
+      passwordSignupBtn.textContent = orig;
+      passwordSignupError.textContent = 'Konto loomine ebaõnnestus. Proovi uuesti.';
+      passwordSignupError.classList.add('show');
+    });
+  });
+
+  // ── Returning-user login panel ───────────────────────────────────────
+  var signupWizardEl = document.getElementById('signup-wizard');
+  var loginPanelEl   = document.getElementById('login-panel');
+  var loginEmailInput    = document.getElementById('login-email-input');
+  var loginPasswordInput = document.getElementById('login-password-input');
+  var loginBtn            = document.getElementById('login-btn');
+  var loginError           = document.getElementById('login-error');
+
+  function showLoginPanel() {
+    signupWizardEl.classList.add('su-hidden');
+    loginPanelEl.classList.remove('su-hidden');
+  }
+  function showSignupWizard() {
+    loginPanelEl.classList.add('su-hidden');
+    signupWizardEl.classList.remove('su-hidden');
+    window.location.hash = '';
+  }
+
+  document.getElementById('nav-login-link').addEventListener('click', function (e) {
+    e.preventDefault();
+    showLoginPanel();
+  });
+  document.getElementById('back-to-signup-link').addEventListener('click', showSignupWizard);
+  if (window.location.hash === '#login') showLoginPanel();
+
+  loginBtn.addEventListener('click', function () {
+    var email    = loginEmailInput.value.trim();
+    var password = loginPasswordInput.value;
+    loginError.classList.remove('show');
+
+    if (!email || !password) {
+      loginError.textContent = 'Sisesta e-posti aadress ja parool.';
+      loginError.classList.add('show');
+      return;
+    }
+
+    loginBtn.disabled = true;
+    var orig = loginBtn.textContent;
+    loginBtn.textContent = 'Logime sisse...';
+
+    fetch('/auth/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email: email, password: password }),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        window.location.href = res.d.redirect || '/app/';
+        return;
+      }
+      loginBtn.disabled = false;
+      loginBtn.textContent = orig;
+      loginError.textContent = 'Vale e-posti aadress või parool.';
+      loginError.classList.add('show');
+    })
+    .catch(function () {
+      loginBtn.disabled = false;
+      loginBtn.textContent = orig;
+      loginError.textContent = 'Sisselogimine ebaõnnestus. Proovi uuesti.';
+      loginError.classList.add('show');
     });
   });
 
