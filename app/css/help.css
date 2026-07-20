@@ -36,18 +36,35 @@ body {
   display: flex; flex-direction: column; align-items: flex-start;
   text-align: left;
   background: rgba(255,255,255,0.65);
-  border: 1px solid var(--i08);
+  border: 1.5px solid var(--accent-s);
   border-radius: 16px;
   box-shadow: 0 2px 10px var(--i05);
-  padding: 22px 20px;
+  padding: 22px 44px 22px 20px;
   font-family: inherit;
   cursor: pointer;
   transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 .help-option:hover {
-  border-color: var(--accent-m);
+  border-color: var(--accent);
   transform: translateY(-2px);
   box-shadow: 0 8px 22px var(--i08);
+}
+/* Arrow affordance so the cards read as clickable, not just informational —
+   present (not hover-only) since it wasn't obvious enough at a glance before. */
+.help-option:not(.help-option-disabled)::after {
+  content: '';
+  position: absolute;
+  top: 50%; right: 18px;
+  width: 9px; height: 9px;
+  border-top: 2px solid var(--accent);
+  border-right: 2px solid var(--accent);
+  transform: translateY(-50%) rotate(45deg);
+  opacity: 0.55;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.help-option:not(.help-option-disabled):hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(3px) rotate(45deg);
 }
 .help-option-icon {
   width: 44px; height: 44px; margin-bottom: 14px;
@@ -55,6 +72,11 @@ body {
   display: flex; align-items: center; justify-content: center;
   background: var(--accent-m);
   color: var(--accent);
+}
+.help-option-icon-anne {
+  background-color: var(--panel-a);
+  background-size: cover; background-position: center;
+  border: 1.5px solid var(--accent-m);
 }
 .help-option-title {
   font-size: 15px; font-weight: 700; color: var(--c1);
@@ -66,6 +88,7 @@ body {
 .help-option-disabled {
   cursor: default;
   opacity: 0.6;
+  border-color: var(--i08);
 }
 .help-option-disabled:hover {
   border-color: var(--i08);
