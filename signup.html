@@ -514,7 +514,7 @@ a { color: inherit; text-decoration: none; }
       <input class="su-input" id="values-input" type="text"
              placeholder="Väärtused — nt ausus, sõprus, uudishimu, visadus" autocomplete="off" spellcheck="false"
              style="font-size:16px; letter-spacing:normal;">
-      <div class="step-hint" style="margin-top:8px; margin-bottom:0; font-size:12px;">Eralda mitu vastust komaga. Mõlemad väljad on kohustuslikud.</div>
+      <div class="step-hint" style="margin-top:8px; margin-bottom:0; font-size:12px;">Eralda mitu vastust komaga. Vähemalt 2 huvi ja 1 väärtus on kohustuslikud.</div>
       <div class="id-error" id="interests-error"></div>
 
       <div class="step-actions">
@@ -955,7 +955,7 @@ a { color: inherit; text-decoration: none; }
   function buildValues()    { return parseListInput(valuesInput.value); }
 
   function validateInterestsStep() {
-    interestsNext.disabled = !(buildInterests().length && buildValues().length);
+    interestsNext.disabled = !(buildInterests().length >= 2 && buildValues().length >= 1);
   }
   [interestsInput, valuesInput].forEach(function (el) {
     el.addEventListener('input', function () {

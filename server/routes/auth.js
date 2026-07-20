@@ -208,8 +208,8 @@ router.post('/signup/prepare', async (req, res) => {
   const validInterests = cleanList(interests);
   const validValues    = cleanList(values);
 
-  if (!validInterests.length || !validValues.length) {
-    return res.status(400).json({ error: 'At least one interest and one value are required' });
+  if (validInterests.length < 2 || !validValues.length) {
+    return res.status(400).json({ error: 'At least two interests and one value are required' });
   }
 
   const moderation = await moderateTags(validInterests, validValues);
