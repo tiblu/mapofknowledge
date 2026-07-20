@@ -454,7 +454,26 @@ a { color: inherit; text-decoration: none; }
       <p class="step-hint">Seda näevad õpetajad ja lapsevanemad, kellega oma konto hiljem ühendad.</p>
       <input class="su-input" id="name-input" type="text"
              placeholder="Eesnimi Perekonnanimi" autocomplete="name" spellcheck="false"
-             style="font-size:18px; letter-spacing:normal;">
+             style="font-size:18px; letter-spacing:normal; margin-bottom:9px;">
+      <input class="su-input" id="school-input" type="text"
+             placeholder="Kooli nimi (nt Pääsküla Gümnaasium)" autocomplete="off" spellcheck="false"
+             style="font-size:16px; letter-spacing:normal; margin-bottom:9px;">
+      <select class="su-input" id="grade-select" style="font-size:16px; letter-spacing:normal;">
+        <option value="" selected>Vali klass</option>
+        <option value="1">1. klass</option>
+        <option value="2">2. klass</option>
+        <option value="3">3. klass</option>
+        <option value="4">4. klass</option>
+        <option value="5">5. klass</option>
+        <option value="6">6. klass</option>
+        <option value="7">7. klass</option>
+        <option value="8">8. klass</option>
+        <option value="9">9. klass</option>
+        <option value="10">10. klass</option>
+        <option value="11">11. klass</option>
+        <option value="12">12. klass</option>
+      </select>
+      <p class="step-hint" style="margin-top:8px; margin-bottom:0;">Kool ja klass on valikulised — kui täidad mõlemad, lisame need sinu profiili õpivajaduste juurde.</p>
       <div class="step-actions">
         <button class="btn-ghost" id="name-back">← Tagasi</button>
         <button class="btn-primary" id="name-next" disabled>Edasi</button>
@@ -863,6 +882,20 @@ a { color: inherit; text-decoration: none; }
     next();
   });
 
+  // School + grade are optional; if both are filled, composed into a
+  // sentence for the "Õpivajadused ja -eelistused" profile field. This is a
+  // simple suffix rule ("kool" -> "koolis"), not real Estonian declension —
+  // it reads naturally for the common "...kool"/"...gümnaasium" naming
+  // pattern, but can look slightly off for unusual school names. The field
+  // stays user-editable afterward in the profile, so this is a starting
+  // draft, not a final, unchangeable value.
+  function buildAboutText() {
+    var school = (document.getElementById('school-input').value || '').trim();
+    var grade  = document.getElementById('grade-select').value;
+    if (!school || !grade) return null;
+    return 'Ma olen ' + grade + '. klassi õpilane ' + school + 'is.';
+  }
+
   // ── Role step ─────────────────────────────────────────────────────────
   document.querySelectorAll('[data-role]').forEach(function (card) {
     card.addEventListener('click', function () {
@@ -999,6 +1032,10 @@ a { color: inherit; text-decoration: none; }
     if (state.displayName) {
       lines.push('<p>Nimi: <strong>' + escHtml(state.displayName) + '</strong></p>');
     }
+    var about = buildAboutText();
+    if (about) {
+      lines.push('<p>Õpivajadused ja -eelistused: <strong>' + escHtml(about) + '</strong></p>');
+    }
     var role = state.age <= 13 ? 'learner' : state.role;
     lines.push('<p>Roll: <strong>' + (ROLE_ET[role] || 'Õpilane') + '</strong></p>');
     if (state.age >= 14) {
@@ -1027,6 +1064,7 @@ a { color: inherit; text-decoration: none; }
         birthYear:   state.birthYear,
         idNumber:    state.idNumber,
         displayName: state.displayName,
+        about:       buildAboutText(),
       }),
     })
     .then(function (r) {

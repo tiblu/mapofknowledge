@@ -261,6 +261,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Sections (profile.js rendered)
 ('section.identity',        'en', 'Identity'),
 ('section.learning_needs',  'en', 'Learning needs and preferences'),
+('section.learning_needs',  'et', 'Õpivajadused ja -eelistused'),
 ('section.events',          'en', 'Events'),
 ('section.individuals',     'en', 'Individuals'),
 ('section.study_groups',    'en', 'Study groups'),

@@ -35,8 +35,8 @@ passport.use(new GoogleStrategy(
           const subStatus = plan === 'subscriber' ? 'subscriber' : 'free';
 
           const [pr] = await conn.execute(
-            'INSERT INTO learner_passports (public_id, birth_year, id_number, display_name) VALUES (?, ?, ?, ?)',
-            [randomUUID(), pending.birthYear || null, pending.idNumber || null, pending.displayName || null]
+            'INSERT INTO learner_passports (public_id, birth_year, id_number, display_name, about) VALUES (?, ?, ?, ?, ?)',
+            [randomUUID(), pending.birthYear || null, pending.idNumber || null, pending.displayName || null, pending.about || null]
           );
           const passportId = pr.insertId;
 
@@ -133,7 +133,7 @@ router.get('/me', (req, res) => {
 
 // ── Signup prepare — stores intent in session before Google OAuth ─────────────
 router.post('/signup/prepare', (req, res) => {
-  const { role, plan, birthYear, idNumber, displayName } = req.body;
+  const { role, plan, birthYear, idNumber, displayName, about } = req.body;
   const validRoles = ['learner', 'teacher', 'parent'];
   const validPlans = ['free', 'subscriber'];
   req.session.pendingSignup = {
@@ -144,6 +144,9 @@ router.post('/signup/prepare', (req, res) => {
     // re-validate the shape server-side rather than trust it blindly.
     idNumber:    typeof idNumber === 'string' && /^\d{11}$/.test(idNumber) ? idNumber : null,
     displayName: typeof displayName === 'string' && displayName.trim() ? displayName.trim().slice(0, 255) : null,
+    // School + grade, composed client-side into a sentence (see buildAboutText
+    // in signup.html) for the "Õpivajadused ja -eelistused" profile field.
+    about:       typeof about === 'string' && about.trim() ? about.trim().slice(0, 1000) : null,
   };
   res.json({ ok: true });
 });
