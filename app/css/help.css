@@ -1,0 +1,81 @@
+
+/* ── page ── */
+body {
+  background: linear-gradient(160deg, var(--panel-a) 0%, var(--panel-b) 55%, var(--panel-c) 100%);
+  overflow: auto;
+  min-height: 100vh;
+}
+.help-page {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 72px 20px 80px;
+}
+
+/* ── "ask Anne" hero ── */
+.help-hero {
+  text-align: center;
+  background: rgba(255,255,255,0.65);
+  border: 1px solid var(--i08);
+  border-radius: 18px;
+  box-shadow: 0 2px 10px var(--i05);
+  padding: 32px 28px;
+}
+.help-hero-icon {
+  width: 52px; height: 52px; margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-m);
+  color: var(--accent);
+}
+.help-hero-title {
+  font-size: 22px; font-weight: 720; letter-spacing: -0.4px;
+  color: var(--c1); margin-bottom: 10px;
+}
+.help-hero-sub {
+  font-size: 14px; line-height: 1.65; color: var(--c4);
+  max-width: 420px; margin: 0 auto;
+}
+
+/* ── divider between "ask Anne" and the written guide ── */
+.help-divider {
+  display: flex; align-items: center; gap: 14px;
+  margin: 36px 0 28px;
+  font-size: 12px; color: var(--c7);
+  text-align: center;
+}
+.help-divider::before, .help-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--i10);
+}
+
+/* ── written guide ── */
+.help-guide-section {
+  background: rgba(255,255,255,0.65);
+  border: 1px solid var(--i08);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 2px 10px var(--i05);
+  margin-bottom: 14px;
+}
+.help-guide-section h2 {
+  font-size: 15px; font-weight: 700; color: var(--c1);
+  letter-spacing: -0.2px; margin-bottom: 8px;
+}
+.help-guide-section p {
+  font-size: 13.5px; line-height: 1.7; color: var(--c4);
+}
+.help-level-list {
+  list-style: none;
+  display: flex; flex-direction: column; gap: 9px;
+  margin-top: 12px;
+}
+.help-level-list li {
+  font-size: 13px; line-height: 1.6; color: var(--c3);
+  padding: 10px 12px;
+  background: var(--i04);
+  border-radius: 9px;
+}
+
+@media (max-width: 520px) {
+  .help-page { padding: 60px 16px 60px; }
+  .help-hero { padding: 26px 20px; }
+}
