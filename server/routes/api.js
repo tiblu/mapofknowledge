@@ -481,10 +481,13 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
   try {
     const locale = await getUserLocale(req.user?.id);
     const [nodes] = await db.execute(
-      'SELECT id AS db_id, level, label FROM nodes WHERE external_id = ?', [id]
+      `SELECT n.id AS db_id, n.level, n.label, COALESCE(tr.label, n.label) AS display_label
+       FROM nodes n
+       LEFT JOIN node_translations tr ON tr.node_external_id = n.external_id AND tr.locale = ?
+       WHERE n.external_id = ?`, [locale, id]
     );
     if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
-    const { db_id, level, label } = nodes[0];
+    const { db_id, level, display_label } = nodes[0];
 
     await db.execute(
       `INSERT INTO user_node_knowledge
@@ -521,7 +524,9 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
     // Log mark / unmark as known events
     if (source === 'self_reported' && passportId) {
       const pct = parseInt(percentage);
-      const eventTitle = pct >= 100 ? `Marked as known: ${label}` : `Unmarked as known: ${label}`;
+      const eventTitle = pct >= 100
+        ? (locale === 'et' ? `Märgitud teadaolevaks: ${display_label}` : `Marked as known: ${display_label}`)
+        : (locale === 'et' ? `Eemaldati teadaolevate hulgast: ${display_label}` : `Unmarked as known: ${display_label}`);
       db.execute(
         `INSERT INTO passport_events (passport_id, event_date, title, institution, node_external_id, type, sort_order)
          VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, 'activity', 0)`,
@@ -529,7 +534,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
       ).catch(() => {});
       if (pct >= 100) {
         notify(req.user?.id, 'knowledge_marked',
-          locale === 'et' ? `Märgitud teadaolevaks: ${label}` : `Marked as known: ${label}`,
+          locale === 'et' ? `Märgitud teadaolevaks: ${display_label}` : `Marked as known: ${display_label}`,
           locale === 'et' ? 'Lisatud sinu õppija passi teadmiste kaardile.' : 'Added to your Learner Passport knowledge map.', id);
       }
     }
@@ -549,7 +554,10 @@ router.post('/nodes/:id/learn', async (req, res) => {
 
   try {
     const [nodes] = await db.execute(
-      'SELECT id AS db_id, label, level FROM nodes WHERE external_id = ?', [id]
+      `SELECT n.id AS db_id, n.label, n.level, COALESCE(tr.label, n.label) AS display_label
+       FROM nodes n
+       LEFT JOIN node_translations tr ON tr.node_external_id = n.external_id AND tr.locale = ?
+       WHERE n.external_id = ?`, [locale, id]
     );
     if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
     const node = nodes[0];
@@ -581,11 +589,12 @@ router.post('/nodes/:id/learn', async (req, res) => {
       );
 
       if (passportId) {
+        const eventTitle = locale === 'et' ? `Alustasin õppimist: ${node.display_label}` : `Started learning: ${node.display_label}`;
         await db.execute(
           `INSERT INTO passport_events
              (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
            VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', NULL, ?, 'activity', 0)`,
-          [passportId, `Started learning: ${node.label}`, id]
+          [passportId, eventTitle, id]
         ).catch(() => {});
       }
     }
@@ -717,11 +726,13 @@ async function _saveTestResult(passportId, userId, nodeId, label, displayLabel, 
     [passportId, nodeId, evaluation.finalScore]
   );
   updateAncestorKnowledge(passportId, nodeId).catch(() => {});
+  const eventTitle  = locale === 'et' ? `Teadmiste test: ${displayLabel}` : `Knowledge test: ${displayLabel}`;
+  const eventResult = locale === 'et' ? `Tulemus: ${evaluation.finalScore}%` : `Score: ${evaluation.finalScore}%`;
   await db.execute(
     `INSERT INTO passport_events
        (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
      VALUES (?, CURDATE(), ?, 'KnoBitz platvorm', ?, ?, 'assessment', 0)`,
-    [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
+    [passportId, eventTitle, eventResult, nodeId]
   );
   notify(userId, 'test_result',
     locale === 'et' ? `Testi tulemus: ${displayLabel}` : `Test result: ${displayLabel}`,
