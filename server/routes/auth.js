@@ -65,6 +65,29 @@ passport.use(new GoogleStrategy(
             );
           }
 
+          // Consume a teacher/parent-generated invite code entered during signup —
+          // links the accounts immediately, no separate accept step needed.
+          if (pending.linkCode) {
+            const [linkRows] = await conn.execute(
+              `SELECT * FROM learner_links WHERE invite_code = ? AND status = 'pending' AND passport_id IS NULL`,
+              [pending.linkCode]
+            );
+            if (linkRows.length) {
+              const link = linkRows[0];
+              await conn.execute(
+                `UPDATE learner_links SET passport_id = ?, status = 'active', invite_code = NULL, accepted_at = NOW()
+                 WHERE id = ?`,
+                [passportId, link.id]
+              );
+              const linkedLocale = await getUserLocale(link.linked_user_id);
+              notify(link.linked_user_id, 'link_accepted',
+                linkedLocale === 'et' ? 'Uus õpilane liitus' : 'A new student joined',
+                linkedLocale === 'et'
+                  ? (pending.displayName || 'Õpilane') + ' liitus sinu koodiga.'
+                  : (pending.displayName || 'A student') + ' joined using your code.');
+            }
+          }
+
           req.session.pendingSignup = null;
 
           const signupLocale = await getUserLocale(userId);
@@ -143,7 +166,7 @@ router.get('/me', (req, res) => {
 
 // ── Signup prepare — stores intent in session before Google OAuth ─────────────
 router.post('/signup/prepare', (req, res) => {
-  const { role, plan, birthYear, idNumber, displayName, about, qualification } = req.body;
+  const { role, plan, birthYear, idNumber, displayName, about, qualification, linkCode } = req.body;
   const validRoles = ['learner', 'teacher', 'parent'];
   const validPlans = ['free', 'subscriber'];
 
@@ -176,6 +199,9 @@ router.post('/signup/prepare', (req, res) => {
     about:       typeof about === 'string' && about.trim() ? about.trim().slice(0, 1000) : null,
     // Parent's education level + institution + year -> "Kvalifikatsioonid".
     qualification: validQualification,
+    // Code a teacher/parent generated on their own profile page and handed
+    // to this student out-of-band — consumed in the OAuth callback below.
+    linkCode: typeof linkCode === 'string' && /^[A-Z0-9]{8}$/i.test(linkCode.trim()) ? linkCode.trim().toUpperCase() : null,
   };
   res.json({ ok: true });
 });

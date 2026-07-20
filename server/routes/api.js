@@ -1929,8 +1929,8 @@ router.get('/links', async (req, res) => {
     const [asLinked] = await db.execute(
       `SELECT ll.*, lp.display_name AS student_name, u.id AS student_user_id
        FROM learner_links ll
-       JOIN learner_passports lp ON lp.id = ll.passport_id
-       JOIN users u ON u.passport_id = lp.id
+       LEFT JOIN learner_passports lp ON lp.id = ll.passport_id
+       LEFT JOIN users u ON u.passport_id = lp.id
        WHERE ll.linked_user_id = ? AND ll.status != 'revoked'`,
       [userId]
     );
@@ -1978,6 +1978,27 @@ router.post('/links/accept', async (req, res) => {
     res.json({ ok: true, role: link.role });
   } catch (err) {
     res.status(500).json({ error: 'Failed to accept invite' });
+  }
+});
+
+// Teacher/parent generates a code *before* the student has an account —
+// opposite direction from /links/invite above (student generates, teacher/
+// parent accepts). Consumed during signup in server/routes/auth.js.
+router.post('/links/invite-student', async (req, res) => {
+  const userId = req.user?.id;
+  const role   = req.user?.role;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  if (!['parent', 'teacher'].includes(role)) return res.status(403).json({ error: 'Not allowed' });
+  try {
+    const code = _randomCode();
+    await db.execute(
+      `INSERT INTO learner_links (passport_id, linked_user_id, role, status, invite_code, invited_at)
+       VALUES (NULL, ?, ?, 'pending', ?, NOW())`,
+      [userId, role, code]
+    );
+    res.json({ invite_code: code });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create invite' });
   }
 });
 
