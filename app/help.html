@@ -162,6 +162,17 @@
 
   </section>
 
+  <section class="help-action-row">
+    <div class="help-action-text">
+      <div class="help-action-label" data-i18n="settings.guided_tour">Guided tour</div>
+      <div class="help-action-desc" data-i18n="settings.tour_desc">Replay the introduction to KnoBitz.</div>
+    </div>
+    <button class="help-action-btn" data-i18n="btn.restart_tour"
+      onclick="localStorage.setItem(window.lsKey('kq_force_tour'),'1');window.location='index.html'">
+      Restart tour
+    </button>
+  </section>
+
 </main>
 
 <script src="js/topbar-notif.js"></script>
