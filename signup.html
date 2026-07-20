@@ -147,6 +147,63 @@ a { color: inherit; text-decoration: none; }
 
 #dob-input { font-size: 16px; letter-spacing: normal; }
 
+/* ── Tag-chip fields (interests / values) ─────────────────────────────── */
+.tag-field { margin-bottom: 16px; }
+.tag-field-label {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 620; color: var(--cream);
+  margin-bottom: 7px;
+}
+.tag-count {
+  font-size: 12px; font-weight: 700;
+  color: var(--muted);
+  background: rgba(44,40,32,0.05);
+  border: 1px solid var(--border-hi);
+  border-radius: 20px;
+  padding: 2px 10px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.tag-count.met {
+  color: var(--teal);
+  background: rgba(63,135,120,0.1);
+  border-color: rgba(63,135,120,0.3);
+}
+.tag-input-wrap {
+  display: flex; flex-wrap: wrap; gap: 7px; align-items: center;
+  width: 100%;
+  background: rgba(44,40,32,0.035);
+  border: 1.5px solid var(--border-hi);
+  border-radius: 10px;
+  padding: 9px 10px;
+  transition: border-color 0.15s;
+}
+.tag-input-wrap:focus-within { border-color: rgba(196,130,106,0.5); }
+.tag-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--terra-dim);
+  color: var(--terra);
+  border-radius: 20px;
+  padding: 5px 6px 5px 12px;
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap;
+}
+.tag-chip-remove {
+  background: none; border: none; padding: 0; margin: 0;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--terra); font-size: 13px; line-height: 1;
+  cursor: pointer; font-family: inherit;
+}
+.tag-chip-remove:hover { background: rgba(196,130,106,0.25); }
+.tag-input {
+  flex: 1; min-width: 120px;
+  background: none; border: none; outline: none;
+  color: var(--cream); font-family: inherit;
+  font-size: 15px; padding: 5px 4px;
+}
+.tag-input::placeholder { color: rgba(44,40,32,0.3); }
+.tag-field-hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+
 .id-mode-link {
   display: block;
   background: none; border: none; padding: 0;
@@ -516,15 +573,32 @@ a { color: inherit; text-decoration: none; }
     <!-- ── Step 2b: Interests / values ─────────────────────────────── -->
     <div class="step" id="step-interests">
       <h2>Sinu huvid ja väärtused</h2>
-      <p class="step-hint">Kogu KnoBitzi õppesisu — näited, selgitused, harjutused — on personaliseeritud. Need vastused aitavad meil seda sinu jaoks kohandada.</p>
+      <p class="step-hint">Kogu KnoBitzi õppesisu — näited, selgitused, harjutused — on personaliseeritud, olenemata sellest, kas õpid, õpetad või toetad kellegi õppimist. Need vastused aitavad meil seda sinu jaoks kohandada.</p>
 
-      <input class="su-input" id="interests-input" type="text"
-             placeholder="Põhihuvid — nt jalgpall, muusika, arvutimängud, loomad, kosmos" autocomplete="off" spellcheck="false"
-             style="font-size:16px; letter-spacing:normal; margin-bottom:9px;">
-      <input class="su-input" id="values-input" type="text"
-             placeholder="Väärtused — nt ausus, sõprus, uudishimu, visadus" autocomplete="off" spellcheck="false"
-             style="font-size:16px; letter-spacing:normal;">
-      <div class="step-hint" style="margin-top:8px; margin-bottom:0; font-size:12px;">Eralda mitu vastust komaga. Vähemalt 2 huvi ja 1 väärtus on kohustuslikud.</div>
+      <div class="tag-field">
+        <div class="tag-field-label">
+          <span>Põhihuvid</span>
+          <span class="tag-count" id="interests-count">0 / 2</span>
+        </div>
+        <div class="tag-input-wrap" id="interests-tag-wrap">
+          <input class="tag-input" id="interests-input" type="text"
+                 placeholder="nt jalgpall, muusika, arvutimängud…" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="tag-field-hint">Vajuta Enter või koma iga huvi järel — vaja on vähemalt kahte</div>
+      </div>
+
+      <div class="tag-field">
+        <div class="tag-field-label">
+          <span>Väärtused</span>
+          <span class="tag-count" id="values-count">0 / 1</span>
+        </div>
+        <div class="tag-input-wrap" id="values-tag-wrap">
+          <input class="tag-input" id="values-input" type="text"
+                 placeholder="nt ausus, sõprus, uudishimu…" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="tag-field-hint">Vajuta Enter või koma iga väärtuse järel</div>
+      </div>
+
       <div class="id-error" id="interests-error"></div>
 
       <div class="step-actions">
@@ -996,29 +1070,84 @@ a { color: inherit; text-decoration: none; }
   });
 
   // ── Interests / values step ──────────────────────────────────────────
-  var interestsInput = document.getElementById('interests-input');
-  var valuesInput     = document.getElementById('values-input');
-  var interestsNext   = document.getElementById('interests-next');
-  var interestsError  = document.getElementById('interests-error');
+  // Tag-chip fields, not a single comma-separated text box — typing one word
+  // and stopping used to leave "Edasi" silently disabled with no obvious
+  // reason why. Chips make the "add more than one" requirement visible as
+  // you go, and the live counter next to each label shows exactly how many
+  // are still needed.
+  var interestsNext  = document.getElementById('interests-next');
+  var interestsError = document.getElementById('interests-error');
 
-  function parseListInput(str) {
-    return (str || '').split(',')
-      .map(function (s) { return s.trim(); })
-      .filter(function (s) { return s.length >= 2; })
-      .slice(0, 10);
+  function makeTagField(inputId, wrapId, countId, need, max) {
+    var input = document.getElementById(inputId);
+    var wrap  = document.getElementById(wrapId);
+    var count = document.getElementById(countId);
+    var tags  = [];
+    var onChange = function () {};
+
+    function render() {
+      wrap.querySelectorAll('.tag-chip').forEach(function (el) { el.remove(); });
+      tags.forEach(function (val, i) {
+        var chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.textContent = val;
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'tag-chip-remove';
+        rm.setAttribute('aria-label', 'Eemalda');
+        rm.textContent = '×';
+        rm.addEventListener('click', function () {
+          tags.splice(i, 1);
+          render();
+          onChange();
+        });
+        chip.appendChild(rm);
+        wrap.insertBefore(chip, input);
+      });
+      count.textContent = Math.min(tags.length, need) + ' / ' + need;
+      count.classList.toggle('met', tags.length >= need);
+    }
+
+    function commit() {
+      var val = input.value.trim();
+      input.value = '';
+      if (val.length < 2 || tags.length >= max || tags.indexOf(val) !== -1) return false;
+      tags.push(val);
+      return true;
+    }
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        if (commit()) { render(); onChange(); }
+      } else if (e.key === 'Backspace' && !input.value && tags.length) {
+        tags.pop();
+        render();
+        onChange();
+      }
+    });
+    input.addEventListener('blur', function () {
+      if (commit()) { render(); onChange(); }
+    });
+
+    render();
+    return {
+      get: function () { return tags.slice(); },
+      onChange: function (fn) { onChange = fn; },
+    };
   }
-  function buildInterests() { return parseListInput(interestsInput.value); }
-  function buildValues()    { return parseListInput(valuesInput.value); }
+
+  var interestsField = makeTagField('interests-input', 'interests-tag-wrap', 'interests-count', 2, 10);
+  var valuesField     = makeTagField('values-input', 'values-tag-wrap', 'values-count', 1, 10);
+
+  function buildInterests() { return interestsField.get(); }
+  function buildValues()    { return valuesField.get(); }
 
   function validateInterestsStep() {
     interestsNext.disabled = !(buildInterests().length >= 2 && buildValues().length >= 1);
   }
-  [interestsInput, valuesInput].forEach(function (el) {
-    el.addEventListener('input', function () {
-      interestsError.classList.remove('show');
-      validateInterestsStep();
-    });
-  });
+  interestsField.onChange(function () { interestsError.classList.remove('show'); validateInterestsStep(); });
+  valuesField.onChange(function () { interestsError.classList.remove('show'); validateInterestsStep(); });
 
   document.getElementById('interests-back').addEventListener('click', back);
   interestsNext.addEventListener('click', next);
