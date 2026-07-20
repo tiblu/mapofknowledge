@@ -212,6 +212,44 @@ Respond with ONLY the numbers in your recommended order, separated by semicolons
   }
 }
 
+// ── Signup: interest/value moderation ───────────────────────────────────────
+// Fails open (allows through) on any error — a moderation-API hiccup should
+// never block someone from signing up. Genuinely bad input just also has to
+// clear this check next time it's called (e.g. a retry, or later editing).
+async function moderateTags(interests, values) {
+  const entries = [
+    ...interests.map(t => ({ type: 'interest', text: t })),
+    ...values.map(t => ({ type: 'value', text: t })),
+  ];
+  if (!entries.length) return { ok: true, flagged: [] };
+
+  const numbered = entries.map((e, i) => `${i + 1}. [${e.type}] ${e.text}`).join('\n');
+
+  try {
+    const msg = await client.messages.create({
+      model: HAIKU,
+      max_tokens: 300,
+      system: `You moderate signup-form entries for an all-ages K-12 online learning platform. Users list short "interest" and "value" entries describing themselves — this is used to personalise their learning content, not shown publicly.
+
+Flag an entry only if it is: hate speech, a slur, promotion of illegal activity, sexual content, self-harm promotion, or otherwise clearly inappropriate for a school context. Do NOT flag entries just because they are ordinary, blunt, oddly phrased, in a language other than English/Estonian, or a value/interest you personally find unusual — genuine hobbies, subjects, and personal values (honesty, curiosity, football, painting, patience, etc.) are all fine.
+
+Respond with ONLY minified JSON, no commentary, no markdown fences:
+{"ok":true} if every entry is fine, or
+{"ok":false,"flagged":["<verbatim entry text>", ...]} listing only the offending entries, copied exactly as given.`,
+      messages: [{ role: 'user', content: numbered }],
+    });
+    _logUsage(null, 'moderate_tags', msg.usage, HAIKU);
+
+    const parsed = parseJSON(msg.content[0].text);
+    if (parsed && parsed.ok === false && Array.isArray(parsed.flagged)) {
+      return { ok: false, flagged: parsed.flagged };
+    }
+    return { ok: true, flagged: [] };
+  } catch (err) {
+    return { ok: true, flagged: [] };
+  }
+}
+
 // ── Knobit generation ─────────────────────────────────────────────────────────
 async function generateKnobits(nodeLabel, domain, breadcrumb) {
   const msg = await client.messages.create({
@@ -944,6 +982,7 @@ function streamAnneReply(passportText, history, userMessage, locale, userId, onC
 module.exports = {
   generateOverview,
   generateChildOrder,
+  moderateTags,
   generateKnobits,
   translateKnobitTitles,
   editTranslatedText,

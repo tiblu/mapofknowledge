@@ -500,6 +500,26 @@ a { color: inherit; text-decoration: none; }
       </div>
     </div>
 
+    <!-- ── Step 2b: Interests / values ─────────────────────────────── -->
+    <div class="step" id="step-interests">
+      <h2>Sinu huvid ja väärtused</h2>
+      <p class="step-hint">Kogu KnoBitzi õppesisu — näited, selgitused, harjutused — on personaliseeritud. Need vastused aitavad meil seda sinu jaoks kohandada.</p>
+
+      <input class="su-input" id="interests-input" type="text"
+             placeholder="Põhihuvid — nt jalgpall, muusika, arvutimängud, loomad, kosmos" autocomplete="off" spellcheck="false"
+             style="font-size:16px; letter-spacing:normal; margin-bottom:9px;">
+      <input class="su-input" id="values-input" type="text"
+             placeholder="Väärtused — nt ausus, sõprus, uudishimu, visadus" autocomplete="off" spellcheck="false"
+             style="font-size:16px; letter-spacing:normal;">
+      <div class="step-hint" style="margin-top:8px; margin-bottom:0; font-size:12px;">Eralda mitu vastust komaga. Mõlemad väljad on kohustuslikud.</div>
+      <div class="id-error" id="interests-error"></div>
+
+      <div class="step-actions">
+        <button class="btn-ghost" id="interests-back">← Tagasi</button>
+        <button class="btn-primary" id="interests-next" disabled>Edasi</button>
+      </div>
+    </div>
+
     <!-- ── Step 3: Plan ────────────────────────────────────────────── -->
     <div class="step" id="step-plan">
       <h2>Vali konto tüüp</h2>
@@ -619,11 +639,11 @@ a { color: inherit; text-decoration: none; }
   };
 
   // ── Step machine ──────────────────────────────────────────────────────
-  var activeSteps = ['id', 'name', 'google'];
+  var activeSteps = ['id', 'name', 'interests', 'google'];
   var stepIdx = 0;
 
   function computeSteps() {
-    var s = ['id', 'name'];
+    var s = ['id', 'name', 'interests'];
     if (state.age >= 14) s.push('plan');
     if (state.plan === 'subscriber' && state.age >= 14) s.push('payment');
     s.push('google');
@@ -908,6 +928,34 @@ a { color: inherit; text-decoration: none; }
     next();
   });
 
+  // ── Interests / values step ──────────────────────────────────────────
+  var interestsInput = document.getElementById('interests-input');
+  var valuesInput     = document.getElementById('values-input');
+  var interestsNext   = document.getElementById('interests-next');
+  var interestsError  = document.getElementById('interests-error');
+
+  function parseListInput(str) {
+    return (str || '').split(',')
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length >= 2; })
+      .slice(0, 10);
+  }
+  function buildInterests() { return parseListInput(interestsInput.value); }
+  function buildValues()    { return parseListInput(valuesInput.value); }
+
+  function validateInterestsStep() {
+    interestsNext.disabled = !(buildInterests().length && buildValues().length);
+  }
+  [interestsInput, valuesInput].forEach(function (el) {
+    el.addEventListener('input', function () {
+      interestsError.classList.remove('show');
+      validateInterestsStep();
+    });
+  });
+
+  document.getElementById('interests-back').addEventListener('click', back);
+  interestsNext.addEventListener('click', next);
+
   // Õpilane (also the under-18 default): school + grade, composed into a
   // sentence for the "Õpivajadused ja -eelistused" profile field.
   // Õpetaja: school + subject, same field, teacher-phrased sentence.
@@ -1082,6 +1130,8 @@ a { color: inherit; text-decoration: none; }
     if (linkCode) {
       lines.push('<p>Õpetaja/vanema kood: <strong>' + escHtml(linkCode) + '</strong></p>');
     }
+    lines.push('<p>Põhihuvid: <strong>' + escHtml(buildInterests().join(', ')) + '</strong></p>');
+    lines.push('<p>Väärtused: <strong>' + escHtml(buildValues().join(', ')) + '</strong></p>');
     var role = state.age <= 13 ? 'learner' : state.role;
     lines.push('<p>Roll: <strong>' + (ROLE_ET[role] || 'Õpilane') + '</strong></p>');
     if (state.age >= 14) {
@@ -1113,15 +1163,27 @@ a { color: inherit; text-decoration: none; }
         about:        buildAboutText(),
         qualification: buildQualification(),
         linkCode:     buildLinkCode(),
+        interests:    buildInterests(),
+        values:       buildValues(),
       }),
     })
     .then(function (r) {
       if (r.ok) {
         window.location.href = '/auth/google';
-      } else {
-        btn.disabled = false;
-        btn.innerHTML = orig;
+        return;
       }
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      r.json().then(function (d) {
+        if (d && d.error === 'flagged_content') {
+          activeSteps = computeSteps();
+          renderDots();
+          goTo('interests');
+          interestsError.textContent = 'Palun vaata need sisestused üle: '
+            + (d.flagged || []).join(', ') + '. Sisesta oma tegelikud huvid ja väärtused.';
+          interestsError.classList.add('show');
+        }
+      }).catch(function () {});
     })
     .catch(function () {
       btn.disabled = false;

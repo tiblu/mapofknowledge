@@ -4,6 +4,7 @@ const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const { randomUUID } = require('crypto');
 const db       = require('../db');
 const { notify, getUserLocale } = require('../services/notifications');
+const { moderateTags } = require('../services/llm');
 const router   = express.Router();
 
 // ── Passport setup ────────────────────────────────────────────────────────────
@@ -47,6 +48,21 @@ passport.use(new GoogleStrategy(
               `INSERT INTO passport_credentials (passport_id, type, title, issuer, awarded_date, sort_order)
                VALUES (?, 'qualification', ?, ?, ?, 0)`,
               [passportId, pending.qualification.title, pending.qualification.issuer, pending.qualification.year + '-01-01']
+            );
+          }
+
+          // Core interests / values, moderated at prepare-time — power the
+          // personalisation of all learning content.
+          for (let i = 0; i < (pending.interests || []).length; i++) {
+            await conn.execute(
+              'INSERT INTO passport_tags (passport_id, type, text, sort_order) VALUES (?, "interest", ?, ?)',
+              [passportId, pending.interests[i], i]
+            );
+          }
+          for (let i = 0; i < (pending.values || []).length; i++) {
+            await conn.execute(
+              'INSERT INTO passport_tags (passport_id, type, text, sort_order) VALUES (?, "value", ?, ?)',
+              [passportId, pending.values[i], i]
             );
           }
 
@@ -165,8 +181,8 @@ router.get('/me', (req, res) => {
 });
 
 // ── Signup prepare — stores intent in session before Google OAuth ─────────────
-router.post('/signup/prepare', (req, res) => {
-  const { role, plan, birthYear, idNumber, displayName, about, qualification, linkCode } = req.body;
+router.post('/signup/prepare', async (req, res) => {
+  const { role, plan, birthYear, idNumber, displayName, about, qualification, linkCode, interests, values } = req.body;
   const validRoles = ['learner', 'teacher', 'parent'];
   const validPlans = ['free', 'subscriber'];
 
@@ -183,6 +199,22 @@ router.post('/signup/prepare', (req, res) => {
         year:   yearNum,
       };
     }
+  }
+
+  // Core interests / values — required so learning content can be personalised.
+  const cleanList = (arr) => Array.isArray(arr)
+    ? arr.map(s => typeof s === 'string' ? s.trim().slice(0, 60) : '').filter(s => s.length >= 2).slice(0, 10)
+    : [];
+  const validInterests = cleanList(interests);
+  const validValues    = cleanList(values);
+
+  if (!validInterests.length || !validValues.length) {
+    return res.status(400).json({ error: 'At least one interest and one value are required' });
+  }
+
+  const moderation = await moderateTags(validInterests, validValues);
+  if (!moderation.ok) {
+    return res.status(400).json({ error: 'flagged_content', flagged: moderation.flagged });
   }
 
   req.session.pendingSignup = {
@@ -202,6 +234,9 @@ router.post('/signup/prepare', (req, res) => {
     // Code a teacher/parent generated on their own profile page and handed
     // to this student out-of-band — consumed in the OAuth callback below.
     linkCode: typeof linkCode === 'string' && /^[A-Z0-9]{8}$/i.test(linkCode.trim()) ? linkCode.trim().toUpperCase() : null,
+    // Core interests / values -> passport_tags, written in the OAuth callback.
+    interests: validInterests,
+    values:    validValues,
   };
   res.json({ ok: true });
 });
