@@ -25,6 +25,10 @@
   /* ─── Open / close ───────────────────────────────────────────────────── */
   avatar.addEventListener('click', function (e) {
     e.stopPropagation();
+    if (panel.classList.contains('open')) {
+      panel.classList.remove('open');
+      return;
+    }
     panel.classList.add('open');
     if (!_historyLoaded) _loadHistory();
     setTimeout(function () { input.focus(); }, 160);
