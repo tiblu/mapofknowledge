@@ -40,6 +40,16 @@ passport.use(new GoogleStrategy(
           );
           const passportId = pr.insertId;
 
+          // Parent's highest completed education level, from the signup wizard's
+          // "Lapsevanem" tab — lands on the profile as a "Kvalifikatsioonid" entry.
+          if (pending.qualification) {
+            await conn.execute(
+              `INSERT INTO passport_credentials (passport_id, type, title, issuer, awarded_date, sort_order)
+               VALUES (?, 'qualification', ?, ?, ?, 0)`,
+              [passportId, pending.qualification.title, pending.qualification.issuer, pending.qualification.year + '-01-01']
+            );
+          }
+
           const [ur] = await conn.execute(
             `INSERT INTO users (email, role, subscription_status, passport_id, last_login, created_at)
              VALUES (?, ?, ?, ?, NOW(), NOW())`,
@@ -133,9 +143,25 @@ router.get('/me', (req, res) => {
 
 // ── Signup prepare — stores intent in session before Google OAuth ─────────────
 router.post('/signup/prepare', (req, res) => {
-  const { role, plan, birthYear, idNumber, displayName, about } = req.body;
+  const { role, plan, birthYear, idNumber, displayName, about, qualification } = req.body;
   const validRoles = ['learner', 'teacher', 'parent'];
   const validPlans = ['free', 'subscriber'];
+
+  let validQualification = null;
+  if (qualification && typeof qualification === 'object') {
+    const { title, issuer, year } = qualification;
+    const yearNum = Number(year);
+    if (typeof title === 'string' && title.trim()
+      && typeof issuer === 'string' && issuer.trim()
+      && Number.isInteger(yearNum) && yearNum > 1900 && yearNum < 2100) {
+      validQualification = {
+        title:  title.trim().slice(0, 255),
+        issuer: issuer.trim().slice(0, 255),
+        year:   yearNum,
+      };
+    }
+  }
+
   req.session.pendingSignup = {
     role:        validRoles.includes(role) ? role : 'learner',
     plan:        validPlans.includes(plan) ? plan : 'free',
@@ -144,9 +170,12 @@ router.post('/signup/prepare', (req, res) => {
     // re-validate the shape server-side rather than trust it blindly.
     idNumber:    typeof idNumber === 'string' && /^\d{11}$/.test(idNumber) ? idNumber : null,
     displayName: typeof displayName === 'string' && displayName.trim() ? displayName.trim().slice(0, 255) : null,
-    // School + grade, composed client-side into a sentence (see buildAboutText
-    // in signup.html) for the "Õpivajadused ja -eelistused" profile field.
+    // School + grade (or school + subject for teachers), composed
+    // client-side (see buildAboutText in signup.html) for the
+    // "Õpivajadused ja -eelistused" profile field.
     about:       typeof about === 'string' && about.trim() ? about.trim().slice(0, 1000) : null,
+    // Parent's education level + institution + year -> "Kvalifikatsioonid".
+    qualification: validQualification,
   };
   res.json({ ok: true });
 });
