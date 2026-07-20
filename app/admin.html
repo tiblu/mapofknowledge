@@ -95,6 +95,21 @@
 
   <div class="admin-section">
     <h2>Users</h2>
+    <div class="admin-period-bar">
+      <label>Cost period:
+        <select id="period-select">
+          <option value="all">All time</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="month">This month</option>
+          <option value="custom">Custom range…</option>
+        </select>
+      </label>
+      <span id="custom-range-wrap" style="display:none">
+        <input type="date" id="period-from"> to <input type="date" id="period-to">
+        <button class="admin-btn" id="period-apply">Apply</button>
+      </span>
+    </div>
     <div id="users-status" style="color:var(--text-muted,#8899aa);font-size:13px;margin-bottom:12px;">Loading…</div>
     <div class="admin-table-wrap" id="table-wrap" style="display:none">
       <table class="admin-table" id="users-table">
@@ -123,7 +138,7 @@
             </th>
             <th data-sort="knobits_done" class="sortable" title="Knobits completed">Knobits</th>
             <th title="Token activity last 7 days">Activity (7d)</th>
-            <th data-sort="estimated_cost" class="sortable" title="Estimated cost: $3/M input + $15/M output (Sonnet)">Cost ($)</th>
+            <th data-sort="estimated_cost" class="sortable" title="Estimated cost for the selected period: $3/M input + $15/M output (Sonnet rate — a rough estimate, cheaper Haiku calls are also billed at this rate here)" id="cost-col-header">Cost ($) — all time</th>
             <th data-sort="created_at" class="sortable">Joined</th>
             <th data-sort="last_login" class="sortable">Last login</th>
             <th></th>
@@ -322,10 +337,44 @@
     return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   }
 
+  /* ── cost period ──────────────────────────────────────────────────────────── */
+  var periodSelect    = document.getElementById('period-select');
+  var customRangeWrap = document.getElementById('custom-range-wrap');
+  var periodFromInput  = document.getElementById('period-from');
+  var periodToInput    = document.getElementById('period-to');
+
+  function periodQuery() {
+    var period = periodSelect.value;
+    if (period === 'custom') {
+      var params = 'period=custom';
+      if (periodFromInput.value) params += '&from=' + periodFromInput.value;
+      if (periodToInput.value)   params += '&to=' + periodToInput.value;
+      return params;
+    }
+    return 'period=' + period;
+  }
+
+  var PERIOD_LABELS = { all: 'all time', '7d': 'last 7 days', '30d': 'last 30 days', month: 'this month' };
+  function updateCostHeader() {
+    var period = periodSelect.value;
+    var label = period === 'custom'
+      ? (periodFromInput.value ? (periodFromInput.value + ' to ' + (periodToInput.value || 'now')) : 'custom range')
+      : PERIOD_LABELS[period];
+    document.getElementById('cost-col-header').textContent = 'Cost ($) — ' + label;
+  }
+
+  periodSelect.addEventListener('change', function () {
+    customRangeWrap.style.display = periodSelect.value === 'custom' ? '' : 'none';
+    if (periodSelect.value !== 'custom') { updateCostHeader(); loadUsers(); }
+  });
+  document.getElementById('period-apply').addEventListener('click', function () {
+    if (periodFromInput.value) { updateCostHeader(); loadUsers(); }
+  });
+
   /* ── load ─────────────────────────────────────────────────────────────────── */
   function loadUsers() {
     document.getElementById('users-status').textContent = 'Loading…';
-    fetch('/api/admin/users')
+    fetch('/api/admin/users?' + periodQuery())
       .then(function (r) {
         if (r.status === 403) { document.getElementById('users-status').textContent = 'Access denied.'; throw new Error('403'); }
         return r.json();

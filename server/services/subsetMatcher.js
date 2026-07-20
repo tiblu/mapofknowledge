@@ -7,6 +7,11 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const client    = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// Separate Anthropic client instance from server/services/llm.js — needs its
+// own copy of the billing-failure alert wrapper (see llm.js for why).
+const { _wrapWithBillingAlert } = require('./_anthropicAlert');
+_wrapWithBillingAlert(client);
+
 // ── Public entry point ────────────────────────────────────────────────────────
 // terms: [{ label: string, breadcrumb?: string }]
 // Returns: staging row objects (not yet inserted — caller inserts them)

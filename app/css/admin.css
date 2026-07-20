@@ -34,6 +34,35 @@ body { overflow-y: auto; }
   align-items: center;
 }
 
+.admin-period-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text-muted, #8899aa);
+}
+
+.admin-period-bar select,
+.admin-period-bar input[type="date"] {
+  background: var(--bg-card, #1a2030);
+  border: 1px solid var(--border, #2a3040);
+  color: var(--text, #dde3ef);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+  margin-left: 4px;
+}
+
+.admin-period-bar select:focus,
+.admin-period-bar input[type="date"]:focus {
+  border-color: var(--accent, #5bc8d8);
+}
+
 .admin-add-form input,
 .admin-add-form select {
   background: var(--bg-card, #1a2030);

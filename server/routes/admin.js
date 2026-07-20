@@ -11,9 +11,44 @@ function requireSuperAdmin(req, res, next) {
 }
 router.use(requireSuperAdmin);
 
+// Resolves the ?period= query param into a [from, to] date range (inclusive,
+// 'YYYY-MM-DD' strings) for the cost column — null means all-time (no filter).
+function _periodRange(period, from, to) {
+  const today = new Date();
+  const ymd = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+  if (period === '7d') {
+    const start = new Date(today); start.setDate(start.getDate() - 6);
+    return { from: ymd(start), to: null };
+  }
+  if (period === '30d') {
+    const start = new Date(today); start.setDate(start.getDate() - 29);
+    return { from: ymd(start), to: null };
+  }
+  if (period === 'month') {
+    return { from: ymd(new Date(today.getFullYear(), today.getMonth(), 1)), to: null };
+  }
+  if (period === 'custom' && /^\d{4}-\d{2}-\d{2}$/.test(from || '')) {
+    return { from, to: /^\d{4}-\d{2}-\d{2}$/.test(to || '') ? to : null };
+  }
+  return null;
+}
+
 // ── GET /api/admin/users ──────────────────────────────────────────────────────
 router.get('/users', async (req, res) => {
   try {
+    const range = _periodRange(req.query.period, req.query.from, req.query.to);
+    let costDateClause = '';
+    const costParams = [];
+    if (range) {
+      costDateClause += ' AND created_at >= ?';
+      costParams.push(range.from + ' 00:00:00');
+      if (range.to) {
+        costDateClause += ' AND created_at <= ?';
+        costParams.push(range.to + ' 23:59:59');
+      }
+    }
+
     const [rows] = await db.execute(`
       SELECT
         u.id,
@@ -39,10 +74,11 @@ router.get('/users', async (req, res) => {
         SELECT user_id,
                SUM(input_tokens * 3.0 + output_tokens * 15.0) / 1e6 AS estimated_cost
         FROM token_usage
+        WHERE 1=1 ${costDateClause}
         GROUP BY user_id
       ) tu ON tu.user_id = u.id
       ORDER BY u.id
-    `);
+    `, costParams);
 
     // 7-day token activity per user (for sparklines)
     const [activityRows] = await db.execute(`

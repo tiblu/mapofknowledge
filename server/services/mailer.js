@@ -33,4 +33,23 @@ async function sendVerificationEmail(toEmail, token, locale) {
   });
 }
 
-module.exports = { sendVerificationEmail };
+async function sendBillingAlertEmail(toEmail, apiMessage) {
+  const subject = 'KnoBitz: Anthropic API krediit on otsas';
+  const text = `AI-päringud KnoBitzis ebaõnnestuvad, sest Anthropic API konto krediidijääk on otsas.\n\n`
+    + `Lisa krediiti: https://console.anthropic.com/settings/billing\n\n`
+    + `Anthropicu veateade:\n${apiMessage}\n\n`
+    + `See teavitus saadetakse maksimaalselt korra tunnis, isegi kui päringud jätkuvad ebaõnnestumast.`;
+
+  if (!transporter) {
+    console.warn('[mailer] SMTP not configured — billing alert for', toEmail + ':', text);
+    return;
+  }
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: toEmail,
+    subject,
+    text,
+  });
+}
+
+module.exports = { sendVerificationEmail, sendBillingAlertEmail };
