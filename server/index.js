@@ -19,7 +19,8 @@ setInterval(async () => {
   try {
     const [stale] = await db.execute(`
       SELECT DISTINCT u.id AS user_id,
-        COALESCE(tr.label, n.label) AS node_label
+        COALESCE(tr.label, n.label) AS node_label,
+        pg.node_external_id AS node_ext_id
       FROM passport_goals pg
       JOIN learner_passports lp ON pg.passport_id = lp.id
       JOIN users u ON u.passport_id = lp.id
@@ -41,7 +42,7 @@ setInterval(async () => {
     `);
     for (const row of stale) {
       notify(row.user_id, 'goal_reminder', 'Jätka õppimist 📚',
-        `Sul on aktiivne eesmärk: "${row.node_label}". Tule tagasi!`);
+        `Sul on aktiivne eesmärk: "${row.node_label}". Tule tagasi!`, row.node_ext_id);
     }
   } catch (err) {
     console.error('[reminder]', err.message);

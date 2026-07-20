@@ -530,7 +530,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
       if (pct >= 100) {
         notify(req.user?.id, 'knowledge_marked',
           locale === 'et' ? `Märgitud teadaolevaks: ${label}` : `Marked as known: ${label}`,
-          locale === 'et' ? 'Lisatud sinu õppija passi teadmiste kaardile.' : 'Added to your Learner Passport knowledge map.');
+          locale === 'et' ? 'Lisatud sinu õppija passi teadmiste kaardile.' : 'Added to your Learner Passport knowledge map.', id);
       }
     }
 
@@ -725,7 +725,7 @@ async function _saveTestResult(passportId, userId, nodeId, label, displayLabel, 
   );
   notify(userId, 'test_result',
     locale === 'et' ? `Testi tulemus: ${displayLabel}` : `Test result: ${displayLabel}`,
-    locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+    locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`, nodeId);
   const score      = evaluation.finalScore;
   const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
   const reason     = score === 100 ? 'test_perfect' : 'test_complete';
@@ -1035,11 +1035,11 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
           locale === 'et' ? 'Esimene knobit läbitud!' : 'First knobit mastered!',
           locale === 'et'
             ? `Läbisid oma esimese õppesammu: "${knobitTitle}". Põnev teekond algab!`
-            : `You completed your very first learning step: "${knobitTitle}". An exciting journey begins!`);
+            : `You completed your very first learning step: "${knobitTitle}". An exciting journey begins!`, nodeExtId);
       } else {
         notify(userId, 'knobit_complete',
           locale === 'et' ? `Knobit läbitud: ${knobitTitle}` : `Knobit complete: ${knobitTitle}`,
-          locale === 'et' ? `Teema: ${nodeLabel}` : `Topic: ${nodeLabel}`);
+          locale === 'et' ? `Teema: ${nodeLabel}` : `Topic: ${nodeLabel}`, nodeExtId);
       }
 
       await db.execute(
@@ -1074,10 +1074,10 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
           );
           notify(userId, 'unit_complete',
             locale === 'et' ? `${nodeLabel} — täielikult omandatud!` : `${nodeLabel} — fully mastered!`,
-            locale === 'et' ? 'Läbisid selle teema kõik õppesammud.' : "You've completed every learning step for this topic.");
+            locale === 'et' ? 'Läbisid selle teema kõik õppesammud.' : "You've completed every learning step for this topic.", nodeExtId);
           notify(userId, 'credential',
             locale === 'et' ? `Uus tunnistus: ${credTitle}` : `New credential: ${credTitle}`,
-            locale === 'et' ? 'Sinu õppija passi lisati platvormi tunnistus.' : 'A platform credential has been added to your Learner Passport.');
+            locale === 'et' ? 'Sinu õppija passi lisati platvormi tunnistus.' : 'A platform credential has been added to your Learner Passport.', nodeExtId);
         }
       }
 
@@ -1102,7 +1102,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
           );
           notify(userId, 'goal_complete',
             locale === 'et' ? 'Eesmärk täidetud! 🎉' : 'Goal completed! 🎉',
-            locale === 'et' ? `Läbisid: "${nodeLabel}"` : `You finished: "${nodeLabel}"`);
+            locale === 'et' ? `Läbisid: "${nodeLabel}"` : `You finished: "${nodeLabel}"`, nodeExtId);
           return res.json({ ok: true, goalCompleted: { nodeLabel, nodeExtId } });
         }
       }
@@ -1308,7 +1308,7 @@ router.post('/profile/goals/:id/complete', async (req, res) => {
       const label = g.node_breadcrumb || g.text;
       notify(req.user?.id, 'goal_complete',
         locale === 'et' ? 'Eesmärk täidetud! 🎉' : 'Goal completed! 🎉',
-        locale === 'et' ? `Läbisid: "${label}"` : `You finished: "${label}"`);
+        locale === 'et' ? `Läbisid: "${label}"` : `You finished: "${label}"`, g.node_external_id);
     }
     res.json({ ok: true });
   } catch (err) {
@@ -1473,7 +1473,7 @@ router.get('/notifications', async (req, res) => {
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
   try {
     const [rows] = await db.execute(
-      `SELECT id, type, title, body, icon_color, is_read, created_at
+      `SELECT id, type, title, body, icon_color, is_read, created_at, node_external_id
        FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`,
       [userId]
     );

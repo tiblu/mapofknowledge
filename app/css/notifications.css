@@ -73,6 +73,8 @@ body {
 }
 .notif-card:hover { background: var(--notif-card-bg-hover, rgba(255,255,255,0.85)); }
 .notif-card.read { opacity: 0.65; }
+.notif-card.linkable { cursor: pointer; }
+.notif-card.linkable:hover { border-color: var(--accent); }
 
 /* unread dot */
 .notif-unread-dot {

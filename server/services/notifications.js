@@ -25,14 +25,14 @@ const TYPE_COLOR = {
   achievement:      'amber',
 };
 
-async function notify(userId, type, title, body) {
+async function notify(userId, type, title, body, nodeExternalId = null) {
   if (!userId) return;
   const iconColor = TYPE_COLOR[type] || 'terra';
   try {
     await db.execute(
-      `INSERT INTO notifications (user_id, type, title, body, icon_color)
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, type, title, body || null, iconColor]
+      `INSERT INTO notifications (user_id, type, title, body, icon_color, node_external_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, type, title, body || null, iconColor, nodeExternalId]
     );
   } catch (err) {
     console.error('[notifications]', err.message);
