@@ -75,12 +75,10 @@
           + parentLinks.map(function (l) { return linkRow(l, 'parent', t('link.role_parent'), l.linked_name); }).join('');
       }
       if (studentLinks.length) {
-        html += '<div class="cx-group-label">' + esc(t('link.my_students')) + '</div>'
-          + studentLinks.map(function (l) { return linkRow(l, 'student', t('link.role_student'), l.student_name || t('link.pending_student')); }).join('');
+        html += studentLinks.map(function (l) { return linkRow(l, 'student', t('link.role_student'), l.student_name || t('link.pending_student')); }).join('');
       }
       if (childLinks.length) {
-        html += '<div class="cx-group-label">' + esc(t('link.my_children')) + '</div>'
-          + childLinks.map(function (l) { return linkRow(l, 'child', t('link.role_child'), l.student_name || t('link.pending_student')); }).join('');
+        html += childLinks.map(function (l) { return linkRow(l, 'child', t('link.role_child'), l.student_name || t('link.pending_student')); }).join('');
       }
     }
     listEl.innerHTML = html;
