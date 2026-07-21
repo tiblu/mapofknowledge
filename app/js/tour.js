@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    ONBOARDING TOUR  —  tour.js
    ───────────────────────────────────────────────────────────────
-   Self-contained 4-step product tour. No external dependencies.
+   Self-contained 7-step product tour. No external dependencies.
    Roll back: remove tour.css + tour.js from index.html.
    Exposes: window.Tour.start()  window.Tour.restart()
             window._tourCheckAutoStart(settings)
@@ -11,7 +11,7 @@
   'use strict';
 
   var _step = 0;
-  var _overlay, _spot, _tip, _flash, _flashTimer;
+  var _overlay, _spots = [], _tip, _flash, _flashTimer;
 
   /* ─── Inline icon helpers ──────────────────────────────────── */
   function _ico(d, s) {
@@ -23,6 +23,7 @@
   var _icoFilter  = _ico('<path d="M2 4.5h11M4 7.5h7M6 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>');
   var _icoZoomIn  = _ico('<circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M6 4v4M4 6h4M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>');
   var _icoZoomOut = _ico('<circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.3"/><path d="M4 6h4M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>');
+  var _icoSearch  = _ico('<circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.3"/><path d="M10 10l3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>');
 
   function _row(icon, label, desc) {
     return '<div class="tour-row">'
@@ -30,12 +31,71 @@
       + '<span><strong>'+label+'</strong>'+(desc?' — '+desc:'')+'</span></div>';
   }
 
-  /* ─── Step definitions (order: sidebar → controls → learning → passport) ──
-     Built lazily (not at module-load time) so window.t() reflects loaded strings —
-     strings.js's fetch is async and may not have resolved yet at parse time. */
+  // A self-contained decorative diagram — no image asset dependency, so the
+  // "Õppimine" step's demo visual block can never 404.
+  function _demoVisualDataUri() {
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="160" viewBox="0 0 320 160">'
+      + '<rect width="320" height="160" fill="#F5EEE8" rx="10"/>'
+      + '<circle cx="90" cy="80" r="36" fill="none" stroke="#C4826A" stroke-width="5"/>'
+      + '<path d="M150 118 L190 68 L230 106 L268 52" fill="none" stroke="#C4826A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>'
+      + '</svg>';
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+
+  /* ─── Step definitions (order: welcome → controls/search → menu/Anne →
+     sidebar → learning path → learning content → learner passport) ──
+     Built lazily (not at module-load time) so window.t() reflects loaded
+     strings — strings.js's fetch is async and may not have resolved yet
+     at parse time. ── */
   var STEPS = [];
   function _buildSteps() {
+    var demoKnobits = [
+      { id: -1, sequence: 1, title: t('tour.demo_knobit_1') },
+      { id: -2, sequence: 2, title: t('tour.demo_knobit_2') },
+      { id: -3, sequence: 3, title: t('tour.demo_knobit_3') },
+      { id: -4, sequence: 4, title: t('tour.demo_knobit_4') },
+      { id: -5, sequence: 5, title: t('tour.demo_knobit_5') },
+    ];
+    var demoNode = { id: 'tour-demo', label: t('tour.demo_node_label'), color: '#5BC8D8' };
+
     return [
+    // 1 — Teadmiste kaart
+    {
+      title:    t('tour.welcome_title'),
+      text:     t('tour.welcome_text'),
+      before: function() {
+        if (window.MapView && window.MapView.tourZoom) window.MapView.tourZoom(3.4);
+      },
+    },
+    // 2 — Kaardi juhtnupud + otsing
+    {
+      targets:  [{ selector: '#ctrl-left-stack', padding: 14 }, { selector: '.topbar-search-wrap', padding: 10 }],
+      title:    t('tour.step3_title'),
+      text:     _row(_icoZoomIn,  t('tour.row_zoom_in'))
+        + _row(_icoZoomOut, t('tour.row_zoom_out'))
+        + _row(_icoGlobe,  t('tour.row_map_view'),  t('tour.row_map_view_desc'))
+        + _row(_icoFilter, t('tour.row_filters'),  t('tour.row_filters_desc'))
+        + _row(_icoSearch, t('tour.row_search'),   t('tour.row_search_desc'))
+        + '<br>' + t('tour.step2_text_tail'),
+    },
+    // 3 — Menüü ja Anne
+    {
+      targets:  [{ selector: '#nav-dropdown', padding: 6 }, { selector: '#anne-widget', padding: 6 }],
+      title:    t('tour.menu_title'),
+      text:     t('tour.menu_text'),
+      before: function () {
+        var dd = document.getElementById('nav-dropdown');
+        if (dd) dd.classList.add('open');
+        if (window.Anne && window.Anne.open) window.Anne.open();
+      },
+      after: function () {
+        var dd = document.getElementById('nav-dropdown');
+        if (dd) dd.classList.remove('open');
+        var panel = document.getElementById('anne-panel');
+        if (panel) panel.classList.remove('open');
+      },
+    },
+    // 4 — Külgpaneel (unchanged from the old tour)
     {
       target:   '#sidebar',
       position: 'left',
@@ -49,51 +109,66 @@
       },
       padding: 0,
     },
+    // 5 — Õpirada (the flat knobit list — unchanged content from the old tour)
     {
-      target:   '#ctrl-left-stack',
-      position: 'right',
-      title:    t('tour.step3_title'),
-      text:     _row(_icoZoomIn,  t('tour.row_zoom_in'))
-        + _row(_icoZoomOut, t('tour.row_zoom_out'))
-        + _row(_icoGlobe,  t('tour.row_map_view'),  t('tour.row_map_view_desc'))
-        + _row(_icoFilter, t('tour.row_filters'),  t('tour.row_filters_desc'))
-        + '<br>' + t('tour.step2_text_tail'),
-      padding: 14,
-    },
-    {
-      target:   '#learning-mode',
+      target:   '#lm-path',
       position: 'overlay-center',
       title:    t('tour.step4_title'),
       text:     t('tour.step4_text'),
       before: function () {
         var lm = document.getElementById('learning-mode');
         if (lm) lm.style.zIndex = '9500';
-        if (window.Learn && window.Learn.open) {
-          window.Learn.open(
-            { id: 'tour-demo', label: t('tour.demo_node_label'), color: '#5BC8D8' },
-            t('tour.demo_breadcrumb'),
-            [
-              { id: -1, sequence: 1, title: t('tour.demo_knobit_1') },
-              { id: -2, sequence: 2, title: t('tour.demo_knobit_2') },
-              { id: -3, sequence: 3, title: t('tour.demo_knobit_3') },
-              { id: -4, sequence: 4, title: t('tour.demo_knobit_4') },
-              { id: -5, sequence: 5, title: t('tour.demo_knobit_5') },
-            ]
-          );
-        }
+        if (window.Learn && window.Learn.open) window.Learn.open(demoNode, t('tour.demo_breadcrumb'), demoKnobits);
       },
       after: function () {
         if (window.Learn && window.Learn.close) window.Learn.close();
         var lm = document.getElementById('learning-mode');
         if (lm) lm.style.zIndex = '';
       },
+      padding: 0,
     },
+    // 6 — Õppimine (actual byte/visual content, faked via a resume session
+    // so it renders through the real UI with zero API calls)
     {
-      target:   '.topbar-burger-wrap',
-      position: 'bottom-left',
-      title:    t('tour.step5_title'),
-      text:     t('tour.step5_text'),
-      padding:  10,
+      target:   '#lm-knobit',
+      position: 'overlay-center',
+      title:    t('tour.learning_title'),
+      text:     t('tour.learning_text'),
+      before: function () {
+        var lm = document.getElementById('learning-mode');
+        if (lm) lm.style.zIndex = '9500';
+        if (window.Learn && window.Learn.open) {
+          window.Learn.open(demoNode, t('tour.demo_breadcrumb'), demoKnobits, {
+            knobitId: demoKnobits[0].id,
+            blocks: [
+              { phase: 'explain', block_type: 'byte', block_index: 0, content: t('tour.demo_byte_1') },
+              { phase: 'explain', block_type: 'visual', block_index: 0,
+                content: JSON.stringify({ type: 'image', url: _demoVisualDataUri(), caption: t('tour.demo_visual_caption') }) },
+            ],
+          });
+        }
+        if (window.startKnobit) window.startKnobit();
+      },
+      after: function () {
+        if (window.Learn && window.Learn.close) window.Learn.close();
+        var lm = document.getElementById('learning-mode');
+        if (lm) lm.style.zIndex = '';
+      },
+      padding: 0,
+    },
+    // 7 — Õppija pass
+    {
+      target:   '#page-overlay-frame',
+      position: 'overlay-center',
+      title:    t('tour.passport_title'),
+      text:     t('tour.passport_text'),
+      before: function () {
+        if (window.openOverlay) window.openOverlay('profile.html');
+      },
+      after: function () {
+        if (window.closeOverlay) window.closeOverlay();
+      },
+      padding: 0,
     },
     ];
   }
@@ -119,27 +194,49 @@
       _flashMsg(t('tour.overlay_hint'));
     });
 
-    _spot = document.createElement('div');
-    _spot.className = 'tour-spotlight';
-
     _tip = document.createElement('div');
     _tip.className = 'tour-tooltip';
 
     document.body.appendChild(_overlay);
-    document.body.appendChild(_spot);
     document.body.appendChild(_tip);
   }
 
-  /* ─── Positioning ──────────────────────────────────────────── */
-  function _positionSpot(rect, padding) {
-    // Use class only — no inline style.display, so _hide() always works cleanly
-    if (!rect) { _spot.classList.remove('visible'); return; }
-    var p = padding || 0;
-    _spot.style.left   = (rect.left   - p) + 'px';
-    _spot.style.top    = (rect.top    - p) + 'px';
-    _spot.style.width  = (rect.width  + p * 2) + 'px';
-    _spot.style.height = (rect.height + p * 2) + 'px';
-    _spot.classList.add('visible');
+  /* ─── Spotlight pool — a step can highlight more than one element at
+     once (e.g. the map controls AND the search box together). ─────── */
+  function _normalizeTargets(s) {
+    if (Array.isArray(s.targets)) return s.targets;
+    if (s.target) return [{ selector: s.target, padding: s.padding || 0 }];
+    return [];
+  }
+
+  function _ensureSpots(n) {
+    while (_spots.length < n) {
+      var el = document.createElement('div');
+      el.className = 'tour-spotlight';
+      document.body.appendChild(el);
+      _spots.push(el);
+    }
+  }
+
+  function _positionSpots(targets) {
+    _ensureSpots(targets.length);
+    _spots.forEach(function (el, i) {
+      if (i >= targets.length) { el.classList.remove('visible'); return; }
+      var t2   = targets[i];
+      var node = t2.selector ? document.querySelector(t2.selector) : null;
+      var rect = node ? node.getBoundingClientRect() : null;
+      if (!rect || (!rect.width && !rect.height)) { el.classList.remove('visible'); return; }
+      var p = t2.padding || 0;
+      el.style.left   = (rect.left   - p) + 'px';
+      el.style.top    = (rect.top    - p) + 'px';
+      el.style.width  = (rect.width  + p * 2) + 'px';
+      el.style.height = (rect.height + p * 2) + 'px';
+      el.classList.add('visible');
+    });
+  }
+
+  function _hideSpots() {
+    _spots.forEach(function (el) { el.classList.remove('visible'); el.style.cssText = ''; });
   }
 
   function _positionTip() {
@@ -162,22 +259,16 @@
     // Before hook
     if (s.before) s.before();
 
-    // Re-read rect after before hook may have changed DOM
-    var targetEl = s.target ? document.querySelector(s.target) : null;
-    var rect     = targetEl ? targetEl.getBoundingClientRect() : null;
-
-    // Re-position after transitions settle (sidebar slide-in, learning mode open)
-    if (s.target === '#sidebar' || s.position === 'overlay-center') {
-      setTimeout(function () {
-        var el2   = s.target ? document.querySelector(s.target) : null;
-        var rect2 = el2 ? el2.getBoundingClientRect() : null;
-        _positionSpot(rect2, s.padding || 0);
-        _positionTip();
-      }, 380);
-    }
-
-    _positionSpot(rect, s.padding || 0);
+    var targets = _normalizeTargets(s);
+    _positionSpots(targets);
     _positionTip();
+
+    // Re-position after transitions settle (sidebar slide-in, menu/Anne
+    // opening, overlay iframe loading, learning mode rendering, …).
+    setTimeout(function () {
+      _positionSpots(_normalizeTargets(s));
+      _positionTip();
+    }, 420);
 
     // Progress dots
     var dots = '';
@@ -202,7 +293,6 @@
       '</div>';
 
     _overlay.classList.add('visible');
-    _spot.classList.add('visible');
     _tip.classList.add('visible');
   }
 
@@ -214,7 +304,7 @@
 
   function _hide() {
     if (_overlay) _overlay.classList.remove('visible');
-    if (_spot)    { _spot.classList.remove('visible'); _spot.style.cssText = ''; }
+    _hideSpots();
     if (_tip)     _tip.classList.remove('visible');
   }
 

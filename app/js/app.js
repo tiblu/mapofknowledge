@@ -1256,6 +1256,17 @@ function init(data) {
           d3.zoomIdentity.translate(cw/2 - target.x*z, ch/2 - target.y*z).scale(z));
       highlightAndOpen(target);
     },
+    // Zoom only — no sidebar side effect (openDemoNode always opens one).
+    // Used by the tour's first "welcome to the map" step.
+    tourZoom:             function(scale)     {
+      var target = simNodes.find(function(n) { return n.level === 4 && n.x; });
+      if (!target) return;
+      var cw = window.innerWidth, ch = window.innerHeight - TOP_BAR_H;
+      var z  = scale || 3.4;
+      svg.transition().duration(700).ease(d3.easeCubicOut)
+        .call(zoomBehaviour.transform,
+          d3.zoomIdentity.translate(cw/2 - target.x*z, ch/2 - target.y*z).scale(z));
+    },
     closeSidebar:         function()         { closeSidebar(); resetHighlight(); },
     navigateToNode:       function(nodeId)   { navigateToNode(nodeId); },
     refreshCurrentNodeKnowledge: function() {
