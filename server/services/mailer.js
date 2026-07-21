@@ -14,7 +14,7 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
   });
 }
 
-const COMPANY_NAME  = 'OÜ KaiQQ';
+const COMPANY_NAME  = 'OÜ KaiQ';
 const COMPANY_ADDR  = 'Telliskivi tn 60/5, 10412 Tallinn, Estonia, EU';
 const CONTACT_EMAIL = 'info@knobitz.com';
 
@@ -111,7 +111,7 @@ async function sendVerificationEmail(toEmail, token, locale) {
 
   const footerNote = locale === 'en'
     ? "If you didn't create a KnoBitz account, you can safely ignore this email — no account will be activated without verification."
-    : 'Kui sa ei loonud KnoBitzi kontot, võid selle kirja rahulikult eirata — ilma kinnituseta kontot ei aktiveerita.';
+    : 'Kui sa ei loonud KnoBitzi kontot, võid seda kirja rahulikult eirata — ilma kinnituseta kontot ei aktiveerita.';
 
   await _send({ toEmail, subject, bodyHtml, bodyText, footerNoteHtml: footerNote, footerNoteText: footerNote, locale });
 }
