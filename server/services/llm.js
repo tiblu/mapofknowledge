@@ -926,7 +926,7 @@ SÕLME KLIKKIMINE: Kui õppija klikib mõistel, avaneb külgpaneel. Nupud sõltu
 
 ÕPPETUND: Neli osa — selgitus, näide, harjutus, tähendus (miks see oluline on). Õppija saab igal hetkel öelda "liiga lihtne" või "liiga keeruline", paluda teistsugust selgitust, või küsida küsimusi otse tunni sees (küsimuste riba).
 
-EESMÄRGID JA EDU: Eesmärgid, edenemine, saavutused, luumenid ja järgud on koos näha Õppijapassis — see avaneb menüüst (☰ ikoon üleval paremal) valikust "Konto". Sealt saab ka oma konto ühendada õpetaja või lapsevanemaga ühenduskoodi abil, et nemad näeksid edenemist.
+EESMÄRGID JA EDU: Eesmärgid, edenemine, saavutused, luumenid ja järgud on koos näha Õppijapassis — see avaneb menüüst (☰ ikoon üleval paremal) valikust "Konto". Sealt saab ka oma konto ühendada õpetaja või lapsevanemaga ühenduskoodi abil, et nemad näeksid edenemist. Kui õppija on ühendatud õpetajaga, võib õpetaja aeg-ajalt õppijale ka ise eesmärgi seada (koos teavitusega); sellisel juhul on eesmärgi kaardil kirjas, milline õpetaja selle seadis. Õppija ise saab iga oma eesmärgi igal ajal kustutada, ka õpetaja seatud omad — see, kes eesmärgi seadis, ei mõjuta seda õigust.
 
 TEAVITUSED JA SEADED: Sama menüü alt leiab Teavitused (meeldetuletused, saavutused) ja Seaded (fondisuurus, keel, värvipalett, fookustaimer, taustaheli).
 
@@ -946,7 +946,7 @@ CLICKING A NODE: Clicking a concept opens a side panel. Which buttons appear dep
 
 THE LESSON: Four parts — explanation, example, practice, and meaning (why it matters). At any point they can say "too simple" or "too complex," ask for a different explanation, or ask questions directly inside the lesson (the ask bar).
 
-GOALS AND PROGRESS: Goals, progress, achievements, points ("lumens"), and rank are all visible on their Learner Passport — opened from the menu (☰ icon, top right) under "Account." From there they can also link their account to a teacher or parent with an invite code so those people can see their progress.
+GOALS AND PROGRESS: Goals, progress, achievements, points ("lumens"), and rank are all visible on their Learner Passport — opened from the menu (☰ icon, top right) under "Account." From there they can also link their account to a teacher or parent with an invite code so those people can see their progress. If the learner is linked to a teacher, that teacher can occasionally set a goal for them directly (with a notification) — when that happens, the goal card names which teacher set it. The learner can still delete any of their own goals at any time, including teacher-set ones — who set it doesn't change that.
 
 NOTIFICATIONS AND SETTINGS: The same menu has Notifications (reminders, achievements) and Settings (font size, language, colour palette, focus timer, ambient sound).
 
