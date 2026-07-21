@@ -19,9 +19,17 @@
     else { window.location = page; }
   };
 
-  // Top-level pages (map, teacher/parent dashboards, admin): always a real
-  // top-level navigation, breaking out of any overlay iframe.
+  // Top-level pages (map, teacher/parent dashboards, admin): a real
+  // top-level navigation, breaking out of any overlay iframe — except back
+  // to the map specifically, when we're already inside an overlay on top
+  // of it: closing the overlay reveals the same still-live map instance
+  // (pan/zoom, open lesson, etc. all intact) instead of throwing it away
+  // for a fresh reload that resets the view. Mirrors what the logo does.
   window.navTop = function (page) {
+    if (page === 'index.html' && window.top !== window && typeof window.top.closeOverlay === 'function') {
+      window.top.closeOverlay();
+      return;
+    }
     window.top.location = page;
   };
 
