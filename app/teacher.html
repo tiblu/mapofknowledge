@@ -122,8 +122,8 @@
     <div class="ta-group-list" id="group-list">
       <div class="ta-group-item ta-group-active" data-group="all">
         <div class="ta-group-dot" style="background:#8BAD7E"></div>
-        <span class="ta-group-label">Kõik õpilased</span>
-        <span class="ta-group-count">8</span>
+        <span class="ta-group-label">Minu õpilased</span>
+        <span class="ta-group-count" id="group-count-all">–</span>
       </div>
       <div class="ta-group-item" data-group="7A">
         <div class="ta-group-dot" style="background:#378ADD"></div>
@@ -163,31 +163,11 @@
     <div id="view-dashboard">
 
       <div class="ta-main-header">
-        <span class="ta-main-title" id="dashboard-title">Kõik õpilased</span>
-        <button class="ta-action-btn" id="btn-manage-groups">Halda rühmi</button>
-      </div>
-
-      <div class="ta-stats-row">
-        <div class="ta-stat">
-          <div class="ta-stat-val" id="stat-total">8</div>
-          <div class="ta-stat-label">Õpilast</div>
-        </div>
-        <div class="ta-stat">
-          <div class="ta-stat-val" id="stat-active">3</div>
-          <div class="ta-stat-label">Aktiivne täna</div>
-        </div>
-        <div class="ta-stat">
-          <div class="ta-stat-val" id="stat-goals">6</div>
-          <div class="ta-stat-label">Aktiivseid eesmärke</div>
-        </div>
-        <div class="ta-stat">
-          <div class="ta-stat-val" id="stat-avg">54%</div>
-          <div class="ta-stat-label">Keskmine edenemine</div>
-        </div>
+        <span class="ta-main-title" id="dashboard-title">Minu õpilased</span>
       </div>
 
       <div class="ta-cards-section">
-        <div class="ta-cards-grid" id="cards-grid"></div>
+        <div class="pa-children-grid" id="cards-grid"></div>
       </div>
 
     </div>
@@ -268,252 +248,191 @@
 (function () {
 
 var GROUPS = {
-  'all':      { label: 'Kõik õpilased', color: '#8BAD7E' },
+  'all':      { label: 'Minu õpilased', color: '#8BAD7E' },
   '7A':       { label: '7A klass',       color: '#378ADD' },
   '7B':       { label: '7B klass',       color: '#9B8FB5' },
   'mat-tugi': { label: 'Matemaatika tugi', color: '#C4A55A' }
 };
 
-var STUDENTS = [
-  { id:1, initials:'KL', name:'Kristiina L.', avatarClass:'ta-avatar-b',
-    groups:['7A'],
-    goal:'Murdude liitmine', goalDomain:'Matemaatika › Aritmeetika › Murrud',
-    progress:78, goalDate:'20. juuli 2026',
-    streak:5,
-    lastActive:'täna', status:'active',
-    events:[
-      {icon:'✓', title:'Harilikud murrud lõpetatud', date:'eile', badge:'✓'},
-      {icon:'📖', title:'Murdude lahutamine alustatud', date:'2 päeva tagasi', badge:null},
-      {icon:'✓', title:'Kümnendmurrud lõpetatud', date:'4 päeva tagasi', badge:'✓'}
-    ]
-  },
-  { id:2, initials:'MR', name:'Marko R.', avatarClass:'ta-avatar-a',
-    groups:['7A','mat-tugi'],
-    goal:'Fotosüntees', goalDomain:'Loodusteadused › Bioloogia › Taimed',
-    progress:42, goalDate:'1. august 2026',
-    streak:1,
-    lastActive:'täna', status:'active',
-    events:[
-      {icon:'📖', title:'Fotosüntees alustatud', date:'täna', badge:null},
-      {icon:'✓', title:'Rakkude ehitus lõpetatud', date:'2 päeva tagasi', badge:'✓'},
-      {icon:'📖', title:'Taimede hingamine alustatud', date:'4 päeva tagasi', badge:null}
-    ]
-  },
-  { id:3, initials:'LT', name:'Liisa T.', avatarClass:'ta-avatar-d',
-    groups:['7A'],
-    goal:null, goalCompleted:'Eesti ajalugu', goalDomain:'Ajalugu › Eesti ajalugu',
-    progress:100, goalDate:null,
-    streak:12,
-    lastActive:'täna', status:'active',
-    events:[
-      {icon:'🎉', title:'Eesmärk täidetud: Eesti ajalugu', date:'täna', badge:'🎉'},
-      {icon:'✓', title:'Iseseisvumine lõpetatud', date:'täna', badge:'✓'},
-      {icon:'✓', title:'Esimene maailmasõda lõpetatud', date:'eile', badge:'✓'},
-      {icon:'✓', title:'Muinasaeg lõpetatud', date:'3 päeva tagasi', badge:'✓'}
-    ]
-  },
-  { id:4, initials:'JK', name:'Jaan K.', avatarClass:'ta-avatar-e',
-    groups:['7A','mat-tugi'],
-    goal:'Tehted täisarvudega', goalDomain:'Matemaatika › Aritmeetika',
-    progress:30, goalDate:'15. juuli 2026',
-    streak:0,
-    lastActive:'5 päeva tagasi', status:'warning',
-    events:[
-      {icon:'📖', title:'Tehted täisarvudega alustatud', date:'5 päeva tagasi', badge:null},
-      {icon:'✓', title:'Täisarvude mõiste lõpetatud', date:'6 päeva tagasi', badge:'✓'}
-    ]
-  },
-  { id:5, initials:'MV', name:'Mari V.', avatarClass:'ta-avatar-c',
-    groups:['7B'],
-    goal:'Eesti ajalugu', goalDomain:'Ajalugu › Eesti ajalugu',
-    progress:65, goalDate:'25. juuli 2026',
-    streak:3,
-    lastActive:'eile', status:'ok',
-    events:[
-      {icon:'✓', title:'Muinasaeg lõpetatud', date:'eile', badge:'✓'},
-      {icon:'✓', title:'Keskaeg lõpetatud', date:'3 päeva tagasi', badge:'✓'},
-      {icon:'📖', title:'Iseseisvumine alustatud', date:'4 päeva tagasi', badge:null}
-    ]
-  },
-  { id:6, initials:'TS', name:'Tõnis S.', avatarClass:'ta-avatar-h',
-    groups:['7B','mat-tugi'],
-    goal:null, goalDomain:null,
-    progress:0, goalDate:null,
-    streak:0,
-    lastActive:'12 päeva tagasi', status:'inactive',
-    events:[]
-  },
-  { id:7, initials:'KP', name:'Kati P.', avatarClass:'ta-avatar-f',
-    groups:['7B'],
-    goal:'Eesti kirjandus', goalDomain:'Kirjandus › Eesti kirjandus',
-    progress:88, goalDate:'10. juuli 2026',
-    streak:8,
-    lastActive:'täna', status:'active',
-    events:[
-      {icon:'✓', title:'A.H. Tammsaare teosed lõpetatud', date:'täna', badge:'✓'},
-      {icon:'✓', title:'Lydia Koidula looming lõpetatud', date:'2 päeva tagasi', badge:'✓'}
-    ]
-  },
-  { id:8, initials:'PM', name:'Peeter M.', avatarClass:'ta-avatar-g',
-    groups:['7B'],
-    goal:'Eesti geograafia', goalDomain:'Geograafia › Eesti',
-    progress:15, goalDate:'5. august 2026',
-    streak:2,
-    lastActive:'eile', status:'ok',
-    events:[
-      {icon:'📖', title:'Maakondade geograafia alustatud', date:'eile', badge:null},
-      {icon:'✓', title:'Eesti pinnamood lõpetatud', date:'4 päeva tagasi', badge:'✓'}
-    ]
-  }
-];
-
+var AVATAR_CLASSES = ['pa-avatar-a', 'pa-avatar-b', 'pa-avatar-c', 'pa-avatar-d'];
+var STUDENTS = [];
 var activeGroup = 'all';
 var selectedId  = null;
 
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function initials(name) {
+  var parts = String(name || '?').trim().split(/\s+/);
+  return ((parts[0] || '')[0] || '').toUpperCase() + ((parts[1] || '')[0] || '').toUpperCase();
+}
+
+function familyName(name) {
+  var parts = String(name || '').trim().split(/\s+/);
+  return parts.length > 1 ? parts[parts.length - 1] : '';
+}
+
+function avatarClass(passportId) {
+  return AVATAR_CLASSES[passportId % AVATAR_CLASSES.length];
+}
+
+function fmtLastActive(iso) {
+  if (!iso) return 'pole veel õppinud';
+  var d = new Date(iso);
+  var days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return 'täna';
+  if (days === 1) return 'eile';
+  if (days < 14) return days + ' päeva tagasi';
+  return d.toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/* Same rendering approach as Admin's per-user "Activity (7d)" column and
+   the parent dashboard's card chart — dynamic max instead of a fixed
+   token-count scale, since these are small daily knobit counts. */
+function sparkline(data, opts) {
+  opts = opts || {};
+  var W = opts.width || 240, H = opts.height || 40;
+  var hasData = data.some(function (v) { return v > 0; });
+  if (!hasData) return '<span class="spark-empty">' + esc(opts.emptyText || '—') + '</span>';
+  var max = Math.max.apply(null, data) || 1;
+  var n = data.length;
+  var pts = data.map(function (v, i) {
+    var x = Math.round(i * W / (n - 1));
+    var y = Math.round(H - Math.min(v, max) / max * (H - 2) - 1);
+    return x + ',' + y;
+  });
+  var fillPath = 'M' + pts.join('L') + 'L' + W + ',' + H + 'L0,' + H + 'Z';
+  var linePath = 'M' + pts.join('L');
+  return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" class="spark-svg" preserveAspectRatio="none">'
+    + '<path d="' + fillPath + '" class="spark-fill"/>'
+    + '<path d="' + linePath + '" class="spark-line"/>'
+    + '</svg>';
+}
+
+function loadStudents() {
+  fetch('/api/teacher/students').then(function (r) { return r.json(); }).then(function (d) {
+    STUDENTS = d.students || [];
+    document.getElementById('group-count-all').textContent = STUDENTS.length;
+    renderSidebar();
+    renderDashboard();
+  }).catch(function () {
+    document.getElementById('cards-grid').innerHTML = '<div class="pa-empty">Õpilaste laadimine ebaõnnestus.</div>';
+  });
+}
+
+// No real group/tag data exists yet — only "Minu õpilased" (all linked
+// students) is backed by anything real. The other sidebar groups (7A/7B/
+// Matemaatika tugi) are placeholders for a future grouping feature.
 function studentsInGroup(gid) {
   if (gid === 'all') return STUDENTS;
-  return STUDENTS.filter(function(s){ return s.groups.indexOf(gid) !== -1; });
-}
-
-function statusStyle(st) {
-  return st === 'active' ? 'background:#5CAD72'
-       : st === 'ok'     ? 'background:#C4A55A'
-       : st === 'warning'? 'background:#E07060'
-       :                   'background:var(--i18)';
-}
-
-function groupChipsHtml(groups) {
-  var map = {'7A':'#378ADD','7B':'#9B8FB5','mat-tugi':'#C4A55A'};
-  return groups.map(function(g){
-    var c = map[g] || '#8BAD7E';
-    return '<span class="ta-chip" style="background:'+c+'1a;color:'+c+';border-color:'+c+'33">'+(GROUPS[g]||{label:g}).label+'</span>';
-  }).join('');
+  return [];
 }
 
 /* ── Sidebar ── */
 function renderSidebar() {
   var list = document.getElementById('student-list');
-  list.innerHTML = studentsInGroup(activeGroup).map(function(s){
-    var sel = s.id === selectedId ? ' ta-student-selected' : '';
-    return '<div class="ta-student-item'+sel+'" data-id="'+s.id+'">'
-      +'<div class="ta-avatar '+s.avatarClass+'">'+s.initials+'</div>'
-      +'<div class="ta-student-info">'
-      +  '<div class="ta-student-name">'+s.name+'</div>'
-      +  '<div class="ta-student-sub">'+(s.goal || (s.goalCompleted ? '✓ Eesmärk täidetud' : 'Eesmärk puudub'))+'</div>'
-      +'</div>'
-      +'<div class="ta-student-mini-bar"><div class="ta-mini-fill" style="width:'+s.progress+'%"></div></div>'
-      +'<div class="ta-status-dot" style="'+statusStyle(s.status)+'"></div>'
-      +'</div>';
+  var students = studentsInGroup(activeGroup);
+  if (!students.length) {
+    list.innerHTML = '<div class="pa-empty">' + (activeGroup === 'all' ? 'Ühtegi õpilast pole veel ühendatud.' : 'See rühm ei ole veel saadaval.') + '</div>';
+    return;
+  }
+  list.innerHTML = students.map(function (s) {
+    var sel = s.passport_id === selectedId ? ' ta-student-selected' : '';
+    var sub = s.active_goals > 0 ? s.active_goals + ' aktiivset eesmärki' : 'Eesmärk puudub';
+    return '<div class="ta-student-item' + sel + '" data-id="' + s.passport_id + '">'
+      + '<div class="ta-avatar ' + avatarClass(s.passport_id) + '">' + esc(initials(s.display_name)) + '</div>'
+      + '<div class="ta-student-info">'
+      + '<div class="ta-student-name">' + esc(s.display_name || '?') + '</div>'
+      + '<div class="ta-student-sub">' + esc(sub) + '</div>'
+      + '</div>'
+      + '</div>';
   }).join('');
-  list.querySelectorAll('.ta-student-item').forEach(function(el){
-    el.addEventListener('click', function(){ selectStudent(+el.dataset.id); });
+  list.querySelectorAll('.ta-student-item').forEach(function (el) {
+    el.addEventListener('click', function () { selectStudent(+el.dataset.id); });
   });
 }
 
-/* ── Dashboard ── */
+/* ── Dashboard: cards — same markup/classes as the parent dashboard's
+   child cards, family name in place of age. ── */
 function renderDashboard() {
   var students = studentsInGroup(activeGroup);
-  document.getElementById('stat-total').textContent  = students.length;
-  document.getElementById('stat-active').textContent = students.filter(function(s){return s.status==='active';}).length;
-  document.getElementById('stat-goals').textContent  = students.filter(function(s){return s.goal;}).length;
-  var withProgress = students.filter(function(s){return s.goal||s.goalCompleted;});
-  var avg = withProgress.length ? Math.round(withProgress.reduce(function(a,s){return a+s.progress;},0)/withProgress.length) : 0;
-  document.getElementById('stat-avg').textContent = avg + '%';
   document.getElementById('dashboard-title').textContent = GROUPS[activeGroup].label;
   document.getElementById('student-list-label').textContent = GROUPS[activeGroup].label;
 
   var grid = document.getElementById('cards-grid');
-  grid.innerHTML = students.map(function(s){
-    var barCls = s.progress===100 ? 'ta-bar-green' : s.status==='warning' ? 'ta-bar-warn' : '';
-    var cardCls = s.status==='warning' ? ' ta-card-warning' : s.status==='inactive' ? ' ta-card-inactive' : '';
-    var goalHtml;
-    if (s.goal) {
-      goalHtml = '<div class="ta-card-goal-name">'+s.goal+'</div>'
-        +'<div class="ta-bar-track"><div class="ta-bar-fill '+barCls+'" style="width:'+s.progress+'%"></div></div>'
-        +'<div class="ta-card-progress-row">'
-        +'<span class="ta-card-pct">'+s.progress+'%</span>'
-        +'<span class="ta-card-streak">'+(s.streak>0?'<span class="ta-card-streak-icon">🔥</span>'+s.streak+' p.':'–')+'</span>'
-        +'</div>';
-    } else if (s.goalCompleted) {
-      goalHtml = '<div class="ta-card-goal-name" style="color:var(--accent-dark)">✓ '+s.goalCompleted+'</div>'
-        +'<div class="ta-bar-track"><div class="ta-bar-fill ta-bar-green" style="width:100%"></div></div>'
-        +'<div class="ta-card-progress-row"><span class="ta-card-pct" style="color:#5CAD72">100%</span>'
-        +'<span class="ta-card-streak"><span class="ta-card-streak-icon">🔥</span>'+s.streak+' p.</span></div>';
-    } else {
-      goalHtml = '<div class="ta-card-no-goal">Eesmärk ei ole seatud</div>';
-    }
-    return '<div class="ta-student-card'+cardCls+'" data-id="'+s.id+'">'
-      +'<div class="ta-card-header">'
-      +  '<div class="ta-card-avatar '+s.avatarClass+'">'+s.initials+'</div>'
-      +  '<div class="ta-card-meta">'
-      +    '<div class="ta-card-name">'+s.name+'</div>'
-      +    '<div class="ta-card-last-active">'+s.lastActive+'</div>'
-      +  '</div>'
-      +  '<div class="ta-card-status" style="'+statusStyle(s.status)+'"></div>'
-      +'</div>'
-      +'<div class="ta-card-groups">'+groupChipsHtml(s.groups)+'</div>'
-      +'<div class="ta-card-goal-label">Aktiivne eesmärk</div>'
-      +goalHtml
-      +'</div>';
+  if (!students.length) {
+    grid.innerHTML = '<div class="pa-empty">' + (activeGroup === 'all' ? 'Ühtegi õpilast pole veel ühendatud. Kasuta "+ Lisa õpilane", et alustada.' : 'See rühm ei ole veel saadaval.') + '</div>';
+    return;
+  }
+  grid.innerHTML = students.map(function (s) {
+    return '<div class="pa-child-card" data-id="' + s.passport_id + '">'
+      + '<div class="pa-card-top">'
+      + '<div class="pa-avatar ' + avatarClass(s.passport_id) + '">' + esc(initials(s.display_name)) + '</div>'
+      + '<div class="pa-card-nameblock">'
+      + '<div class="pa-card-name">' + esc(s.display_name || '?') + '</div>'
+      + '<div class="pa-card-sub">' + esc(familyName(s.display_name)) + '</div>'
+      + '<div class="pa-last-active">Aktiivne: ' + esc(fmtLastActive(s.last_active)) + '</div>'
+      + '</div>'
+      + '</div>'
+      + '<div class="pa-card-chart">' + sparkline(s.activity7d || [0, 0, 0, 0, 0, 0, 0], { width: 260, height: 34, emptyText: 'Tegevust pole veel' }) + '</div>'
+      + '<div class="pa-card-footer">'
+      + '<span class="pa-card-view-link">Vaata lähemalt →</span>'
+      + '</div>'
+      + '</div>';
   }).join('');
-  grid.querySelectorAll('.ta-student-card').forEach(function(el){
-    el.addEventListener('click', function(){ selectStudent(+el.dataset.id); });
+  grid.querySelectorAll('.pa-child-card').forEach(function (el) {
+    el.addEventListener('click', function () { selectStudent(+el.dataset.id); });
   });
 }
 
 /* ── Detail ── */
 function selectStudent(id) {
   selectedId = id;
-  var s = STUDENTS.find(function(x){return x.id===id;});
-  if (!s) return;
-  document.querySelectorAll('.ta-student-item').forEach(function(el){
-    el.classList.toggle('ta-student-selected', +el.dataset.id===id);
+  document.querySelectorAll('.ta-student-item').forEach(function (el) {
+    el.classList.toggle('ta-student-selected', +el.dataset.id === id);
+  });
+  document.querySelectorAll('.pa-child-card').forEach(function (el) {
+    el.classList.toggle('pa-card-selected', +el.dataset.id === id);
   });
 
-  var barCls = s.progress>=80 ? 'ta-bar-green' : s.status==='warning' ? 'ta-bar-warn' : '';
-  var goalHtml;
-  if (s.goal) {
-    goalHtml = '<div class="ta-goal-row">'
-      +'<div class="ta-goal-header"><div class="ta-goal-name">'+s.goal+'</div><div class="ta-goal-pct">'+s.progress+'%</div></div>'
-      +'<div class="ta-goal-crumb">'+s.goalDomain+'</div>'
-      +'<div class="ta-bar-track"><div class="ta-bar-fill '+barCls+'" style="width:'+s.progress+'%"></div></div>'
-      +(s.goalDate?'<div class="ta-goal-date">⏰ Tähtaeg: '+s.goalDate+'</div>':'')
-      +'</div>';
-  } else if (s.goalCompleted) {
-    goalHtml = '<div class="ta-goal-row" style="border-color:rgba(92,173,114,0.3)">'
-      +'<div class="ta-goal-header"><div class="ta-goal-name">✓ '+s.goalCompleted+'</div><div class="ta-goal-pct" style="color:#5CAD72">100%</div></div>'
-      +'<div class="ta-goal-crumb">'+(s.goalDomain||'')+'</div>'
-      +'<div class="ta-bar-track"><div class="ta-bar-fill ta-bar-green" style="width:100%"></div></div>'
-      +'<div class="ta-goal-date" style="color:#5CAD72">✓ Eesmärk täidetud täna!</div>'
-      +'</div>';
-  } else {
-    goalHtml = '<div style="font-size:13px;color:var(--c6);font-style:italic;padding:12px 0">Eesmärk ei ole seatud.</div>';
-  }
+  fetch('/api/teacher/students/' + id).then(function (r) { return r.json(); }).then(function (d) {
+    if (selectedId !== id) return;
+    var passport = d.passport || {};
+    var goals    = (d.goals || []).filter(function (g) { return g.status === 'in_progress'; });
+    var events   = d.events || [];
 
-  var eventsHtml = s.events.length
-    ? s.events.map(function(e){
-        return '<div class="ta-event-row">'
-          +'<div class="ta-event-icon">'+e.icon+'</div>'
-          +'<div class="ta-event-body"><div class="ta-event-title">'+e.title+'</div><div class="ta-event-date">'+e.date+'</div></div>'
-          +(e.badge?'<div class="ta-event-badge">'+e.badge+'</div>':'')
-          +'</div>';
-      }).join('')
-    : '<div style="font-size:13px;color:var(--c6);font-style:italic">Tegevusi ei ole.</div>';
+    var goalHtml = goals.length
+      ? goals.map(function (g) {
+          var pct = Math.round(Number(g.progress) || 0);
+          var label = g.node_breadcrumb || g.node_label || g.text;
+          return '<div class="ta-goal-row">'
+            + '<div class="ta-goal-header"><div class="ta-goal-name">' + esc(label) + '</div><div class="ta-goal-pct">' + pct + '%</div></div>'
+            + '<div class="ta-bar-track"><div class="ta-bar-fill ' + (pct >= 80 ? 'ta-bar-green' : '') + '" style="width:' + pct + '%"></div></div>'
+            + (g.target_date ? '<div class="ta-goal-date">⏰ Tähtaeg: ' + esc(new Date(g.target_date).toLocaleDateString('et-EE', { year: 'numeric', month: 'long', day: 'numeric' })) + '</div>' : '')
+            + '</div>';
+        }).join('')
+      : '<div style="font-size:13px;color:var(--c6);font-style:italic;padding:12px 0">Eesmärk ei ole seatud.</div>';
 
-  document.getElementById('detail-panel').innerHTML =
-    '<div class="ta-detail-header">'
-    +'<div class="ta-detail-avatar '+s.avatarClass+'" style="width:52px;height:52px;font-size:16px">'+s.initials+'</div>'
-    +'<div class="ta-detail-info">'
-    +  '<div class="ta-detail-name">'+s.name+'</div>'
-    +  '<div class="ta-detail-chips">'+groupChipsHtml(s.groups)+'<button class="ta-chip-add">+ Lisa rühma</button></div>'
-    +  '<div class="ta-detail-stats-row">'
-    +    '<div class="ta-detail-stat"><span>🔥</span><strong>'+s.streak+'</strong><span>päeva järjest</span></div>'
-    +    '<div class="ta-detail-stat"><span>🕒</span><span>Aktiivne: <strong>'+s.lastActive+'</strong></span></div>'
-    +  '</div>'
-    +'</div>'
-    +'</div>'
-    +'<div class="ta-detail-section"><div class="ta-section-label">Aktiivne eesmärk</div>'+goalHtml+'</div>'
-    +'<div class="ta-detail-section"><div class="ta-section-label">Viimane tegevus</div><div class="ta-event-list">'+eventsHtml+'</div></div>';
+    var eventsHtml = events.length
+      ? events.map(function (e) {
+          var when = e.event_date ? new Date(e.event_date).toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+          return '<div class="ta-event-row">'
+            + '<div class="ta-event-body"><div class="ta-event-title">' + esc(e.title) + '</div><div class="ta-event-date">' + esc(when) + '</div></div>'
+            + '</div>';
+        }).join('')
+      : '<div style="font-size:13px;color:var(--c6);font-style:italic">Tegevusi ei ole.</div>';
+
+    document.getElementById('detail-panel').innerHTML =
+      '<div class="ta-detail-header">'
+      + '<div class="ta-detail-avatar ' + avatarClass(id) + '" style="width:52px;height:52px;font-size:16px">' + esc(initials(passport.display_name)) + '</div>'
+      + '<div class="ta-detail-info">'
+      + '<div class="ta-detail-name">' + esc(passport.display_name || '?') + '</div>'
+      + '</div>'
+      + '</div>'
+      + '<div class="ta-detail-section"><div class="ta-section-label">Aktiivsed eesmärgid</div>' + goalHtml + '</div>'
+      + '<div class="ta-detail-section"><div class="ta-section-label">Viimane tegevus</div><div class="ta-event-list">' + eventsHtml + '</div></div>';
+  }).catch(function () {
+    document.getElementById('detail-panel').innerHTML = '<div class="pa-empty">Õpilase laadimine ebaõnnestus.</div>';
+  });
 
   document.getElementById('view-dashboard').style.display = 'none';
   document.getElementById('view-detail').style.display = '';
@@ -549,16 +468,12 @@ document.getElementById('btn-invite').addEventListener('click', function(){
 document.getElementById('btn-add-group').addEventListener('click', function(){
   document.getElementById('group-modal').style.display = 'flex';
 });
-document.getElementById('btn-manage-groups').addEventListener('click', function(){
-  document.getElementById('group-modal').style.display = 'flex';
-});
 document.querySelectorAll('.link-modal').forEach(function(m){
   m.addEventListener('click', function(e){ if(e.target===m) m.style.display='none'; });
 });
 
 /* ── Init ── */
-renderSidebar();
-renderDashboard();
+loadStudents();
 
 })();
 </script>

@@ -2171,6 +2171,35 @@ router.get('/teacher/students', async (req, res) => {
        WHERE ll.linked_user_id = ? AND ll.role = 'teacher' AND ll.status = 'active'`,
       [userId]
     );
+
+    // 7-day knobits-done sparkline per student, for the card view
+    if (students.length) {
+      const passportIds = students.map(s => s.passport_id);
+      const placeholders = passportIds.map(() => '?').join(',');
+      const [activityRows] = await db.execute(
+        `SELECT passport_id, DATE_FORMAT(DATE(completed_at), '%Y-%m-%d') AS day, COUNT(*) AS n
+         FROM knobit_progress
+         WHERE phase_reached = 'done' AND passport_id IN (${placeholders})
+           AND completed_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+         GROUP BY passport_id, DATE(completed_at)`,
+        passportIds
+      );
+      const activityMap = {};
+      activityRows.forEach(r => {
+        if (!activityMap[r.passport_id]) activityMap[r.passport_id] = {};
+        activityMap[r.passport_id][r.day] = Number(r.n);
+      });
+      const today = new Date();
+      const localYMD = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(today); d.setDate(d.getDate() - (6 - i)); return localYMD(d);
+      });
+      students.forEach(s => {
+        const sa = activityMap[s.passport_id] || {};
+        s.activity7d = days.map(d => sa[d] || 0);
+      });
+    }
+
     res.json({ students });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load students' });
