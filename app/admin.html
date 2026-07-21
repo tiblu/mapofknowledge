@@ -530,15 +530,19 @@
 
   function renderLinksTable(links) {
     var tbody = document.getElementById('links-tbody');
+    var roles = ['teacher', 'parent'];
     tbody.innerHTML = links.map(function (l) {
       var learner = escHtml(l.learner_name || l.learner_email || '(no learner found)');
       var linked  = l.linked_email ? escHtml(l.linked_email) : '(pending — no code redeemed yet)';
       var statusCls = l.status === 'active' ? 'subscriber' : (l.status === 'pending' ? 'free' : 'cancelled');
+      var roleSelect = '<select class="admin-cell-edit admin-cell-edit-select" data-role-select="' + l.id + '">'
+        + roles.map(function (r) { return '<option value="' + r + '"' + (l.role === r ? ' selected' : '') + '>' + r + '</option>'; }).join('')
+        + '</select>';
       return '<tr>'
         + '<td>' + l.id + '</td>'
         + '<td>' + learner + (l.learner_email ? ' (' + escHtml(l.learner_email) + ')' : '') + '</td>'
         + '<td>' + linked + '</td>'
-        + '<td>' + escHtml(l.role) + '</td>'
+        + '<td>' + roleSelect + '</td>'
         + '<td>' + badge(statusCls, l.status) + '</td>'
         + '<td>' + fmtDateTime(l.invited_at) + '</td>'
         + '<td>' + (l.status !== 'revoked' ? '<button class="admin-btn admin-btn-danger" data-remove-link="' + l.id + '">Disconnect</button>' : '') + '</td>'
@@ -549,6 +553,17 @@
         if (!confirm('Disconnect link #' + btn.dataset.removeLink + '?')) return;
         fetch('/api/admin/links/' + btn.dataset.removeLink, { method: 'DELETE' })
           .then(function () { loadLinks(); })
+          .catch(function () { alert('Request failed.'); });
+      });
+    });
+    tbody.querySelectorAll('[data-role-select]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        fetch('/api/admin/links/' + sel.dataset.roleSelect, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: sel.value }),
+        }).then(function (r) { return r.json(); })
+          .then(function (j) { if (j.error) { alert('Error: ' + j.error); loadLinks(); } })
           .catch(function () { alert('Request failed.'); });
       });
     });

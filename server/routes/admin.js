@@ -256,6 +256,21 @@ router.post('/links', async (req, res) => {
   }
 });
 
+// Support edit: change which kind of connection an existing link is
+// (e.g. it was created as 'teacher' by mistake and should be 'parent').
+router.patch('/links/:id', async (req, res) => {
+  const { role } = req.body || {};
+  if (!['teacher', 'parent'].includes(role)) return res.status(400).json({ error: 'role must be teacher or parent' });
+  try {
+    await db.execute('UPDATE learner_links SET role = ? WHERE id = ?', [role, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'A link with that role already exists for this pair' });
+    console.error('admin PATCH /links/:id', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.delete('/links/:id', async (req, res) => {
   try {
     await db.execute(`UPDATE learner_links SET status = 'revoked' WHERE id = ?`, [req.params.id]);
