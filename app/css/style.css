@@ -229,6 +229,14 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 .nav-dropdown-item svg { color: var(--c6); flex-shrink: 0; transition: color 0.12s; }
 .nav-dropdown-item:hover { background: var(--i07); color: #2C2018; }
 .nav-dropdown-item:hover svg { color: #6A5E56; }
+.nav-dropdown-item.active-page {
+  cursor: default;
+  color: var(--accent);
+  background: var(--accent-s);
+  font-weight: 620;
+}
+.nav-dropdown-item.active-page:hover { background: var(--accent-s); color: var(--accent); }
+.nav-dropdown-item.active-page svg { color: var(--accent); }
 .nav-dropdown-divider { height: 1px; background: var(--i08); margin: 4px 0; }
 
 /* ── FLOATING CONTROLS – shared card style ── */

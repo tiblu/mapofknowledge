@@ -141,6 +141,14 @@ function roleRedirect(role) {
   return '/app/';
 }
 
+// First-ever login always lands on the map — the guided tour only exists
+// there (tour.js isn't loaded on teacher.html/parent.html), and it self-gates
+// on a per-user localStorage flag so it only ever shows once. Every login
+// after that goes straight to the role's default view.
+function landingRedirect(role, isFirstLogin) {
+  return isFirstLogin ? '/app/' : roleRedirect(role);
+}
+
 // ── Passport setup — Google ─────────────────────────────────────────────────
 passport.use(new GoogleStrategy(
   {
@@ -193,7 +201,9 @@ passport.use(new GoogleStrategy(
           const [newUsers] = await conn.execute(
             'SELECT * FROM users WHERE id = ?', [userId]
           );
-          return done(null, newUsers[0]);
+          const newUser = newUsers[0];
+          newUser._isFirstLogin = true;
+          return done(null, newUser);
         }
 
         // Existing user — normal login
@@ -208,6 +218,7 @@ passport.use(new GoogleStrategy(
               ? 'Oleme rõõmsad, et oled siin. Alusta kaardi uurimisega!'
               : "We're glad you're here. Start exploring the map!");
         }
+        user._isFirstLogin = isFirstLogin;
         done(null, user);
       } finally {
         conn.release();
@@ -237,7 +248,7 @@ router.get('/google',
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/?auth=failed' }),
   (req, res) => {
-    res.redirect(roleRedirect(req.user && req.user.role));
+    res.redirect(landingRedirect(req.user && req.user.role, req.user && req.user._isFirstLogin));
   }
 );
 
@@ -318,7 +329,7 @@ router.post('/signup/password', async (req, res) => {
     const [newUsers] = await conn.execute('SELECT * FROM users WHERE id = ?', [userId]);
     req.login(newUsers[0], (err) => {
       if (err) return res.status(500).json({ error: 'login_failed' });
-      res.json({ ok: true, redirect: roleRedirect(pending.role) });
+      res.json({ ok: true, redirect: landingRedirect(pending.role, true) });
     });
   } catch (err) {
     console.error('[auth/signup/password]', err.message);
@@ -344,10 +355,11 @@ router.post('/login', async (req, res) => {
     if (!match) {
       return res.status(401).json({ error: 'invalid_credentials' });
     }
+    const isFirstLogin = !user.last_login;
     await db.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
     req.login(user, (err) => {
       if (err) return res.status(500).json({ error: 'login_failed' });
-      res.json({ ok: true, redirect: roleRedirect(user.role) });
+      res.json({ ok: true, redirect: landingRedirect(user.role, isFirstLogin) });
     });
   } catch (err) {
     res.status(500).json({ error: 'login_failed' });

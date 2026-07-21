@@ -53,14 +53,14 @@
       </button>
 
       <div id="nav-dropdown" class="nav-dropdown">
-        <button class="nav-dropdown-item" onclick="window.location='profile.html'">
+        <button class="nav-dropdown-item" data-nav="profile.html" onclick="navOverlay('profile.html')">
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
             <circle cx="7.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
             <path d="M2 13c0-2.8 2.5-4.5 5.5-4.5s5.5 1.7 5.5 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
           </svg>
-          <span data-i18n="nav.account">Account</span>
+          <span data-i18n="nav.account">Õppija pass</span>
         </button>
-        <button class="nav-dropdown-item" onclick="window.location='notifications.html'">
+        <button class="nav-dropdown-item" data-nav="notifications.html" onclick="navOverlay('notifications.html')">
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
             <path d="M7.5 1.5a4 4 0 0 0-4 4v2.5L2.5 9.5h10l-1-1.5V5.5a4 4 0 0 0-4-4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
             <path d="M6 11.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.2"/>
@@ -69,17 +69,28 @@
           <span id="nav-notif-badge"></span>
         </button>
         <div class="nav-dropdown-divider"></div>
-        <button class="nav-dropdown-item active-page">
+        <button class="nav-dropdown-item" data-nav="settings.html" onclick="navOverlay('settings.html')">
           <img src="images/icon-settings.svg" width="15" height="15" alt="">
           <span data-i18n="nav.settings">Settings</span>
         </button>
-        <button class="nav-dropdown-item" onclick="window.location='help.html'">
+        <button class="nav-dropdown-item" data-nav="help.html" onclick="navOverlay('help.html')">
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
             <circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.2"/>
             <path d="M5.7 5.8a1.8 1.8 0 1 1 2.5 1.7c-.5.3-.7.6-.7 1.1v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
             <circle cx="7.5" cy="10.8" r="0.6" fill="currentColor"/>
           </svg>
           <span data-i18n="nav.help">Help</span>
+        </button>
+        <div class="nav-dropdown-divider"></div>
+        <button class="nav-dropdown-item" data-nav="index.html" onclick="navTop('index.html')">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <circle cx="7.5" cy="7.5" r="1.3" fill="currentColor"/>
+            <circle cx="7.5" cy="2.2" r="1" fill="currentColor" opacity="0.5"/>
+            <circle cx="7.5" cy="12.8" r="1" fill="currentColor" opacity="0.5"/>
+            <circle cx="2.2" cy="7.5" r="1" fill="currentColor" opacity="0.5"/>
+            <circle cx="12.8" cy="7.5" r="1" fill="currentColor" opacity="0.5"/>
+          </svg>
+          <span data-i18n="nav.map">Kaart</span>
         </button>
         <div class="nav-dropdown-divider"></div>
         <button class="nav-dropdown-item" onclick="window.top.location='/auth/logout'">
@@ -657,6 +668,7 @@
   });
 </script>
 <script src="js/topbar-notif.js"></script>
+<script src="js/role-nav.js"></script>
 
 </body>
 </html>

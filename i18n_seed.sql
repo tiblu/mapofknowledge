@@ -65,7 +65,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.sections',            'en', 'Sections'),
 
 -- Navigation
-('nav.account',             'en', 'Account'),
+('nav.account',             'en', 'Learner Passport'),
 ('nav.notifications',       'en', 'Notifications'),
 ('nav.settings',            'en', 'Settings'),
 ('nav.log_out',             'en', 'Log out'),
@@ -657,8 +657,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Navigation
 ('nav.map',               'en', 'Map'),
 ('nav.map',               'et', 'Kaart'),
-('nav.account',           'en', 'Account'),
-('nav.account',           'et', 'Konto'),
+('nav.account',           'en', 'Learner Passport'),
+('nav.account',           'et', 'Õppija pass'),
+('nav.admin',             'en', 'Admin'),
+('nav.admin',             'et', 'Admin'),
 ('nav.log_out',           'en', 'Log out'),
 ('nav.log_out',           'et', 'Logi välja'),
 
