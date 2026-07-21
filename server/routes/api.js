@@ -2245,19 +2245,105 @@ router.get('/parent/children', async (req, res) => {
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
   try {
     const [children] = await db.execute(
-      `SELECT lp.id AS passport_id, lp.display_name, ll.id AS link_id,
-              gs.lumens,
-              (SELECT COUNT(*) FROM passport_goals pg WHERE pg.passport_id = lp.id AND pg.status='in_progress') AS active_goals,
+      `SELECT lp.id AS passport_id, lp.display_name, lp.birth_year,
               (SELECT MAX(kp.completed_at) FROM knobit_progress kp WHERE kp.passport_id = lp.id) AS last_active
        FROM learner_links ll
        JOIN learner_passports lp ON lp.id = ll.passport_id
-       LEFT JOIN game_state gs ON gs.passport_id = lp.id
        WHERE ll.linked_user_id = ? AND ll.role = 'parent' AND ll.status = 'active'`,
       [userId]
     );
+
+    // 7-day knobits-done sparkline per child, for the card view
+    if (children.length) {
+      const passportIds = children.map(c => c.passport_id);
+      const placeholders = passportIds.map(() => '?').join(',');
+      const [activityRows] = await db.execute(
+        `SELECT passport_id, DATE_FORMAT(DATE(completed_at), '%Y-%m-%d') AS day, COUNT(*) AS n
+         FROM knobit_progress
+         WHERE phase_reached = 'done' AND passport_id IN (${placeholders})
+           AND completed_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+         GROUP BY passport_id, DATE(completed_at)`,
+        passportIds
+      );
+      const activityMap = {};
+      activityRows.forEach(r => {
+        if (!activityMap[r.passport_id]) activityMap[r.passport_id] = {};
+        activityMap[r.passport_id][r.day] = Number(r.n);
+      });
+      const today = new Date();
+      const localYMD = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(today); d.setDate(d.getDate() - (6 - i)); return localYMD(d);
+      });
+      children.forEach(c => {
+        const ca = activityMap[c.passport_id] || {};
+        c.activity7d = days.map(d => ca[d] || 0);
+      });
+    }
+
     res.json({ children });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load children' });
+  }
+});
+
+// ── Per-child activity for the detail-view chart — adjustable time period ────
+router.get('/parent/children/:passport_id/activity', async (req, res) => {
+  const userId = req.user?.id;
+  const { passport_id } = req.params;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  const period = ['7d', '30d', '90d'].includes(req.query.period) ? req.query.period : '30d';
+  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30;
+  try {
+    const [auth] = await db.execute(
+      `SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'parent' AND status = 'active'`,
+      [passport_id, userId]
+    );
+    if (!auth.length) return res.status(403).json({ error: 'Not linked' });
+
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - (days - 1));
+    const fromStr = fromDate.getFullYear() + '-' + String(fromDate.getMonth() + 1).padStart(2, '0') + '-' + String(fromDate.getDate()).padStart(2, '0');
+
+    const [doneRows] = await db.execute(
+      `SELECT DATE_FORMAT(DATE(completed_at), '%Y-%m-%d') AS day, COUNT(*) AS n
+       FROM knobit_progress
+       WHERE phase_reached = 'done' AND passport_id = ? AND completed_at >= ?
+       GROUP BY DATE(completed_at)`,
+      [passport_id, fromStr]
+    );
+
+    // Time spent isn't recorded directly — estimated from gaps between
+    // consecutive interaction timestamps within the same day, capped at 5
+    // minutes per gap so overnight/away gaps don't inflate the total.
+    const [timeRows] = await db.execute(
+      `SELECT DATE_FORMAT(day, '%Y-%m-%d') AS day, SUM(LEAST(raw_gap, 300)) AS seconds
+       FROM (
+         SELECT DATE(created_at) AS day,
+                TIMESTAMPDIFF(SECOND, LAG(created_at) OVER (PARTITION BY DATE(created_at) ORDER BY created_at), created_at) AS raw_gap
+         FROM knobit_interactions
+         WHERE passport_id = ? AND created_at >= ?
+       ) t
+       WHERE raw_gap IS NOT NULL
+       GROUP BY day`,
+      [passport_id, fromStr]
+    );
+
+    const doneMap = {}; doneRows.forEach(r => { doneMap[r.day] = Number(r.n); });
+    const timeMap = {}; timeRows.forEach(r => { timeMap[r.day] = Number(r.seconds); });
+
+    const today = new Date();
+    const localYMD = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const series = Array.from({ length: days }, (_, i) => {
+      const d = new Date(today); d.setDate(d.getDate() - (days - 1 - i));
+      const key = localYMD(d);
+      return { date: key, knobitsDone: doneMap[key] || 0, minutes: Math.round((timeMap[key] || 0) / 60) };
+    });
+
+    res.json({ period, series });
+  } catch (err) {
+    console.error('[api/parent/children/:id/activity]', err.message);
+    res.status(500).json({ error: 'Failed to load activity' });
   }
 });
 

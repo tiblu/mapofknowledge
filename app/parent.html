@@ -131,134 +131,233 @@
 <script>
 (function () {
 
-var CHILDREN = [
-  { id:1, initials:'KL', name:'Karl', avatarClass:'pa-avatar-b',
-    age:15, grade:'7. klass',
-    streak:5,
-    lastActive:'täna',
-    goal:'Murdude liitmine', goalDomain:'Matemaatika › Aritmeetika › Murrud',
-    goalProgress:78, goalDate:'20. juuli 2026',
-    events:[
-      {text:'Murdude liitmine: 78% edenemist', time:'täna, 09:14'},
-      {text:'Harilikud murrud lõpetatud', time:'eile, 19:32'},
-      {text:'Murdude lahutamine alustatud', time:'2 päeva tagasi'},
-      {text:'Kümnendmurrud lõpetatud', time:'4 päeva tagasi'}
-    ]
-  },
-  { id:2, initials:'LL', name:'Liis', avatarClass:'pa-avatar-c',
-    age:12, grade:'4. klass',
-    streak:3,
-    lastActive:'eile',
-    goal:'Eesti looduskaitse', goalDomain:'Loodusteadused › Eesti loodus',
-    goalProgress:41, goalDate:'10. august 2026',
-    events:[
-      {text:'Eesti looduskaitse: 41% edenemist', time:'eile, 17:05'},
-      {text:'Kaitsealad Eestis alustatud', time:'eile, 17:05'},
-      {text:'Eesti metsloomad lõpetatud', time:'3 päeva tagasi'},
-      {text:'Eesti looduskaitse eesmärk seatud', time:'6 päeva tagasi'}
-    ]
-  }
-];
-
+var AVATAR_CLASSES = ['pa-avatar-a', 'pa-avatar-b', 'pa-avatar-c', 'pa-avatar-d'];
+var CHILDREN = [];
 var selectedId = null;
+var chartPeriod = '30d';
+
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function initials(name) {
+  var parts = String(name || '?').trim().split(/\s+/);
+  return ((parts[0] || '')[0] || '') .toUpperCase() + ((parts[1] || '')[0] || '').toUpperCase();
+}
+
+function avatarClass(passportId) {
+  return AVATAR_CLASSES[passportId % AVATAR_CLASSES.length];
+}
+
+function ageFromBirthYear(birthYear) {
+  if (!birthYear) return null;
+  return new Date().getFullYear() - birthYear;
+}
+
+function fmtLastActive(iso) {
+  if (!iso) return 'pole veel õppinud';
+  var d = new Date(iso);
+  var days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return 'täna';
+  if (days === 1) return 'eile';
+  if (days < 14) return days + ' päeva tagasi';
+  return d.toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/* ── Sparkline — same rendering approach as the Admin "Activity (7d)"
+   column, adapted with a dynamic max (per-child knobit counts are a much
+   smaller scale than admin's token sums) and a configurable size. ── */
+function sparkline(data, opts) {
+  opts = opts || {};
+  var W = opts.width || 240, H = opts.height || 40;
+  var hasData = data.some(function (v) { return v > 0; });
+  if (!hasData) return '<span class="spark-empty">' + esc(opts.emptyText || '—') + '</span>';
+  var max = Math.max.apply(null, data) || 1;
+  var n = data.length;
+  var pts = data.map(function (v, i) {
+    var x = Math.round(i * W / (n - 1));
+    var y = Math.round(H - Math.min(v, max) / max * (H - 2) - 1);
+    return x + ',' + y;
+  });
+  var fillPath = 'M' + pts.join('L') + 'L' + W + ',' + H + 'L0,' + H + 'Z';
+  var linePath = 'M' + pts.join('L');
+  return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" class="spark-svg" preserveAspectRatio="none">'
+    + '<path d="' + fillPath + '" class="spark-fill"/>'
+    + '<path d="' + linePath + '" class="spark-line"/>'
+    + '</svg>';
+}
+
+/* ── Card list ─────────────────────────────────────────────────────── */
+function loadChildren() {
+  var grid = document.getElementById('children-grid');
+  fetch('/api/parent/children').then(function (r) { return r.json(); }).then(function (d) {
+    CHILDREN = d.children || [];
+    if (!CHILDREN.length) {
+      grid.innerHTML = '<div class="pa-empty">Ühtegi last pole veel ühendatud. Kasuta "+ Lisa laps", et alustada.</div>';
+      return;
+    }
+    renderCards();
+  }).catch(function () {
+    grid.innerHTML = '<div class="pa-empty">Laste laadimine ebaõnnestus.</div>';
+  });
+}
 
 function renderCards() {
   var grid = document.getElementById('children-grid');
-  grid.innerHTML = CHILDREN.map(function(c){
-    var sel = c.id === selectedId ? ' pa-card-selected' : '';
-    return '<div class="pa-child-card'+sel+'" data-id="'+c.id+'">'
-      +'<div class="pa-card-top">'
-      +  '<div class="pa-avatar '+c.avatarClass+'">'+c.initials+'</div>'
-      +  '<div class="pa-card-nameblock">'
-      +    '<div class="pa-card-name">'+c.name+'</div>'
-      +    '<div class="pa-card-sub">'+c.age+' a. · '+c.grade+'</div>'
-      +    '<div class="pa-last-active">Aktiivne: '+c.lastActive+'</div>'
-      +  '</div>'
-      +'</div>'
-      +'<div class="pa-stats-strip">'
-      +  '<div class="pa-stat"><div class="pa-stat-val">'+c.streak+'🔥</div><div class="pa-stat-label">Päevi järjest</div></div>'
-      +'</div>'
-      +'<div class="pa-card-goal-label">Aktiivne eesmärk</div>'
-      +'<div class="pa-card-goal-name">'+c.goal+'</div>'
-      +'<div class="pa-bar-track"><div class="pa-bar-fill" style="width:'+c.goalProgress+'%"></div></div>'
-      +'<div class="pa-bar-pct">'+c.goalProgress+'%'+(c.goalDate?' · tähtaeg '+c.goalDate:'')+'</div>'
-      +'<div class="pa-card-footer">'
-      +  '<span class="pa-card-rank">'+c.goalDomain+'</span>'
-      +  '<span class="pa-card-view-link">Vaata lähemalt →</span>'
-      +'</div>'
-      +'</div>';
+  grid.innerHTML = CHILDREN.map(function (c) {
+    var sel = c.passport_id === selectedId ? ' pa-card-selected' : '';
+    var age = ageFromBirthYear(c.birth_year);
+    return '<div class="pa-child-card' + sel + '" data-id="' + c.passport_id + '">'
+      + '<div class="pa-card-top">'
+      + '<div class="pa-avatar ' + avatarClass(c.passport_id) + '">' + esc(initials(c.display_name)) + '</div>'
+      + '<div class="pa-card-nameblock">'
+      + '<div class="pa-card-name">' + esc(c.display_name || '?') + '</div>'
+      + '<div class="pa-card-sub">' + (age != null ? age + ' a.' : '') + '</div>'
+      + '<div class="pa-last-active">Aktiivne: ' + esc(fmtLastActive(c.last_active)) + '</div>'
+      + '</div>'
+      + '</div>'
+      + '<div class="pa-card-chart">' + sparkline(c.activity7d || [0, 0, 0, 0, 0, 0, 0], { width: 260, height: 34, emptyText: 'Tegevust pole veel' }) + '</div>'
+      + '<div class="pa-card-footer">'
+      + '<span class="pa-card-view-link">Vaata lähemalt →</span>'
+      + '</div>'
+      + '</div>';
   }).join('');
-  grid.querySelectorAll('.pa-child-card').forEach(function(el){
-    el.addEventListener('click', function(){ selectChild(+el.dataset.id); });
+  grid.querySelectorAll('.pa-child-card').forEach(function (el) {
+    el.addEventListener('click', function () { selectChild(+el.dataset.id); });
   });
 }
 
+/* ── Detail view ───────────────────────────────────────────────────── */
 function selectChild(id) {
   selectedId = id;
-  var c = CHILDREN.find(function(x){return x.id===id;});
+  chartPeriod = '30d';
+  var c = CHILDREN.find(function (x) { return x.passport_id === id; });
   if (!c) return;
-  document.querySelectorAll('.pa-child-card').forEach(function(el){
-    el.classList.toggle('pa-card-selected', +el.dataset.id===id);
+  document.querySelectorAll('.pa-child-card').forEach(function (el) {
+    el.classList.toggle('pa-card-selected', +el.dataset.id === id);
   });
 
-  var eventsHtml = c.events.map(function(e){
-    return '<div class="pa-event-row">'
-      +'<div class="pa-event-dot"></div>'
-      +'<div>'
-      +  '<div class="pa-event-text">'+e.text+'</div>'
-      +  '<div class="pa-event-time">'+e.time+'</div>'
-      +'</div>'
-      +'</div>';
-  }).join('');
-
+  var age = ageFromBirthYear(c.birth_year);
   var detail = document.getElementById('child-detail');
   detail.innerHTML =
     '<div class="pa-detail-header">'
-    +'<div class="pa-detail-avatar '+c.avatarClass+'" style="width:56px;height:56px;font-size:20px">'+c.initials+'</div>'
-    +'<div>'
-    +  '<div class="pa-detail-name">'+c.name+'</div>'
-    +  '<div class="pa-detail-sub">'+c.age+' aastat · '+c.grade+'</div>'
-    +  '<div class="pa-detail-last">Aktiivne: '+c.lastActive+'</div>'
-    +'</div>'
-    +'<div style="margin-left:auto">'
-    +  '<button class="ta-action-btn" onclick="closeDetail()">Sulge</button>'
-    +'</div>'
-    +'</div>'
-    +'<div class="pa-detail-stats-row">'
-    +  '<div class="pa-detail-stat"><div class="pa-detail-stat-val">'+c.streak+'🔥</div><div class="pa-detail-stat-label">Päeva järjest</div></div>'
-    +'</div>'
-    +'<div class="pa-detail-section">'
-    +  '<div class="pa-detail-section-label">Aktiivne eesmärk</div>'
-    +  '<div class="pa-goal-card">'
-    +    '<div class="pa-goal-row"><div class="pa-goal-name">'+c.goal+'</div><div class="pa-goal-pct">'+c.goalProgress+'%</div></div>'
-    +    '<div class="pa-goal-sub">'+c.goalDomain+'</div>'
-    +    '<div class="pa-bar-track"><div class="pa-bar-fill" style="width:'+c.goalProgress+'%"></div></div>'
-    +    (c.goalDate?'<div class="pa-goal-date">⏰ Tähtaeg: '+c.goalDate+'</div>':'')
-    +  '</div>'
-    +'</div>'
-    +'<div class="pa-detail-section">'
-    +  '<div class="pa-detail-section-label">Viimane tegevus</div>'
-    +  eventsHtml
-    +'</div>';
+    + '<div class="pa-detail-avatar ' + avatarClass(c.passport_id) + '" style="width:56px;height:56px;font-size:20px">' + esc(initials(c.display_name)) + '</div>'
+    + '<div>'
+    + '<div class="pa-detail-name">' + esc(c.display_name || '?') + '</div>'
+    + '<div class="pa-detail-sub">' + (age != null ? age + ' aastat' : '') + '</div>'
+    + '<div class="pa-detail-last">Aktiivne: ' + esc(fmtLastActive(c.last_active)) + '</div>'
+    + '</div>'
+    + '<div style="margin-left:auto">'
+    + '<button class="ta-action-btn" onclick="closeDetail()">Sulge</button>'
+    + '</div>'
+    + '</div>'
+    + '<div class="pa-detail-section">'
+    + '<div class="pa-chart-head">'
+    + '<div class="pa-detail-section-label" style="margin-bottom:0">Kasutuse ülevaade</div>'
+    + '<select class="pa-period-select" id="chart-period-select">'
+    + '<option value="7d">7 päeva</option>'
+    + '<option value="30d" selected>30 päeva</option>'
+    + '<option value="90d">90 päeva</option>'
+    + '</select>'
+    + '</div>'
+    + '<div class="pa-chart-block">'
+    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label">Lõpetatud teemasid</span><span class="pa-chart-block-total" id="chart-total-knobits">—</span></div>'
+    + '<div id="chart-knobits"></div>'
+    + '</div>'
+    + '<div class="pa-chart-block">'
+    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label">Aktiivne aeg (hinnanguline)</span><span class="pa-chart-block-total" id="chart-total-minutes">—</span></div>'
+    + '<div id="chart-minutes"></div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="pa-detail-section" id="goal-section"></div>'
+    + '<div class="pa-detail-section">'
+    + '<div class="pa-detail-section-label">Viimane tegevus</div>'
+    + '<div id="events-section"></div>'
+    + '</div>';
 
   detail.classList.add('pa-detail-visible');
-  detail.scrollIntoView({behavior:'smooth', block:'start'});
+  detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  document.getElementById('chart-period-select').addEventListener('change', function () {
+    chartPeriod = this.value;
+    loadChart(id);
+  });
+
+  loadChart(id);
+  loadDetailInfo(id);
 }
 
-window.closeDetail = function() {
+function loadChart(passportId) {
+  fetch('/api/parent/children/' + passportId + '/activity?period=' + chartPeriod)
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (selectedId !== passportId) return; // stale response, child switched meanwhile
+      var series = d.series || [];
+      var knobits = series.map(function (s) { return s.knobitsDone; });
+      var minutes = series.map(function (s) { return s.minutes; });
+      var totalKnobits = knobits.reduce(function (a, b) { return a + b; }, 0);
+      var totalMinutes = minutes.reduce(function (a, b) { return a + b; }, 0);
+
+      document.getElementById('chart-knobits').innerHTML = sparkline(knobits, { width: 520, height: 48, emptyText: 'Tegevust pole veel' });
+      document.getElementById('chart-minutes').innerHTML = sparkline(minutes, { width: 520, height: 48, emptyText: 'Tegevust pole veel' });
+      document.getElementById('chart-total-knobits').textContent = totalKnobits + ' kokku';
+      document.getElementById('chart-total-minutes').textContent = totalMinutes >= 60
+        ? Math.floor(totalMinutes / 60) + 'h ' + (totalMinutes % 60) + 'min kokku'
+        : totalMinutes + ' min kokku';
+    })
+    .catch(function () {});
+}
+
+function loadDetailInfo(passportId) {
+  fetch('/api/parent/children/' + passportId)
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (selectedId !== passportId) return;
+      var goals  = (d.goals || []).filter(function (g) { return g.status === 'in_progress'; });
+      var events = d.events || [];
+
+      var goalSection = document.getElementById('goal-section');
+      if (goals.length) {
+        goalSection.innerHTML = '<div class="pa-detail-section-label">Aktiivne eesmärk</div>' + goals.map(function (g) {
+          var pct = Math.round(Number(g.progress) || 0);
+          var label = g.node_breadcrumb || g.node_label || g.text;
+          return '<div class="pa-goal-card">'
+            + '<div class="pa-goal-row"><div class="pa-goal-name">' + esc(label) + '</div><div class="pa-goal-pct">' + pct + '%</div></div>'
+            + '<div class="pa-bar-track"><div class="pa-bar-fill" style="width:' + pct + '%"></div></div>'
+            + (g.target_date ? '<div class="pa-goal-date">⏰ Tähtaeg: ' + esc(new Date(g.target_date).toLocaleDateString('et-EE', { year: 'numeric', month: 'long', day: 'numeric' })) + '</div>' : '')
+            + '</div>';
+        }).join('');
+      } else {
+        goalSection.innerHTML = '';
+      }
+
+      var eventsEl = document.getElementById('events-section');
+      eventsEl.innerHTML = events.length ? events.map(function (e) {
+        var when = e.event_date ? new Date(e.event_date).toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+        return '<div class="pa-event-row">'
+          + '<div class="pa-event-dot"></div>'
+          + '<div>'
+          + '<div class="pa-event-text">' + esc(e.title) + '</div>'
+          + '<div class="pa-event-time">' + esc(when) + '</div>'
+          + '</div>'
+          + '</div>';
+      }).join('') : '<div class="pa-empty">Tegevust pole veel.</div>';
+    })
+    .catch(function () {});
+}
+
+window.closeDetail = function () {
   selectedId = null;
-  document.querySelectorAll('.pa-child-card').forEach(function(el){ el.classList.remove('pa-card-selected'); });
+  document.querySelectorAll('.pa-child-card').forEach(function (el) { el.classList.remove('pa-card-selected'); });
   var detail = document.getElementById('child-detail');
   detail.classList.remove('pa-detail-visible');
   detail.innerHTML = '';
 };
 
-document.getElementById('btn-add-child').addEventListener('click', function(){
+document.getElementById('btn-add-child').addEventListener('click', function () {
   // Generating a code now happens in Seaded (Connections), not here.
   (window.navOverlay || function (p) { window.location = p; })('settings.html#connections');
 });
 
-renderCards();
+loadChildren();
 
 })();
 </script>
