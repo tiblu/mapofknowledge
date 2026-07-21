@@ -135,6 +135,8 @@ var AVATAR_CLASSES = ['pa-avatar-a', 'pa-avatar-b', 'pa-avatar-c', 'pa-avatar-d'
 var CHILDREN = [];
 var selectedId = null;
 var chartPeriod = '30d';
+var chartMetric = 'knobits';
+var _lastSeries = [];
 
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -229,6 +231,7 @@ function renderCards() {
 function selectChild(id) {
   selectedId = id;
   chartPeriod = '30d';
+  chartMetric = 'knobits';
   var c = CHILDREN.find(function (x) { return x.passport_id === id; });
   if (!c) return;
   document.querySelectorAll('.pa-child-card').forEach(function (el) {
@@ -252,19 +255,21 @@ function selectChild(id) {
     + '<div class="pa-detail-section">'
     + '<div class="pa-chart-head">'
     + '<div class="pa-detail-section-label" style="margin-bottom:0">Kasutuse ülevaade</div>'
+    + '<div class="pa-chart-controls">'
+    + '<select class="pa-period-select" id="chart-metric-select">'
+    + '<option value="knobits">Lõpetatud knobitid</option>'
+    + '<option value="minutes">Aktiivne aeg</option>'
+    + '</select>'
     + '<select class="pa-period-select" id="chart-period-select">'
     + '<option value="7d">7 päeva</option>'
     + '<option value="30d" selected>30 päeva</option>'
     + '<option value="90d">90 päeva</option>'
     + '</select>'
     + '</div>'
-    + '<div class="pa-chart-block">'
-    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label">Lõpetatud knobiteid</span><span class="pa-chart-block-total" id="chart-total-knobits">—</span></div>'
-    + '<div id="chart-knobits"></div>'
     + '</div>'
     + '<div class="pa-chart-block">'
-    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label">Aktiivne aeg (hinnanguline)</span><span class="pa-chart-block-total" id="chart-total-minutes">—</span></div>'
-    + '<div id="chart-minutes"></div>'
+    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label" id="chart-metric-label">Lõpetatud knobitid</span><span class="pa-chart-block-total" id="chart-total">—</span></div>'
+    + '<div id="chart-line-wrap" class="pa-chart-line-wrap"></div>'
     + '</div>'
     + '</div>'
     + '<div class="pa-detail-section p-card" id="goal-section"></div>'
@@ -274,6 +279,11 @@ function selectChild(id) {
   detail.classList.add('pa-detail-visible');
   detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  document.getElementById('chart-metric-select').value = chartMetric;
+  document.getElementById('chart-metric-select').addEventListener('change', function () {
+    chartMetric = this.value;
+    renderActivityChart();
+  });
   document.getElementById('chart-period-select').addEventListener('change', function () {
     chartPeriod = this.value;
     loadChart(id);
@@ -288,20 +298,159 @@ function loadChart(passportId) {
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (selectedId !== passportId) return; // stale response, child switched meanwhile
-      var series = d.series || [];
-      var knobits = series.map(function (s) { return s.knobitsDone; });
-      var minutes = series.map(function (s) { return s.minutes; });
-      var totalKnobits = knobits.reduce(function (a, b) { return a + b; }, 0);
-      var totalMinutes = minutes.reduce(function (a, b) { return a + b; }, 0);
-
-      document.getElementById('chart-knobits').innerHTML = sparkline(knobits, { width: 520, height: 48, emptyText: 'Tegevust pole veel' });
-      document.getElementById('chart-minutes').innerHTML = sparkline(minutes, { width: 520, height: 48, emptyText: 'Tegevust pole veel' });
-      document.getElementById('chart-total-knobits').textContent = totalKnobits + ' kokku';
-      document.getElementById('chart-total-minutes').textContent = totalMinutes >= 60
-        ? Math.floor(totalMinutes / 60) + 'h ' + (totalMinutes % 60) + 'min kokku'
-        : totalMinutes + ' min kokku';
+      _lastSeries = d.series || [];
+      renderActivityChart();
     })
     .catch(function () {});
+}
+
+function renderActivityChart() {
+  var isKnobits = chartMetric === 'knobits';
+  var values = _lastSeries.map(function (s) { return isKnobits ? s.knobitsDone : s.minutes; });
+  var dates  = _lastSeries.map(function (s) { return s.date; });
+  var total  = values.reduce(function (a, b) { return a + b; }, 0);
+
+  document.getElementById('chart-metric-label').textContent = isKnobits ? 'Lõpetatud knobitid' : 'Aktiivne aeg (hinnanguline)';
+  document.getElementById('chart-total').textContent = isKnobits
+    ? total + ' kokku'
+    : (total >= 60 ? Math.floor(total / 60) + 'h ' + (total % 60) + 'min kokku' : total + ' min kokku');
+
+  document.getElementById('chart-line-wrap').innerHTML = lineChart(dates, values, {
+    unit: isKnobits ? '' : ' min',
+    emptyText: 'Tegevust pole veel',
+  });
+  bindChartInteraction();
+}
+
+/* ── Line chart — one metric at a time (never dual-axis), dotted grid,
+   value labels on local peaks only, hover crosshair + tooltip. ── */
+function _niceMax(v) {
+  if (v <= 0) return 1;
+  var pow = Math.pow(10, Math.floor(Math.log(v) / Math.LN10));
+  var frac = v / pow;
+  var niceFrac = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+  return niceFrac * pow;
+}
+
+function _fmtDateShort(iso) {
+  try { return new Date(iso + 'T00:00:00').toLocaleDateString('et-EE', { day: 'numeric', month: 'short' }); }
+  catch (e) { return iso; }
+}
+
+var CHART_W = 640, CHART_H = 220, CHART_PAD_L = 40, CHART_PAD_R = 14, CHART_PAD_T = 26, CHART_PAD_B = 28;
+
+function lineChart(dates, values, opts) {
+  opts = opts || {};
+  var padL = CHART_PAD_L, padR = CHART_PAD_R, padT = CHART_PAD_T, padB = CHART_PAD_B;
+  var plotW = CHART_W - padL - padR, plotH = CHART_H - padT - padB;
+  var n = values.length;
+  var hasData = values.some(function (v) { return v > 0; });
+
+  if (!n || !hasData) {
+    return '<div class="pa-chart-empty">' + esc(opts.emptyText || '—') + '</div>';
+  }
+
+  var niceMax = _niceMax(Math.max.apply(null, values));
+  function xAt(i) { return n === 1 ? padL + plotW / 2 : padL + (i * plotW / (n - 1)); }
+  function yAt(v) { return padT + plotH - (v / niceMax) * plotH; }
+
+  var yTickCount = 4, hGrid = '', yLabels = '';
+  for (var t = 0; t <= yTickCount; t++) {
+    var val = niceMax * t / yTickCount;
+    var y = yAt(val);
+    hGrid += '<line x1="' + padL + '" y1="' + y + '" x2="' + (CHART_W - padR) + '" y2="' + y + '" class="pa-chart-gridline"/>';
+    yLabels += '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" class="pa-chart-axis-label" text-anchor="end">' + Math.round(val) + '</text>';
+  }
+
+  var xTickCount = Math.min(6, n), vGrid = '', xLabels = '';
+  for (var k = 0; k < xTickCount; k++) {
+    var idx = xTickCount === 1 ? 0 : Math.round(k * (n - 1) / (xTickCount - 1));
+    var x = xAt(idx);
+    vGrid += '<line x1="' + x + '" y1="' + padT + '" x2="' + x + '" y2="' + (padT + plotH) + '" class="pa-chart-gridline"/>';
+    xLabels += '<text x="' + x + '" y="' + (CHART_H - 8) + '" class="pa-chart-axis-label" text-anchor="middle">' + esc(_fmtDateShort(dates[idx])) + '</text>';
+  }
+
+  var linePts = values.map(function (v, i) { return xAt(i) + ',' + yAt(v); });
+  var lineD = 'M' + linePts.join(' L');
+  var areaD = 'M' + xAt(0) + ',' + (padT + plotH) + ' L' + linePts.join(' L') + ' L' + xAt(n - 1) + ',' + (padT + plotH) + ' Z';
+
+  // Value labels — local maxima only (never one on every point)
+  var peakLabels = '';
+  values.forEach(function (v, i) {
+    if (v <= 0) return;
+    var prev = i > 0 ? values[i - 1] : -1;
+    var next = i < n - 1 ? values[i + 1] : -1;
+    if (v >= prev && v >= next && (v > prev || v > next)) {
+      peakLabels += '<text x="' + xAt(i) + '" y="' + (yAt(v) - 10) + '" class="pa-chart-value-label" text-anchor="middle">' + v + esc(opts.unit || '') + '</text>';
+    }
+  });
+
+  var dots = values.map(function (v, i) {
+    return '<circle cx="' + xAt(i) + '" cy="' + yAt(v) + '" r="3.5" class="pa-chart-dot"/>';
+  }).join('');
+
+  var svgId = 'lc' + Math.random().toString(36).slice(2, 8);
+
+  return '<svg viewBox="0 0 ' + CHART_W + ' ' + CHART_H + '" class="pa-chart-svg" id="' + svgId + '" '
+    + 'data-n="' + n + '" data-padl="' + padL + '" data-plotw="' + plotW + '" data-padt="' + padT + '" data-ploth="' + plotH + '" data-nicemax="' + niceMax + '" data-unit="' + esc(opts.unit || '') + '">'
+    + '<g>' + hGrid + vGrid + '</g>'
+    + '<path d="' + areaD + '" class="pa-chart-area"/>'
+    + '<path d="' + lineD + '" class="pa-chart-line"/>'
+    + dots + peakLabels + yLabels + xLabels
+    + '<g class="pa-chart-crosshair" id="' + svgId + '-cross" style="display:none">'
+    + '<line x1="0" y1="' + padT + '" x2="0" y2="' + (padT + plotH) + '"/>'
+    + '<circle r="5"/>'
+    + '</g>'
+    + '<rect x="' + padL + '" y="' + padT + '" width="' + plotW + '" height="' + plotH + '" class="pa-chart-hit" id="' + svgId + '-hit"/>'
+    + '</svg>'
+    + '<div class="pa-chart-tooltip" id="' + svgId + '-tip" style="display:none"></div>';
+}
+
+function bindChartInteraction() {
+  var hit = document.querySelector('.pa-chart-hit');
+  if (!hit) return;
+  var svgId = hit.id.replace(/-hit$/, '');
+  var svg   = document.getElementById(svgId);
+  var cross = document.getElementById(svgId + '-cross');
+  var tip   = document.getElementById(svgId + '-tip');
+  var n      = parseInt(svg.dataset.n, 10);
+  var padL   = parseFloat(svg.dataset.padl);
+  var plotW  = parseFloat(svg.dataset.plotw);
+  var padT   = parseFloat(svg.dataset.padt);
+  var plotH  = parseFloat(svg.dataset.ploth);
+  var niceMax = parseFloat(svg.dataset.nicemax);
+  var unit   = svg.dataset.unit || '';
+
+  function xAt(i) { return n === 1 ? padL + plotW / 2 : padL + (i * plotW / (n - 1)); }
+  function yAt(v) { return padT + plotH - (v / niceMax) * plotH; }
+
+  hit.addEventListener('mousemove', function (e) {
+    var rect  = svg.getBoundingClientRect();
+    var scale = CHART_W / rect.width;
+    var mx    = (e.clientX - rect.left) * scale;
+    var idx   = Math.round((mx - padL) / plotW * (n - 1));
+    idx = Math.max(0, Math.min(n - 1, idx));
+
+    var point = _lastSeries[idx];
+    var val   = chartMetric === 'knobits' ? point.knobitsDone : point.minutes;
+    var x = xAt(idx), y = yAt(val);
+
+    cross.style.display = '';
+    cross.querySelector('line').setAttribute('x1', x);
+    cross.querySelector('line').setAttribute('x2', x);
+    cross.querySelector('circle').setAttribute('cx', x);
+    cross.querySelector('circle').setAttribute('cy', y);
+
+    tip.style.display = '';
+    tip.textContent = _fmtDateShort(point.date) + ': ' + val + unit;
+    tip.style.left = (rect.left + (x / CHART_W) * rect.width) + 'px';
+    tip.style.top  = (rect.top + (y / CHART_H) * rect.height - 10) + 'px';
+  });
+
+  hit.addEventListener('mouseleave', function () {
+    cross.style.display = 'none';
+    tip.style.display = 'none';
+  });
 }
 
 /* ── Õpisündmused / Nutikus / Eesmärgid — same sections, same CSS

@@ -640,6 +640,33 @@ body { overflow-y: auto; }
 .pa-chart-block-total { font-size: 11px; color: var(--c5); }
 .pa-chart-block .spark-svg { width: 100%; height: 48px; display: block; }
 
+.pa-chart-controls { display: flex; gap: 8px; }
+
+/* Line chart (Kasutuse ülevaade) — one metric at a time, dotted grid,
+   value labels on local peaks, hover crosshair + tooltip. */
+.pa-chart-line-wrap { width: 100%; position: relative; }
+.pa-chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.pa-chart-gridline { stroke: var(--i10); stroke-width: 1; stroke-dasharray: 2.5 3; }
+.pa-chart-axis-label {
+  font-size: 10px; fill: var(--c5); font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.pa-chart-area { fill: var(--accent); opacity: 0.10; stroke: none; }
+.pa-chart-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.pa-chart-dot { fill: var(--accent); stroke: var(--panel-a, #fff); stroke-width: 2; }
+.pa-chart-value-label { font-size: 10px; font-weight: 700; fill: var(--c2); font-family: inherit; }
+.pa-chart-crosshair line { stroke: var(--c6); stroke-width: 1; stroke-dasharray: 2.5 3; }
+.pa-chart-crosshair circle { fill: var(--accent); stroke: var(--panel-a, #fff); stroke-width: 2; }
+.pa-chart-hit { fill: transparent; cursor: crosshair; }
+.pa-chart-tooltip {
+  position: fixed; transform: translate(-50%, -100%);
+  background: var(--c1); color: #fff;
+  font-size: 11px; font-weight: 650;
+  padding: 4px 9px; border-radius: 6px;
+  pointer-events: none; z-index: 50; white-space: nowrap;
+}
+.pa-chart-empty { font-size: 11px; color: var(--c5); padding: 32px 0; text-align: center; }
+
 /* Child detail */
 .pa-detail-wrap {
   padding: 28px 32px 40px;
