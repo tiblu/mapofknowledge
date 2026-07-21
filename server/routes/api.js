@@ -786,6 +786,28 @@ async function _getLearnedContent(passportId, knobitId) {
   return parts.join('\n\n');
 }
 
+// Practice problems already asked in this knobit — generatePractice() has no
+// other way to know it already asked something nearly identical for an
+// earlier problemIndex (e.g. "straightforward" vs "moderate" difficulty on
+// the same fact tends to produce near-duplicate questions otherwise).
+async function _getPriorPracticeQuestions(passportId, knobitId) {
+  if (!passportId) return [];
+  const [rows] = await db.execute(
+    `SELECT content FROM knobit_interactions
+     WHERE passport_id = ? AND knobit_id = ? AND phase = 'practice' AND block_type = 'practice'
+     ORDER BY id`,
+    [passportId, knobitId]
+  );
+  const questions = [];
+  for (const row of rows) {
+    try {
+      const p = JSON.parse(row.content || '{}');
+      if (p.question) questions.push(p.question);
+    } catch { /* malformed practice JSON — skip */ }
+  }
+  return questions;
+}
+
 // ── LLM learning interactions ────────────────────────────────────────────────
 router.post('/learn/interact', async (req, res) => {
   const {
@@ -901,7 +923,8 @@ router.post('/learn/interact', async (req, res) => {
         result = { grade };
         await _saveInteraction(passportId, knobitId, 'practice', 'feedback', byteIndex, result.grade.correct ? 'correct' : 'incorrect', userAnswer, JSON.stringify(result.grade));
       } else {
-        let practice = await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid, learnedContent);
+        const priorQuestions = await _getPriorPracticeQuestions(passportId, knobitId);
+        let practice = await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid, learnedContent, priorQuestions);
         if (locale !== 'en') {
           const edited = await llm.editTranslatedText({ question: practice.question }, locale, uid);
           practice = { ...practice, ...edited };

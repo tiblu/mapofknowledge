@@ -501,10 +501,13 @@ No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(loca
 // session (see api.js's _getLearnedContent, sourced from knobit_interactions) —
 // grounds the question in what was really taught instead of inventing fresh,
 // possibly contradictory or ungrounded trivia about the topic.
-async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, profile, userId, learnedContent) {
+async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, profile, userId, learnedContent, priorQuestions = []) {
   const difficulty = problemIndex === 0 ? 'straightforward' : problemIndex === 1 ? 'moderate' : 'challenging';
   const contentBlock = learnedContent
     ? `\n\nWhat the learner has actually studied so far in this knobit:\n"""\n${learnedContent}\n"""\n`
+    : '';
+  const priorBlock = priorQuestions.length
+    ? `\n\nPractice questions already asked earlier in this same knobit — the new question must test a genuinely different fact, aspect, or angle, not a reworded/renumbered version of one of these:\n${priorQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n`
     : '';
   const msg = await client.messages.create({
     model: SONNET,
@@ -514,7 +517,7 @@ async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, pr
       role: 'user',
       content: `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"
 Practice problem ${problemIndex + 1} — difficulty: ${difficulty}
-${contentBlock}
+${contentBlock}${priorBlock}
 Base the question strictly on the content above — do not introduce facts, names, agencies, dates, or figures that are not stated there. If the content mentions a specific institution or example only illustratively, do not turn it into a "name the exact institution" quiz question — narrow factual/administrative details can change over time and are not the point being taught. Favor questions that test understanding, reasoning, or application (e.g. "what would you do if...", "why does X matter here", "what is the key difference between...") over recall of a specific name, statistic, or institution.
 Ask exactly ONE question. A short setup sentence for context is fine, but do NOT stack a second question onto it — no "and", no em dash, no semicolon joining two separate things being asked. There must be exactly one thing the learner needs to answer, with exactly one expected answer.
 
