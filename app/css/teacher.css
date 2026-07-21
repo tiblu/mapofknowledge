@@ -644,17 +644,20 @@ body { overflow-y: auto; }
 
 /* Line chart (Kasutuse ülevaade) — one metric at a time, dotted grid,
    value labels on local peaks, hover crosshair + tooltip. */
-.pa-chart-line-wrap { width: 100%; position: relative; }
+/* Capped at (roughly) the SVG's own viewBox width — width:100% on a wider
+   card would scale the whole coordinate system up, including every
+   embedded font-size, which is what made the chart and its text balloon. */
+.pa-chart-line-wrap { width: 100%; max-width: 460px; position: relative; }
 .pa-chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
 .pa-chart-gridline { stroke: var(--i10); stroke-width: 1; stroke-dasharray: 2.5 3; }
 .pa-chart-axis-label {
-  font-size: 10px; fill: var(--c5); font-family: inherit;
+  font-size: 9px; fill: var(--c5); font-family: inherit;
   font-variant-numeric: tabular-nums;
 }
 .pa-chart-area { fill: var(--accent); opacity: 0.10; stroke: none; }
-.pa-chart-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.pa-chart-dot { fill: var(--accent); stroke: var(--panel-a, #fff); stroke-width: 2; }
-.pa-chart-value-label { font-size: 10px; font-weight: 700; fill: var(--c2); font-family: inherit; }
+.pa-chart-line { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.pa-chart-dot { fill: var(--accent); stroke: var(--panel-a, #fff); stroke-width: 1.5; }
+.pa-chart-value-label { font-size: 9px; font-weight: 700; fill: var(--c2); font-family: inherit; }
 .pa-chart-crosshair line { stroke: var(--c6); stroke-width: 1; stroke-dasharray: 2.5 3; }
 .pa-chart-crosshair circle { fill: var(--accent); stroke: var(--panel-a, #fff); stroke-width: 2; }
 .pa-chart-hit { fill: transparent; cursor: crosshair; }

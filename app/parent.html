@@ -337,7 +337,11 @@ function _fmtDateShort(iso) {
   catch (e) { return iso; }
 }
 
-var CHART_W = 640, CHART_H = 220, CHART_PAD_L = 40, CHART_PAD_R = 14, CHART_PAD_T = 26, CHART_PAD_B = 28;
+// Kept close to the SVG's own coordinate size (see .pa-chart-line-wrap's
+// matching max-width) — width:100%+viewBox scaling means a wider render
+// also scales up every embedded font-size, which is what made the chart
+// and its text balloon on a wide container.
+var CHART_W = 460, CHART_H = 140, CHART_PAD_L = 32, CHART_PAD_R = 10, CHART_PAD_T = 16, CHART_PAD_B = 18;
 
 function lineChart(dates, values, opts) {
   opts = opts || {};
@@ -381,12 +385,12 @@ function lineChart(dates, values, opts) {
     var prev = i > 0 ? values[i - 1] : -1;
     var next = i < n - 1 ? values[i + 1] : -1;
     if (v >= prev && v >= next && (v > prev || v > next)) {
-      peakLabels += '<text x="' + xAt(i) + '" y="' + (yAt(v) - 10) + '" class="pa-chart-value-label" text-anchor="middle">' + v + esc(opts.unit || '') + '</text>';
+      peakLabels += '<text x="' + xAt(i) + '" y="' + (yAt(v) - 8) + '" class="pa-chart-value-label" text-anchor="middle">' + v + esc(opts.unit || '') + '</text>';
     }
   });
 
   var dots = values.map(function (v, i) {
-    return '<circle cx="' + xAt(i) + '" cy="' + yAt(v) + '" r="3.5" class="pa-chart-dot"/>';
+    return '<circle cx="' + xAt(i) + '" cy="' + yAt(v) + '" r="2.75" class="pa-chart-dot"/>';
   }).join('');
 
   var svgId = 'lc' + Math.random().toString(36).slice(2, 8);
@@ -399,7 +403,7 @@ function lineChart(dates, values, opts) {
     + dots + peakLabels + yLabels + xLabels
     + '<g class="pa-chart-crosshair" id="' + svgId + '-cross" style="display:none">'
     + '<line x1="0" y1="' + padT + '" x2="0" y2="' + (padT + plotH) + '"/>'
-    + '<circle r="5"/>'
+    + '<circle r="4"/>'
     + '</g>'
     + '<rect x="' + padL + '" y="' + padT + '" width="' + plotW + '" height="' + plotH + '" class="pa-chart-hit" id="' + svgId + '-hit"/>'
     + '</svg>'
