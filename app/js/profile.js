@@ -953,136 +953,6 @@
     }
   }
 
-  function renderLinks(links, role) {
-    var card = document.getElementById('links-card');
-    if (!card) return;
-    var asStudent = links.asStudent || [];
-    var asLinked  = links.asLinked  || [];
-
-    function linkRow(item, isStudent) {
-      var roleLabel = item.role === 'teacher' ? t('link.role_teacher') : t('link.role_parent');
-      var pending = !isStudent && item.status === 'pending' && !item.student_name;
-      var name = pending ? t('link.pending_student') : esc(isStudent ? item.linked_name : item.student_name);
-      return `<div class="p-link-row">
-        <div class="p-link-role-badge ${item.role}">${roleLabel}</div>
-        <div class="p-link-name">${name}</div>
-        <button class="p-row-delete-btn" onclick="window.revokeLink(${item.id})" title="${esc(t('btn.remove'))}">×</button>
-      </div>`;
-    }
-
-    var teacherLinks = asStudent.filter(function(l){ return l.role === 'teacher'; });
-    var parentLinks  = asStudent.filter(function(l){ return l.role === 'parent';  });
-
-    var html = `<div class="p-card-title">${t('section.s7_title')}</div>`;
-
-    if (asStudent.length || asLinked.length) {
-      if (teacherLinks.length) {
-        html += `<div class="p-link-group-label">${t('link.my_teachers')}</div>` +
-          teacherLinks.map(function(l){ return linkRow(l, true); }).join('');
-      }
-      if (parentLinks.length) {
-        html += `<div class="p-link-group-label">${t('link.my_parents')}</div>` +
-          parentLinks.map(function(l){ return linkRow(l, true); }).join('');
-      }
-      if (asLinked.length) {
-        html += `<div class="p-link-group-label">${t('link.as_linked')}</div>` +
-          asLinked.map(function(l){ return linkRow(l, false); }).join('');
-      }
-    } else {
-      html += empty(t('msg.no_links'));
-    }
-
-    html += `<div class="p-link-accept-form">
-      <div class="p-link-accept-label">${t('link.have_code')}</div>
-      <div class="p-link-accept-row">
-        <input id="link-code-input" class="p-edit-input p-link-code-input" placeholder="${esc(t('link.code_placeholder'))}" maxlength="8">
-        <button class="p-edit-btn primary" onclick="window.acceptLink()">${t('btn.join')}</button>
-      </div>
-      <div id="link-accept-msg" class="p-link-accept-msg"></div>
-    </div>`;
-
-    html += `<div class="p-link-invite-section">
-      <div class="p-link-accept-label">${t('link.invite_section')}</div>
-      <div class="p-link-accept-row" style="flex-wrap:wrap;gap:6px">
-        <button class="p-edit-btn" onclick="window.generateInvite('teacher')">${t('btn.invite_student')}</button>
-        <button class="p-edit-btn" onclick="window.generateInvite('parent')">${t('btn.invite_child')}</button>
-      </div>
-      <div id="link-invite-result" class="p-link-invite-result"></div>
-    </div>`;
-
-    if (role === 'teacher' || role === 'parent') {
-      html += `<div class="p-link-invite-section">
-        <div class="p-link-accept-label">${t('link.invite_student_section')}</div>
-        <div class="p-link-accept-row" style="flex-wrap:wrap;gap:6px">
-          <button class="p-edit-btn" onclick="window.generateStudentInvite()">${t('btn.generate_student_code')}</button>
-        </div>
-        <div id="link-student-invite-result" class="p-link-invite-result"></div>
-      </div>`;
-    }
-
-    card.innerHTML = html;
-  }
-
-  window.generateInvite = function(role) {
-    var result = document.getElementById('link-invite-result');
-    fetch('/api/links/invite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: role }),
-    }).then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (!result) return;
-        if (d.error) { result.textContent = d.error; return; }
-        var hint = role === 'teacher' ? t('link.code_hint') : t('link.code_hint_child');
-        var code = esc(d.invite_code);
-        result.innerHTML = '<div class="p-link-code-display">'
-          + '<span class="p-link-code-value">' + code + '</span>'
-          + '<button class="p-edit-btn" onclick="navigator.clipboard.writeText(\'' + code + '\')">' + t('btn.copy_code') + '</button>'
-          + '</div>'
-          + '<div class="p-link-code-hint">' + esc(hint) + '</div>';
-      })
-      .catch(function() { if (result) result.textContent = t('msg.save_failed_short'); });
-  };
-
-  window.generateStudentInvite = function() {
-    var result = document.getElementById('link-student-invite-result');
-    fetch('/api/links/invite-student', { method: 'POST' })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (!result) return;
-        if (d.error) { result.textContent = d.error; return; }
-        var code = esc(d.invite_code);
-        result.innerHTML = '<div class="p-link-code-display">'
-          + '<span class="p-link-code-value">' + code + '</span>'
-          + '<button class="p-edit-btn" onclick="navigator.clipboard.writeText(\'' + code + '\')">' + t('btn.copy_code') + '</button>'
-          + '</div>'
-          + '<div class="p-link-code-hint">' + esc(t('link.code_hint_signup')) + '</div>';
-      })
-      .catch(function() { if (result) result.textContent = t('msg.save_failed_short'); });
-  };
-
-  window.revokeLink = function(id) {
-    fetch('/api/links/' + id, { method: 'DELETE' })
-      .then(function() { window.loadProfile(); }).catch(function() {});
-  };
-
-  window.acceptLink = function() {
-    var input = document.getElementById('link-code-input');
-    if (!input || !input.value.trim()) { if (input) input.focus(); return; }
-    var msg = document.getElementById('link-accept-msg');
-    fetch('/api/links/accept', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invite_code: input.value.trim() }),
-    }).then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (d.error) { if (msg) msg.textContent = d.error; return; }
-        if (msg) msg.textContent = t('msg.link_accepted');
-        window.loadProfile();
-      })
-      .catch(function() { if (msg) msg.textContent = t('msg.save_failed_short'); });
-  };
-
   /* ─── Main load ───────────────────────────────────────────────── */
   window.loadProfile = function () {
     fetch('/api/profile')
@@ -1110,11 +980,8 @@
     Promise.all([
       fetch('/api/game/state').then(r => r.json()).catch(() => null),
       fetch('/api/game/achievements').then(r => r.json()).catch(() => []),
-      fetch('/api/links').then(r => r.json()).catch(() => ({ asStudent: [], asLinked: [] })),
-      fetch('/auth/me').then(r => r.json()).catch(() => null),
     ]).then(function(results) {
       renderGameState(results[0], results[1]);
-      renderLinks(results[2], results[3] && results[3].role);
     });
   };
 

@@ -126,25 +126,6 @@
 
 </div>
 
-<!-- Add-child modal -->
-<div class="link-modal" id="add-child-modal" style="display:none">
-  <div class="link-modal-box">
-    <div class="link-modal-title">Lisa laps</div>
-    <div style="font-size:12px;color:var(--c5);margin-bottom:16px;line-height:1.6">
-      Paluge lapsel avada oma profiililehe jaotis "Seosed" ja sisestada sealt saadud kood siia.
-    </div>
-    <div style="margin-bottom:10px">
-      <input type="text" placeholder="Lapse kood (nt K9X3WA)…"
-        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1px solid var(--i14);border-radius:9px;font-size:14px;font-family:inherit;color:var(--c1);background:var(--bg);outline:none">
-    </div>
-    <div class="link-modal-hint">Kood leitakse lapse profiililt → Seosed → Lisa lapsevanem.</div>
-    <div style="display:flex;gap:8px">
-      <button class="ta-action-btn" onclick="document.getElementById('add-child-modal').style.display='none'" style="flex:1">Tühista</button>
-      <button class="ta-action-btn ta-btn-primary" style="flex:1">Ühenda</button>
-    </div>
-  </div>
-</div>
-
 <script src="js/topbar-notif.js"></script>
 <script src="js/role-nav.js"></script>
 <script>
@@ -273,10 +254,8 @@ window.closeDetail = function() {
 };
 
 document.getElementById('btn-add-child').addEventListener('click', function(){
-  document.getElementById('add-child-modal').style.display = 'flex';
-});
-document.querySelectorAll('.link-modal').forEach(function(m){
-  m.addEventListener('click', function(e){ if(e.target===m) m.style.display='none'; });
+  // Generating a code now happens in Seaded (Connections), not here.
+  (window.navOverlay || function (p) { window.location = p; })('settings.html#connections');
 });
 
 renderCards();

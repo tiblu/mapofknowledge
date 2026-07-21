@@ -7,6 +7,7 @@ const db       = require('../db');
 const { notify, getUserLocale } = require('../services/notifications');
 const { moderateTags } = require('../services/llm');
 const { sendVerificationEmail } = require('../services/mailer');
+const { redeemLinkCode } = require('../services/links');
 const router   = express.Router();
 
 // ── Shared signup helpers ───────────────────────────────────────────────────
@@ -106,25 +107,20 @@ async function createPassportFromPending(conn, pending) {
   return passportId;
 }
 
-async function consumeLinkCode(conn, pending, passportId) {
+// A code entered during signup is only ever collected on the learner
+// role-tab, so pending.role is always 'learner' here — same eligibility
+// rules as redeeming from Settings apply (role.learner + age <= 20). Fails
+// silently: this field is optional, and a bad code shouldn't block signup —
+// the learner can always enter it again later from Seaded.
+async function consumeLinkCode(pending, passportId, userId) {
   if (!pending.linkCode) return;
-  const [linkRows] = await conn.execute(
-    `SELECT * FROM learner_links WHERE invite_code = ? AND status = 'pending' AND passport_id IS NULL`,
-    [pending.linkCode]
-  );
-  if (!linkRows.length) return;
-  const link = linkRows[0];
-  await conn.execute(
-    `UPDATE learner_links SET passport_id = ?, status = 'active', invite_code = NULL, accepted_at = NOW()
-     WHERE id = ?`,
-    [passportId, link.id]
-  );
-  const linkedLocale = await getUserLocale(link.linked_user_id);
-  notify(link.linked_user_id, 'link_accepted',
-    linkedLocale === 'et' ? 'Uus õpilane liitus' : 'A new student joined',
-    linkedLocale === 'et'
-      ? (pending.displayName || 'Õpilane') + ' liitus sinu koodiga.'
-      : (pending.displayName || 'A student') + ' joined using your code.');
+  await redeemLinkCode({
+    passportId,
+    userId,
+    userRole: pending.role,
+    birthYear: pending.birthYear,
+    code: pending.linkCode,
+  });
 }
 
 function sendWelcomeNotification(userId, locale) {
@@ -191,7 +187,7 @@ passport.use(new GoogleStrategy(
             );
           }
 
-          await consumeLinkCode(conn, pending, passportId);
+          await consumeLinkCode(pending, passportId, userId);
 
           req.session.pendingSignup = null;
 
@@ -319,7 +315,7 @@ router.post('/signup/password', async (req, res) => {
       );
     }
 
-    await consumeLinkCode(conn, pending, passportId);
+    await consumeLinkCode(pending, passportId, userId);
 
     const signupLocale = await getUserLocale(userId);
     sendWelcomeNotification(userId, signupLocale);

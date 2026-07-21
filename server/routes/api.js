@@ -6,6 +6,7 @@ const game    = require('../services/game');
 const { notify, getUserLocale } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
 const { renderPassportText } = require('../services/passportText');
+const { redeemLinkCode, generateCode } = require('../services/links');
 const testlog = require('../testlog'); // TESTLOG
 
 // ── User profile helper ──────────────────────────────────────────────────────
@@ -1943,10 +1944,6 @@ router.get('/game/leaderboard', async (req, res) => {
 });
 
 // ── Learner links (parent / teacher) ─────────────────────────────────────────
-function _randomCode() {
-  return Math.random().toString(36).substring(2, 10).toUpperCase();
-}
-
 router.get('/links', async (req, res) => {
   const userId = req.user?.id;
   const passportId = req.user?.passport_id;
@@ -1973,65 +1970,87 @@ router.get('/links', async (req, res) => {
   }
 });
 
-router.post('/links/invite', async (req, res) => {
-  const passportId = req.user?.passport_id;
-  if (!passportId) return res.status(400).json({ error: 'No passport' });
-  const { role } = req.body;
-  if (!['parent','teacher'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-  try {
-    const code = _randomCode();
-    await db.execute(
-      `INSERT INTO learner_links (passport_id, linked_user_id, role, status, invite_code, invited_at)
-       VALUES (?, NULL, ?, 'pending', ?, NOW())`,
-      [passportId, role, code]
-    );
-    res.json({ invite_code: code });
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to create invite' });
+// A teacher/parent's own connection code — persistent and reusable by many
+// students/children until explicitly regenerated (not single-use). Stored
+// directly on their users row rather than on a learner_links pending row,
+// since it isn't tied to any one student.
+router.get('/links/my-code', async (req, res) => {
+  const role = req.user?.role;
+  if (!['teacher', 'parent', 'admin', 'super_admin'].includes(role)) {
+    return res.status(403).json({ error: 'not_allowed' });
   }
-});
-
-router.post('/links/accept', async (req, res) => {
-  const userId = req.user?.id;
-  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
-  const { invite_code } = req.body;
-  if (!invite_code) return res.status(400).json({ error: 'invite_code required' });
   try {
     const [rows] = await db.execute(
-      `SELECT * FROM learner_links WHERE invite_code = ? AND status = 'pending'`,
-      [invite_code.toUpperCase()]
+      'SELECT link_code, link_code_role, link_code_generated_at FROM users WHERE id = ?',
+      [req.user.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Invalid or expired code' });
-    const link = rows[0];
-    await db.execute(
-      `UPDATE learner_links SET linked_user_id = ?, status = 'active', invite_code = NULL, accepted_at = NOW()
-       WHERE id = ?`,
-      [userId, link.id]
-    );
-    res.json({ ok: true, role: link.role });
+    const row = rows[0] || {};
+    res.json({
+      code: row.link_code || null,
+      role: row.link_code_role || null,
+      generatedAt: row.link_code_generated_at || null,
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to accept invite' });
+    res.status(500).json({ error: 'Failed to load code' });
   }
 });
 
-// Teacher/parent generates a code *before* the student has an account —
-// opposite direction from /links/invite above (student generates, teacher/
-// parent accepts). Consumed during signup in server/routes/auth.js.
-router.post('/links/invite-student', async (req, res) => {
-  const userId = req.user?.id;
-  const role   = req.user?.role;
+router.post('/links/my-code/generate', async (req, res) => {
+  const userId  = req.user?.id;
+  const account = req.user?.role;
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
-  if (!['parent', 'teacher'].includes(role)) return res.status(403).json({ error: 'Not allowed' });
+
+  // A real teacher/parent account always generates in their own role — the
+  // body is ignored. Only admin/super_admin (testing/support) must say which
+  // kind of code they mean, since their account isn't inherently either.
+  let asRole;
+  if (account === 'teacher' || account === 'parent') {
+    asRole = account;
+  } else if (account === 'admin' || account === 'super_admin') {
+    asRole = req.body?.asRole;
+    if (!['teacher', 'parent'].includes(asRole)) {
+      return res.status(400).json({ error: 'asRole must be teacher or parent' });
+    }
+  } else {
+    return res.status(403).json({ error: 'not_allowed' });
+  }
+
   try {
-    const code = _randomCode();
+    const code = generateCode();
     await db.execute(
-      `INSERT INTO learner_links (passport_id, linked_user_id, role, status, invite_code, invited_at)
-       VALUES (NULL, ?, ?, 'pending', ?, NOW())`,
-      [userId, role, code]
+      'UPDATE users SET link_code = ?, link_code_role = ?, link_code_generated_at = NOW() WHERE id = ?',
+      [code, asRole, userId]
     );
-    res.json({ invite_code: code });
+    res.json({ code, role: asRole, generatedAt: new Date() });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create invite' });
+    res.status(500).json({ error: 'Failed to generate code' });
+  }
+});
+
+// Learner redeems a teacher/parent's code. Eligibility (role=learner, age<=20)
+// is enforced in the shared service — same rules as the signup-wizard path.
+router.post('/links/redeem', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  const userId     = req.user?.id;
+  if (!userId || !passportId) return res.status(400).json({ error: 'no_passport' });
+
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
+  try {
+    const [passportRows] = await db.execute('SELECT birth_year FROM learner_passports WHERE id = ?', [passportId]);
+    const birthYear = passportRows[0]?.birth_year || null;
+
+    const result = await redeemLinkCode({
+      passportId,
+      userId,
+      userRole: req.user.role,
+      birthYear,
+      code: req.body?.code,
+      bypassChecks: isAdmin,
+    });
+    if (!result.ok) return res.status(400).json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: 'server_error' });
   }
 });
 
@@ -2040,11 +2059,39 @@ router.delete('/links/:id', async (req, res) => {
   const passportId = req.user?.passport_id;
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
   try {
-    await db.execute(
-      `UPDATE learner_links SET status = 'revoked'
-       WHERE id = ? AND (passport_id = ? OR linked_user_id = ?)`,
+    const [rows] = await db.execute(
+      `SELECT ll.*, lp.display_name AS student_name, lu_lp.display_name AS linked_name
+       FROM learner_links ll
+       LEFT JOIN learner_passports lp ON lp.id = ll.passport_id
+       LEFT JOIN users lu ON lu.id = ll.linked_user_id
+       LEFT JOIN learner_passports lu_lp ON lu_lp.id = lu.passport_id
+       WHERE ll.id = ? AND (ll.passport_id = ? OR ll.linked_user_id = ?)`,
       [req.params.id, passportId, userId]
     );
+    if (!rows.length) return res.status(404).json({ error: 'not_found' });
+    const link = rows[0];
+
+    await db.execute(`UPDATE learner_links SET status = 'revoked' WHERE id = ?`, [req.params.id]);
+
+    // Notify whichever side didn't initiate the disconnect.
+    if (userId === link.linked_user_id) {
+      // Teacher/parent disconnected — notify the learner, if they can log in.
+      const [learnerUsers] = await db.execute('SELECT id FROM users WHERE passport_id = ?', [link.passport_id]);
+      if (learnerUsers.length) {
+        const locale = await getUserLocale(learnerUsers[0].id);
+        const name = link.linked_name || (locale === 'et' ? 'Kasutaja' : 'A user');
+        notify(learnerUsers[0].id, 'link_removed',
+          locale === 'et' ? 'Ühendus katkestatud' : 'Connection removed',
+          locale === 'et' ? `${name} katkestas ühenduse.` : `${name} disconnected.`);
+      }
+    } else if (link.linked_user_id) {
+      const locale = await getUserLocale(link.linked_user_id);
+      const name = link.student_name || (locale === 'et' ? 'Õpilane' : 'A student');
+      notify(link.linked_user_id, 'link_removed',
+        locale === 'et' ? 'Ühendus katkestatud' : 'Connection removed',
+        locale === 'et' ? `${name} katkestas ühenduse.` : `${name} disconnected.`);
+    }
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to revoke link' });

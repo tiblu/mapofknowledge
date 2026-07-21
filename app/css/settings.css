@@ -277,3 +277,78 @@ body {
   margin-right: 6px; font-family: inherit;
   /* background and color are set dynamically via inline style */
 }
+
+/* ── Connections (teacher/parent/admin ↔ learner links) ───────────────── */
+.cx-list { margin-bottom: 14px; }
+.cx-empty { font-size: 13px; color: var(--c7); padding: 6px 4px; }
+.cx-group-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--c7); margin: 12px 0 6px; padding: 0 4px;
+}
+.cx-group-label:first-child { margin-top: 0; }
+.cx-row-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px; border-bottom: 1px solid var(--i08);
+}
+.cx-row-item:last-of-type { border-bottom: none; }
+.cx-role-badge {
+  font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+  flex-shrink: 0;
+}
+.cx-role-badge.teacher { background: rgba(91,168,216,0.18); color: #1868A8; }
+.cx-role-badge.parent  { background: rgba(139,173,126,0.22); color: #3A7030; }
+.cx-row-name { flex: 1; font-size: 13px; font-weight: 550; color: var(--c1); }
+.cx-remove-btn {
+  background: none; border: none; cursor: pointer; font-size: 16px;
+  color: var(--c7); line-height: 1; padding: 4px;
+}
+.cx-remove-btn:hover { color: var(--red-soft, #B5573F); }
+
+.cx-block { margin-top: 6px; }
+.cx-row { display: flex; gap: 8px; margin-top: 8px; }
+.cx-code-field { font-family: monospace; letter-spacing: 0.12em; text-transform: uppercase; max-width: 140px; }
+.cx-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+.cx-msg.ok  { color: #3F8778; }
+.cx-msg.err { color: var(--red-soft, #B5573F); }
+
+.cx-role-picker { display: flex; gap: 8px; margin: 8px 0; }
+
+.cx-code-display {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px;
+}
+.cx-code-value {
+  font-family: monospace; font-size: 18px; font-weight: 700; letter-spacing: 0.14em;
+  color: var(--c1); background: var(--i06); padding: 8px 14px; border-radius: 10px;
+}
+.cx-no-code { font-size: 13px; color: var(--c7); }
+.cx-mycode-hint { font-size: 12px; color: var(--c4); line-height: 1.6; margin-top: 8px; }
+
+/* ── Generic confirmation modal (disconnect, regenerate code) ── */
+#confirm-modal {
+  position: fixed; inset: 0; z-index: 500;
+  background: var(--overlay);
+  display: none; align-items: center; justify-content: center;
+  padding: 24px;
+}
+#confirm-modal.active { display: flex; }
+.confirm-modal-box {
+  background: var(--bg); border-radius: 18px;
+  padding: 28px 28px 22px; max-width: 360px; width: 100%;
+  box-shadow: 0 8px 32px var(--i18);
+}
+.confirm-modal-title { font-size: 17px; font-weight: 700; color: var(--c1); margin-bottom: 10px; }
+.confirm-modal-text  { font-size: 14px; color: var(--c3); line-height: 1.65; margin-bottom: 22px; }
+.confirm-modal-btns  { display: flex; flex-direction: column; gap: 9px; }
+.confirm-modal-confirm {
+  padding: 13px; background: linear-gradient(135deg, #D97A5F 0%, #C4826A 100%);
+  border: none; border-radius: 12px; font-size: 14px; font-weight: 600; font-family: inherit;
+  color: #fff; cursor: pointer; transition: opacity 0.13s;
+}
+.confirm-modal-confirm:hover { opacity: 0.90; }
+.confirm-modal-cancel {
+  padding: 13px; background: var(--i08);
+  border: none; border-radius: 12px; font-size: 14px; font-weight: 600; font-family: inherit;
+  color: var(--c2); cursor: pointer; transition: background 0.13s;
+}
+.confirm-modal-cancel:hover { background: var(--i14); }
