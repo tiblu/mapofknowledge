@@ -2358,24 +2358,19 @@ router.get('/parent/children/:passport_id', async (req, res) => {
     );
     if (!auth.length) return res.status(403).json({ error: 'Not linked' });
 
-    const [[passport]] = await db.execute(
-      'SELECT display_name FROM learner_passports WHERE id = ?', [passport_id]
-    );
-    const state = await game.getGameState(passport_id);
-    const [goals] = await db.execute(
-      `SELECT g.*, n.label AS node_label, COALESCE(unk.percentage,0) AS progress
-       FROM passport_goals g
-       LEFT JOIN nodes n ON n.external_id = g.node_external_id
-       LEFT JOIN user_node_knowledge unk ON unk.node_external_id = g.node_external_id AND unk.passport_id = g.passport_id
-       WHERE g.passport_id = ? ORDER BY g.status ASC, g.created_at DESC LIMIT 10`,
-      [passport_id]
-    );
-    const [events] = await db.execute(
-      `SELECT title, institution, event_date, type FROM passport_events
-       WHERE passport_id = ? ORDER BY event_date DESC LIMIT 10`,
-      [passport_id]
-    );
-    res.json({ passport, gameState: state, goals, events });
+    // Same source of truth as the learner's own Õppija pass (GET /api/profile)
+    // — Õpisündmused/Nutikus/Eesmärgid render identically for a parent.
+    // Deliberately NOT including gameState here: Mäng stays personal to the
+    // learner, not shown to parents.
+    const locale = await getUserLocale(userId);
+    const data = await _fetchFullPassport(passport_id, locale);
+    res.json({
+      passport: data.passport,
+      goals: data.goals,
+      events: data.events,
+      competence: data.competence,
+      mapKnowledge: data.mapKnowledge,
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load child detail' });
   }

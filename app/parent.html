@@ -267,11 +267,9 @@ function selectChild(id) {
     + '<div id="chart-minutes"></div>'
     + '</div>'
     + '</div>'
-    + '<div class="pa-detail-section" id="goal-section"></div>'
-    + '<div class="pa-detail-section">'
-    + '<div class="pa-detail-section-label">Viimane tegevus</div>'
-    + '<div id="events-section"></div>'
-    + '</div>';
+    + '<div class="pa-detail-section p-card" id="goal-section"></div>'
+    + '<div class="pa-detail-section p-card" id="competence-section"></div>'
+    + '<div class="pa-detail-section p-card" id="events-section"></div>';
 
   detail.classList.add('pa-detail-visible');
   detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -306,40 +304,130 @@ function loadChart(passportId) {
     .catch(function () {});
 }
 
+/* ── Õpisündmused / Nutikus / Eesmärgid — same sections, same CSS
+   classes (profile.css) and structure as the learner's own Õppija pass
+   (see app/js/profile.js renderEvents/renderCompetence/renderGoals),
+   trimmed to read-only: no add/edit/delete controls, since this is the
+   child's own portfolio, not the parent's to edit. Mäng stays out of
+   this entirely — personal to the learner. ── */
+function fmtDateLong(d) {
+  if (!d) return '';
+  try { return new Date(d).toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' }); }
+  catch (e) { return String(d).substring(0, 10); }
+}
+
+var _evFilterType = 'all';
+
+window.__setParentEvFilter = function (type) {
+  _evFilterType = type;
+  renderEventsSection(window.__lastEvents || []);
+};
+
+function renderEventsSection(events) {
+  window.__lastEvents = events;
+  var filtered = (events || []).filter(function (ev) { return _evFilterType === 'all' || ev.type === _evFilterType; });
+
+  var typePills = ['all', 'activity', 'assessment', 'evidence'].map(function (type) {
+    var label = type === 'all' ? (t('tab.all') || 'Kõik') : (t('label.' + type) || type);
+    var active = _evFilterType === type;
+    return '<button onclick="window.__setParentEvFilter(\'' + type + '\')" class="p-ev-pill ' + (active ? 'p-ev-pill-active' : 'p-ev-pill-inactive') + '">' + esc(label) + '</button>';
+  }).join('');
+
+  var rowsHtml = !filtered.length
+    ? '<div class="p-empty">' + esc(t('msg.no_events') || 'Tegevust pole veel.') + '</div>'
+    : filtered.slice(0, 20).map(function (ev) {
+        return '<div class="p-ledger-row">'
+          + '<div class="p-ledger-date">' + esc(fmtDateLong(ev.event_date)) + '</div>'
+          + '<div class="p-ledger-info">'
+          + '<div class="p-ledger-title">' + esc(ev.title) + '</div>'
+          + (ev.institution ? '<div class="p-ledger-sub">' + esc(ev.institution) + '</div>' : '')
+          + (ev.result ? '<div class="p-ledger-result">' + esc(ev.result) + '</div>' : '')
+          + '</div>'
+          + '<span class="p-type ' + esc(ev.type) + '">' + esc(t('label.' + ev.type) || ev.type) + '</span>'
+          + '</div>';
+      }).join('');
+
+  document.getElementById('events-section').innerHTML =
+    '<div class="p-card-title">' + esc(t('section.s2_title')) + '</div>'
+    + '<div class="p-ev-filter-row"><div class="p-ev-type-pills">' + typePills + '</div></div>'
+    + '<div class="p-scroll-lg">' + rowsHtml + '</div>';
+}
+
+function renderCompetenceSection(mapKnowledge) {
+  var items = mapKnowledge || [];
+  var el = document.getElementById('competence-section');
+  if (!items.length) {
+    el.innerHTML = '<div class="p-card-title">' + esc(t('section.s5_title')) + '</div>' + '<div class="p-empty">' + esc(t('msg.no_knowledge') || 'Teadmisi pole veel.') + '</div>';
+    return;
+  }
+  var BAR_COLORS = { tested: 'var(--color-success)', self_reported: 'var(--accent)', estimated: 'var(--c7)' };
+  var rows = items.map(function (k) {
+    var pct = Math.round(k.percentage) || 0;
+    var barColor = BAR_COLORS[k.source] || BAR_COLORS.estimated;
+    var srcClass = k.source === 'tested' ? 'tested' : 'self-reported';
+    var srcLabel = k.source === 'tested' ? t('label.tested') : k.source === 'self_reported' ? t('label.self_reported') : t('label.estimated');
+    return '<div class="p-prof-row">'
+      + '<div class="p-prof-info p-flex-1-noclip">'
+      + '<div class="p-prof-name">' + esc(k.label) + '</div>'
+      + (k.breadcrumb ? '<div class="p-prof-sub">' + esc(k.breadcrumb) + '</div>' : '')
+      + '<span class="p-source ' + srcClass + '">' + esc(srcLabel) + '</span>'
+      + '</div>'
+      + '<div class="p-bar-wrap">'
+      + '<div class="p-bar-track"><div class="p-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>'
+      + '<span class="p-bar-pct">' + pct + '%</span>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = '<div class="p-card-title">' + esc(t('section.s5_title')) + '</div><div class="p-scroll-xl">' + rows + '</div>';
+}
+
+function renderGoalsSection(goals) {
+  var all = goals || [];
+  var active = all.filter(function (g) { return g.status === 'in_progress'; });
+  var done = all.filter(function (g) { return g.status === 'completed'; });
+
+  function goalRow(g) {
+    var isDone = g.status === 'completed';
+    var isNodeGoal = !!g.node_external_id;
+    var doneDate = g.completed_at ? ' · ' + fmtDateLong(g.completed_at) : '';
+    var setDate = g.created_at ? fmtDateLong(g.created_at) : '';
+    var badge = isDone
+      ? '<span class="p-goal-badge-done">' + esc(t('label.completed_badge')) + '</span>'
+      : '<span class="p-goal-badge-active">' + esc(t('label.in_progress')) + '</span>';
+
+    if (isNodeGoal) {
+      var pct = Math.round(Number(g.progress) || 0);
+      var crumb = g.node_breadcrumb || g.node_label || g.text;
+      var target = g.target_date ? '<span class="p-goal-target">' + esc(t('label.goal_target_date')) + ': ' + esc(fmtDateLong(g.target_date)) + '</span>' : '';
+      return '<div class="p-goal-card p-goal-card-node ' + (isDone ? 'p-goal-card-done' : 'p-goal-card-active') + '">'
+        + '<div class="p-goal-node-header"><div class="p-goal-node-crumb">' + esc(crumb) + '</div></div>'
+        + (!isDone ? '<div class="p-goal-bar-track"><div class="p-goal-bar-fill" style="width:' + pct + '%"></div></div><div class="p-goal-bar-label">' + pct + '% ' + esc(t('label.goal_progress')) + '</div>' : '')
+        + '<div class="p-goal-footer">'
+        + '<div class="p-goal-meta">' + target + (setDate ? '<span class="p-goal-date">' + esc(setDate + doneDate) + '</span>' : '') + '</div>'
+        + '<div class="p-goal-actions">' + badge + '</div>'
+        + '</div></div>';
+    }
+    return '<div class="p-goal-card ' + (isDone ? 'p-goal-card-done' : 'p-goal-card-active') + '">'
+      + '<div class="p-goal-text">' + esc(g.text) + '</div>'
+      + '<div class="p-goal-footer"><span class="p-goal-date">' + esc(setDate + doneDate) + '</span><div class="p-goal-actions">' + badge + '</div></div>'
+      + '</div>';
+  }
+
+  var activeRows = active.length ? active.map(goalRow).join('') : '<div class="p-no-goals-text">' + esc(t('msg.no_active_goals') || 'Aktiivseid eesmärke pole') + '</div>';
+  var doneRows = done.length ? '<div class="p-goals-completed-label">' + esc(t('label.completed')) + '</div>' + done.map(goalRow).join('') : '';
+
+  document.getElementById('goal-section').innerHTML = '<div class="p-card-title">' + esc(t('section.s6_title')) + '</div>' + activeRows + doneRows;
+}
+
 function loadDetailInfo(passportId) {
+  _evFilterType = 'all';
   fetch('/api/parent/children/' + passportId)
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (selectedId !== passportId) return;
-      var goals  = (d.goals || []).filter(function (g) { return g.status === 'in_progress'; });
-      var events = d.events || [];
-
-      var goalSection = document.getElementById('goal-section');
-      if (goals.length) {
-        goalSection.innerHTML = '<div class="pa-detail-section-label">Aktiivne eesmärk</div>' + goals.map(function (g) {
-          var pct = Math.round(Number(g.progress) || 0);
-          var label = g.node_breadcrumb || g.node_label || g.text;
-          return '<div class="pa-goal-card">'
-            + '<div class="pa-goal-row"><div class="pa-goal-name">' + esc(label) + '</div><div class="pa-goal-pct">' + pct + '%</div></div>'
-            + '<div class="pa-bar-track"><div class="pa-bar-fill" style="width:' + pct + '%"></div></div>'
-            + (g.target_date ? '<div class="pa-goal-date">⏰ Tähtaeg: ' + esc(new Date(g.target_date).toLocaleDateString('et-EE', { year: 'numeric', month: 'long', day: 'numeric' })) + '</div>' : '')
-            + '</div>';
-        }).join('');
-      } else {
-        goalSection.innerHTML = '';
-      }
-
-      var eventsEl = document.getElementById('events-section');
-      eventsEl.innerHTML = events.length ? events.map(function (e) {
-        var when = e.event_date ? new Date(e.event_date).toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-        return '<div class="pa-event-row">'
-          + '<div class="pa-event-dot"></div>'
-          + '<div>'
-          + '<div class="pa-event-text">' + esc(e.title) + '</div>'
-          + '<div class="pa-event-time">' + esc(when) + '</div>'
-          + '</div>'
-          + '</div>';
-      }).join('') : '<div class="pa-empty">Tegevust pole veel.</div>';
+      renderGoalsSection(d.goals || []);
+      renderCompetenceSection(d.mapKnowledge || []);
+      renderEventsSection(d.events || []);
     })
     .catch(function () {});
 }
