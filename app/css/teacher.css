@@ -254,7 +254,7 @@ body { overflow-y: auto; }
 .ta-stat-label { font-size: 11px; color: var(--c5); }
 
 /* ── Dashboard: student card grid ───────────────── */
-.ta-cards-section { padding: 0 28px 32px; flex: 1; }
+.ta-cards-section { padding: 20px 28px 32px; flex: 1; }
 .ta-cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
