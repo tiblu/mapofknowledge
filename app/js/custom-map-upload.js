@@ -123,7 +123,16 @@ window.CMUpload = (function () {
   async function _submit() {
     var name = document.getElementById('cm-name').value.trim();
     if (!name) { _showMessage('error', 'Please enter a name for this map.'); return; }
-    if (!_parsedTerms || !_parsedTerms.length) { _showMessage('error', 'Please upload a JSON or CSV file first.'); return; }
+
+    var manual = window.CMManual && window.CMManual.isActive();
+    var terms;
+    if (manual) {
+      terms = window.CMManual.getTerms();
+      if (!terms.length) { _showMessage('error', 'Please add at least one node.'); return; }
+    } else {
+      if (!_parsedTerms || !_parsedTerms.length) { _showMessage('error', 'Please upload a JSON or CSV file first.'); return; }
+      terms = _parsedTerms;
+    }
 
     var btn     = document.getElementById('cm-import-btn');
     var spinner = document.getElementById('cm-spinner');
@@ -143,7 +152,7 @@ window.CMUpload = (function () {
       // Step 2: run import + matching
       _showMessage('', '');
       var importRes = await _fetch('POST', '/api/subsets/' + _subsetId + '/import', {
-        terms: _parsedTerms,
+        terms: terms,
       });
 
       // Hand off to review module
