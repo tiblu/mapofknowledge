@@ -4,21 +4,42 @@
    tour.css / tour.js includes from index.html.
    ═══════════════════════════════════════════ */
 
+/* Stacking: the tour must sit above absolutely everything else in the app,
+   including things that themselves use a high z-index for their own reasons
+   (e.g. #learning-mode gets bumped to 9500 while the tour fakes a demo
+   knobit) — otherwise clicks fall through to the real, live page under the
+   "highlight" instead of being caught by the tour's own blocking layer. */
 .tour-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  z-index: 9000;
+  z-index: 20000;
   pointer-events: all;
   cursor: default;
 }
 .tour-overlay.visible { display: block; }
 
-/* Spotlight: transparent box, box-shadow creates the dark surround */
+/* Dimming: ONE shared full-viewport layer with an SVG mask, so a step that
+   highlights more than one element at once (two cutouts) doesn't have each
+   cutout's own dimming darken the other — which is what happened when this
+   was N independent elements each faking "spotlight" via a huge box-shadow. */
+.tour-dim-svg {
+  display: none;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 19999;
+  pointer-events: none;
+}
+.tour-dim-svg.visible { display: block; }
+
+/* Spotlight: purely decorative glow border now — the SVG layer above does
+   the actual dimming/cutout work. */
 .tour-spotlight {
   display: none;
   position: fixed;
-  z-index: 9001;
+  z-index: 20001;
   border-radius: 10px;
   pointer-events: none;
   transition: left 0.35s cubic-bezier(.4,0,.2,1),
@@ -33,12 +54,10 @@
 
 @keyframes tour-spot-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 9999px rgba(0,0,0,0.62),
-                0 0 0 2px rgba(196,130,106,0.45);
+    box-shadow: 0 0 0 2px rgba(196,130,106,0.45);
   }
   50% {
-    box-shadow: 0 0 0 9999px rgba(0,0,0,0.62),
-                0 0 0 7px rgba(196,130,106,0.80),
+    box-shadow: 0 0 0 7px rgba(196,130,106,0.80),
                 0 0 22px 4px rgba(196,130,106,0.35);
   }
 }
@@ -47,7 +66,7 @@
 .tour-tooltip {
   display: none;
   position: fixed;
-  z-index: 9999;
+  z-index: 20002;
   width: 340px;
   background: linear-gradient(145deg, rgba(248,242,236,0.98) 0%, rgba(237,232,246,0.98) 100%);
   backdrop-filter: blur(14px);
@@ -139,7 +158,7 @@
   position: fixed;
   left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  z-index: 10000;
+  z-index: 20003;
   background: rgba(44,40,32,0.88);
   color: #fff;
   font-size: 14px; font-weight: 550; font-family: system-ui, sans-serif;

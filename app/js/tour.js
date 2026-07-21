@@ -11,7 +11,7 @@
   'use strict';
 
   var _step = 0;
-  var _overlay, _spots = [], _tip, _flash, _flashTimer;
+  var _overlay, _dimSvg, _maskEl, _spots = [], _tip, _flash, _flashTimer;
 
   /* ─── Inline icon helpers ──────────────────────────────────── */
   function _ico(d, s) {
@@ -84,15 +84,22 @@
       title:    t('tour.menu_title'),
       text:     t('tour.menu_text'),
       before: function () {
-        var dd = document.getElementById('nav-dropdown');
-        if (dd) dd.classList.add('open');
-        if (window.Anne && window.Anne.open) window.Anne.open();
+        if (window.Anne && window.Anne.setVisible) window.Anne.setVisible(true);
+        // Deferred: this before() hook runs synchronously inside the same
+        // click event that fired Tour.next() — both the menu and Anne have
+        // their own "close on any outside click" listener on `document`,
+        // which would otherwise see that same click bubble past and
+        // immediately undo the .open we're about to add.
+        setTimeout(function () {
+          var dd = document.getElementById('nav-dropdown');
+          if (dd) dd.classList.add('open');
+          if (window.Anne && window.Anne.open) window.Anne.open();
+        }, 30);
       },
       after: function () {
         var dd = document.getElementById('nav-dropdown');
         if (dd) dd.classList.remove('open');
-        var panel = document.getElementById('anne-panel');
-        if (panel) panel.classList.remove('open');
+        if (window.Anne && window.Anne.setVisible) window.Anne.setVisible(false);
       },
     },
     // 4 — Külgpaneel (unchanged from the old tour)
@@ -187,6 +194,8 @@
   }
 
   /* ─── DOM setup ────────────────────────────────────────────── */
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
   function _createDOM() {
     _overlay = document.createElement('div');
     _overlay.className = 'tour-overlay';
@@ -194,10 +203,37 @@
       _flashMsg(t('tour.overlay_hint'));
     });
 
+    // One shared dimming layer with an SVG mask, so a step that highlights
+    // more than one element at once gets ONE unified dark surround with
+    // multiple cutouts — not N independent elements each darkening
+    // everything outside themselves (which darkens the OTHER cutouts too).
+    _dimSvg = document.createElementNS(SVG_NS, 'svg');
+    _dimSvg.setAttribute('class', 'tour-dim-svg');
+    var maskId = 'tour-mask-' + Math.random().toString(36).slice(2, 8);
+    var maskEl = document.createElementNS(SVG_NS, 'mask');
+    maskEl.setAttribute('id', maskId);
+    var baseRect = document.createElementNS(SVG_NS, 'rect');
+    baseRect.setAttribute('x', '0'); baseRect.setAttribute('y', '0');
+    baseRect.setAttribute('width', '100%'); baseRect.setAttribute('height', '100%');
+    baseRect.setAttribute('fill', 'white'); // white = dark overlay shows here
+    maskEl.appendChild(baseRect);
+    var defs = document.createElementNS(SVG_NS, 'defs');
+    defs.appendChild(maskEl);
+    var dimRect = document.createElementNS(SVG_NS, 'rect');
+    dimRect.setAttribute('x', '0'); dimRect.setAttribute('y', '0');
+    dimRect.setAttribute('width', '100%'); dimRect.setAttribute('height', '100%');
+    dimRect.setAttribute('fill', 'black');
+    dimRect.setAttribute('fill-opacity', '0.62');
+    dimRect.setAttribute('mask', 'url(#' + maskId + ')');
+    _dimSvg.appendChild(defs);
+    _dimSvg.appendChild(dimRect);
+    _maskEl = maskEl;
+
     _tip = document.createElement('div');
     _tip.className = 'tour-tooltip';
 
     document.body.appendChild(_overlay);
+    document.body.appendChild(_dimSvg);
     document.body.appendChild(_tip);
   }
 
@@ -219,24 +255,51 @@
   }
 
   function _positionSpots(targets) {
-    _ensureSpots(targets.length);
-    _spots.forEach(function (el, i) {
-      if (i >= targets.length) { el.classList.remove('visible'); return; }
-      var t2   = targets[i];
+    // Rebuild the mask's cutout rects (everything after the base white rect).
+    while (_maskEl.children.length > 1) _maskEl.removeChild(_maskEl.lastChild);
+
+    var rects = [];
+    targets.forEach(function (t2) {
       var node = t2.selector ? document.querySelector(t2.selector) : null;
       var rect = node ? node.getBoundingClientRect() : null;
-      if (!rect || (!rect.width && !rect.height)) { el.classList.remove('visible'); return; }
+      if (!rect || (!rect.width && !rect.height)) return;
       var p = t2.padding || 0;
-      el.style.left   = (rect.left   - p) + 'px';
-      el.style.top    = (rect.top    - p) + 'px';
-      el.style.width  = (rect.width  + p * 2) + 'px';
-      el.style.height = (rect.height + p * 2) + 'px';
+      rects.push({
+        left:   rect.left   - p,
+        top:    rect.top    - p,
+        width:  rect.width  + p * 2,
+        height: rect.height + p * 2,
+      });
+    });
+
+    rects.forEach(function (r) {
+      var cut = document.createElementNS(SVG_NS, 'rect');
+      cut.setAttribute('x', r.left);
+      cut.setAttribute('y', r.top);
+      cut.setAttribute('width', r.width);
+      cut.setAttribute('height', r.height);
+      cut.setAttribute('rx', 10);
+      cut.setAttribute('fill', 'black'); // black in a mask = hidden = the cutout
+      _maskEl.appendChild(cut);
+    });
+
+    // Decorative glow border per cutout (visual only — the SVG layer above
+    // does the actual dimming).
+    _ensureSpots(rects.length);
+    _spots.forEach(function (el, i) {
+      if (i >= rects.length) { el.classList.remove('visible'); return; }
+      var r = rects[i];
+      el.style.left   = r.left   + 'px';
+      el.style.top    = r.top    + 'px';
+      el.style.width  = r.width  + 'px';
+      el.style.height = r.height + 'px';
       el.classList.add('visible');
     });
   }
 
   function _hideSpots() {
     _spots.forEach(function (el) { el.classList.remove('visible'); el.style.cssText = ''; });
+    if (_maskEl) { while (_maskEl.children.length > 1) _maskEl.removeChild(_maskEl.lastChild); }
   }
 
   function _positionTip() {
@@ -293,6 +356,7 @@
       '</div>';
 
     _overlay.classList.add('visible');
+    if (_dimSvg) _dimSvg.classList.add('visible');
     _tip.classList.add('visible');
   }
 
@@ -304,6 +368,7 @@
 
   function _hide() {
     if (_overlay) _overlay.classList.remove('visible');
+    if (_dimSvg)  _dimSvg.classList.remove('visible');
     _hideSpots();
     if (_tip)     _tip.classList.remove('visible');
   }
@@ -318,16 +383,28 @@
   }
 
   /* ─── Public API ───────────────────────────────────────────── */
+  // Anne stays hidden for the whole tour except while step 3 is explaining
+  // her — otherwise her avatar sits there fully visible and clickable
+  // underneath every other step's "highlight".
+  function _hideAnne() {
+    if (window.Anne && window.Anne.setVisible) window.Anne.setVisible(false);
+  }
+  function _restoreAnne() {
+    if (window.Anne && window.Anne.setVisible) window.Anne.setVisible(true);
+  }
+
   window.Tour = {
     start: function () {
       STEPS = _buildSteps();
       if (!_overlay) _createDOM();
+      _hideAnne();
       _show(0);
     },
     restart: function () {
       _markDone(false);
       STEPS = _buildSteps();
       if (!_overlay) _createDOM();
+      _hideAnne();
       _show(0);
     },
     next: function () {
@@ -336,6 +413,7 @@
         _show(_step + 1);
       } else {
         _hide();
+        _restoreAnne();
         _markDone(true);
       }
     },
@@ -345,6 +423,7 @@
     skip: function () {
       _leave(_step);
       _hide();
+      _restoreAnne();
       _markDone(true);
     },
   };
