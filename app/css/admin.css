@@ -10,6 +10,35 @@ body { overflow-y: auto; }
   margin: 0 auto;
 }
 
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border, #2a3040);
+}
+
+.admin-tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted, #8899aa);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.admin-tab-btn:hover { color: var(--text, #dde3ef); }
+
+.admin-tab-btn.active {
+  color: var(--text, #dde3ef);
+  border-bottom-color: var(--accent, #5bc8d8);
+}
+
+.admin-tab-panel.hidden { display: none; }
+
 .admin-section {
   margin-bottom: 36px;
 }
