@@ -149,6 +149,8 @@
 
       <div class="ta-main-header">
         <span class="ta-main-title" id="dashboard-title">Minu õpilased</span>
+        <div style="flex:1"></div>
+        <button class="ta-action-btn ta-btn-primary" id="btn-suggest-goal">Sea eesmärk</button>
       </div>
 
       <div class="ta-cards-section">
@@ -167,8 +169,6 @@
           </svg>
           Tagasi nimekirja
         </button>
-        <div style="flex:1"></div>
-        <button class="ta-action-btn ta-btn-primary" id="btn-suggest-goal">Sea eesmärk</button>
       </div>
 
       <div class="ta-detail" id="detail-panel"></div>
@@ -176,6 +176,58 @@
     </div>
 
   </main>
+</div>
+
+<!-- Goal-setting modal -->
+<div class="link-modal" id="goal-modal" style="display:none">
+  <div class="link-modal-box goal-modal-box">
+    <div class="link-modal-title">Sea eesmärk</div>
+
+    <div id="goal-step-build">
+      <div class="goal-modal-label">Otsi teemat</div>
+      <div class="goal-search-wrap">
+        <input type="text" id="goal-node-search" class="ta-input" placeholder="Nt. Murrud, Fotosüntees, Eesti ajalugu…" autocomplete="off">
+        <div class="goal-search-results" id="goal-search-results" style="display:none"></div>
+      </div>
+      <div class="goal-selected-node" id="goal-selected-node" style="display:none"></div>
+
+      <div class="goal-modal-label">Kellele</div>
+      <div class="goal-target-tabs" id="goal-target-tabs">
+        <button type="button" class="goal-target-tab active" data-target="student">Üksik õpilane</button>
+        <button type="button" class="goal-target-tab" data-target="group">Rühm</button>
+        <button type="button" class="goal-target-tab" data-target="all">Kõik õpilased</button>
+      </div>
+      <select class="ta-input" id="goal-target-student" style="margin-top:10px"></select>
+      <select class="ta-input" id="goal-target-group" style="margin-top:10px;display:none"></select>
+      <div class="goal-target-all-hint" id="goal-target-all-hint" style="display:none"></div>
+
+      <div class="goal-modal-label">Tähtaeg (valikuline)</div>
+      <input type="date" id="goal-deadline" class="ta-input">
+
+      <div class="goal-modal-msg err" id="goal-build-msg"></div>
+
+      <div class="goal-modal-actions">
+        <button class="ta-action-btn" id="btn-goal-cancel">Tühista</button>
+        <button class="ta-action-btn ta-btn-primary" id="btn-goal-next">Edasi</button>
+      </div>
+    </div>
+
+    <div id="goal-step-confirm" style="display:none">
+      <div class="goal-confirm-summary" id="goal-confirm-summary"></div>
+      <div class="goal-confirm-warning">Tähtis: kui eesmärk on seatud, ei saa õpetaja seda enam eemaldada. Õpilane saab selle vajadusel ise oma Õppija passist kustutada.</div>
+      <div class="goal-modal-actions">
+        <button class="ta-action-btn" id="btn-goal-back">Tagasi</button>
+        <button class="ta-action-btn ta-btn-primary" id="btn-goal-confirm">Kinnita ja sea eesmärk</button>
+      </div>
+    </div>
+
+    <div id="goal-step-result" style="display:none">
+      <div class="goal-result-msg" id="goal-result-msg"></div>
+      <div class="goal-modal-actions">
+        <button class="ta-action-btn ta-btn-primary" id="btn-goal-close" style="width:100%">Sulge</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Group manager modal -->
@@ -725,8 +777,12 @@ function renderGoalsSection(goals) {
       var pct = Math.round(Number(g.progress) || 0);
       var crumb = g.node_breadcrumb || g.node_label || g.text;
       var target = g.target_date ? '<span class="p-goal-target">' + esc(t('label.goal_target_date')) + ': ' + esc(fmtDateLong(g.target_date)) + '</span>' : '';
+      var setBy = g.suggested_by_role === 'teacher'
+        ? '<div class="p-goal-set-by">' + esc(t('label.goal_set_by_teacher').replace('{name}', g.suggested_by_name || '')) + '</div>'
+        : '';
       return '<div class="p-goal-card p-goal-card-node ' + (isDone ? 'p-goal-card-done' : 'p-goal-card-active') + '">'
         + '<div class="p-goal-node-header"><div class="p-goal-node-crumb">' + esc(crumb) + '</div></div>'
+        + setBy
         + (!isDone ? '<div class="p-goal-bar-track"><div class="p-goal-bar-fill" style="width:' + pct + '%"></div></div><div class="p-goal-bar-label">' + pct + '% ' + esc(t('label.goal_progress')) + '</div>' : '')
         + '<div class="p-goal-footer">'
         + '<div class="p-goal-meta">' + target + (setDate ? '<span class="p-goal-date">' + esc(setDate + doneDate) + '</span>' : '') + '</div>'
@@ -855,6 +911,198 @@ document.getElementById('btn-create-group').addEventListener('click', createGrou
 document.getElementById('new-group-name').addEventListener('keydown', function (e) {
   if (e.key === 'Enter') createGroup();
 });
+
+/* ── Goal-setting modal — search an L4/L5 node, target one student, a
+   rühm, or every linked student, optional deadline, confirm-before-set
+   (a teacher can never remove a goal once set, so this is the only
+   safety net). ── */
+var _goalNode = null; // {id, label, breadcrumb}
+var _goalTarget = 'student';
+var _goalSearchTimer = null;
+var _goalSearchResults = [];
+
+function populateGoalTargetSelects() {
+  var studentSel = document.getElementById('goal-target-student');
+  studentSel.innerHTML = STUDENTS.length
+    ? STUDENTS.map(function (s) { return '<option value="' + s.passport_id + '">' + esc(s.display_name || '?') + '</option>'; }).join('')
+    : '<option value="">Õpilasi pole</option>';
+
+  var groupSel = document.getElementById('goal-target-group');
+  groupSel.innerHTML = REAL_GROUPS.length
+    ? REAL_GROUPS.map(function (g) { return '<option value="' + g.id + '">' + esc(g.label) + ' (' + groupMemberCount(g.id) + ')</option>'; }).join('')
+    : '<option value="">Rühmi pole veel loodud</option>';
+
+  document.getElementById('goal-target-all-hint').textContent = STUDENTS.length + ' õpilasele';
+}
+
+function showGoalTargetInput(target) {
+  document.getElementById('goal-target-student').style.display = target === 'student' ? '' : 'none';
+  document.getElementById('goal-target-group').style.display = target === 'group' ? '' : 'none';
+  document.getElementById('goal-target-all-hint').style.display = target === 'all' ? '' : 'none';
+}
+
+function renderSelectedGoalNode() {
+  var el = document.getElementById('goal-selected-node');
+  if (!_goalNode) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  el.innerHTML = '<div class="goal-selected-node-info">'
+    + '<div class="goal-selected-node-label">' + esc(_goalNode.label) + '</div>'
+    + (_goalNode.breadcrumb ? '<div class="goal-selected-node-crumb">' + esc(_goalNode.breadcrumb) + '</div>' : '')
+    + '</div>'
+    + '<button type="button" class="goal-selected-node-clear" id="goal-clear-node">×</button>';
+  document.getElementById('goal-clear-node').addEventListener('click', function () {
+    _goalNode = null;
+    renderSelectedGoalNode();
+  });
+}
+
+function openGoalModal() {
+  _goalNode = null;
+  _goalTarget = 'student';
+  document.getElementById('goal-node-search').value = '';
+  document.getElementById('goal-search-results').style.display = 'none';
+  document.getElementById('goal-deadline').value = '';
+  document.getElementById('goal-build-msg').textContent = '';
+  renderSelectedGoalNode();
+  document.querySelectorAll('.goal-target-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.target === 'student'); });
+  populateGoalTargetSelects();
+  showGoalTargetInput('student');
+  document.getElementById('goal-step-build').style.display = '';
+  document.getElementById('goal-step-confirm').style.display = 'none';
+  document.getElementById('goal-step-result').style.display = 'none';
+  document.getElementById('goal-modal').style.display = 'flex';
+}
+
+function closeGoalModal() {
+  document.getElementById('goal-modal').style.display = 'none';
+}
+
+document.getElementById('goal-target-tabs').addEventListener('click', function (e) {
+  var btn = e.target.closest('.goal-target-tab');
+  if (!btn) return;
+  _goalTarget = btn.dataset.target;
+  document.querySelectorAll('.goal-target-tab').forEach(function (b) { b.classList.toggle('active', b === btn); });
+  showGoalTargetInput(_goalTarget);
+});
+
+document.getElementById('goal-node-search').addEventListener('input', function () {
+  var q = this.value.trim();
+  var input = this;
+  clearTimeout(_goalSearchTimer);
+  var resultsEl = document.getElementById('goal-search-results');
+  if (q.length < 2) { resultsEl.style.display = 'none'; return; }
+  _goalSearchTimer = setTimeout(function () {
+    fetch('/api/nodes/search?q=' + encodeURIComponent(q)).then(function (r) { return r.json(); }).then(function (d) {
+      if (input.value.trim() !== q) return; // stale response
+      var nodes = d.nodes || [];
+      _goalSearchResults = nodes;
+      resultsEl.innerHTML = nodes.length
+        ? nodes.map(function (n, i) {
+            return '<div class="goal-search-result-item" data-idx="' + i + '">'
+              + '<div class="goal-search-result-label">' + esc(n.label) + '</div>'
+              + (n.breadcrumb ? '<div class="goal-search-result-crumb">' + esc(n.breadcrumb) + '</div>' : '')
+              + '</div>';
+          }).join('')
+        : '<div class="goal-search-empty">Vastavaid teemasid ei leitud.</div>';
+      resultsEl.querySelectorAll('.goal-search-result-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          _goalNode = _goalSearchResults[Number(el.dataset.idx)];
+          document.getElementById('goal-node-search').value = '';
+          resultsEl.style.display = 'none';
+          document.getElementById('goal-build-msg').textContent = '';
+          renderSelectedGoalNode();
+        });
+      });
+      resultsEl.style.display = '';
+    }).catch(function () {});
+  }, 250);
+});
+
+document.addEventListener('click', function (e) {
+  if (!e.target.closest('.goal-search-wrap')) {
+    document.getElementById('goal-search-results').style.display = 'none';
+  }
+});
+
+function goalConfirmSummary(targetId, deadline) {
+  var whoText;
+  if (_goalTarget === 'student') {
+    var s = STUDENTS.find(function (x) { return String(x.passport_id) === String(targetId); });
+    whoText = s ? esc(s.display_name) : '1 õpilasele';
+  } else if (_goalTarget === 'group') {
+    var g = groupById(Number(targetId));
+    whoText = (g ? esc(g.label) : 'rühmale') + ' (' + groupMemberCount(Number(targetId)) + ' õpilast)';
+  } else {
+    whoText = 'kõigile õpilastele (' + STUDENTS.length + ')';
+  }
+  return '<div><strong>Teema:</strong> ' + esc(_goalNode.label) + (_goalNode.breadcrumb ? ' <span style="color:var(--c5)">(' + esc(_goalNode.breadcrumb) + ')</span>' : '') + '</div>'
+    + '<div><strong>Kellele:</strong> ' + whoText + '</div>'
+    + '<div><strong>Tähtaeg:</strong> ' + (deadline ? esc(new Date(deadline).toLocaleDateString('et-EE', { year: 'numeric', month: 'long', day: 'numeric' })) : 'Ei ole määratud') + '</div>';
+}
+
+document.getElementById('btn-goal-next').addEventListener('click', function () {
+  var msg = document.getElementById('goal-build-msg');
+  msg.textContent = '';
+  if (!_goalNode) { msg.textContent = 'Vali kõigepealt teema.'; return; }
+  var targetId = null;
+  if (_goalTarget === 'student') {
+    targetId = document.getElementById('goal-target-student').value;
+    if (!targetId) { msg.textContent = 'Vali õpilane.'; return; }
+  } else if (_goalTarget === 'group') {
+    targetId = document.getElementById('goal-target-group').value;
+    if (!targetId) { msg.textContent = 'Vali rühm.'; return; }
+  } else if (!STUDENTS.length) {
+    msg.textContent = 'Sul pole veel ühtegi õpilast.'; return;
+  }
+
+  var deadline = document.getElementById('goal-deadline').value;
+  document.getElementById('goal-confirm-summary').innerHTML = goalConfirmSummary(targetId, deadline);
+  document.getElementById('goal-step-build').style.display = 'none';
+  document.getElementById('goal-step-confirm').style.display = '';
+  document.getElementById('btn-goal-confirm').onclick = function () { submitGoal(targetId, deadline); };
+});
+
+document.getElementById('btn-goal-back').addEventListener('click', function () {
+  document.getElementById('goal-step-confirm').style.display = 'none';
+  document.getElementById('goal-step-build').style.display = '';
+});
+
+function submitGoal(targetId, deadline) {
+  var confirmBtn = document.getElementById('btn-goal-confirm');
+  confirmBtn.disabled = true;
+  fetch('/api/teacher/goals', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      node_external_id: _goalNode.id,
+      node_breadcrumb: _goalNode.breadcrumb || _goalNode.label,
+      target_date: deadline || null,
+      target_type: _goalTarget,
+      target_id: _goalTarget === 'all' ? null : targetId,
+    }),
+  }).then(function (r) { return r.json(); }).then(function (d) {
+    confirmBtn.disabled = false;
+    document.getElementById('goal-step-confirm').style.display = 'none';
+    document.getElementById('goal-step-result').style.display = '';
+    if (!d.ok) {
+      document.getElementById('goal-result-msg').textContent = 'Eesmärgi seadmine ebaõnnestus. Proovi uuesti.';
+      return;
+    }
+    var msg = 'Eesmärk seati ' + d.created + ' õpilasele.';
+    if (d.skipped) msg += ' (' + d.skipped + ' õpilasel oli see eesmärk juba olemas.)';
+    document.getElementById('goal-result-msg').textContent = msg;
+    loadStudents();
+    if (selectedId != null) loadDetailInfo(selectedId);
+  }).catch(function () {
+    confirmBtn.disabled = false;
+    document.getElementById('goal-step-confirm').style.display = 'none';
+    document.getElementById('goal-step-result').style.display = '';
+    document.getElementById('goal-result-msg').textContent = 'Eesmärgi seadmine ebaõnnestus. Proovi uuesti.';
+  });
+}
+
+document.getElementById('btn-suggest-goal').addEventListener('click', openGoalModal);
+document.getElementById('btn-goal-cancel').addEventListener('click', closeGoalModal);
+document.getElementById('btn-goal-close').addEventListener('click', closeGoalModal);
 
 /* ── Init ── */
 loadStudents();

@@ -741,11 +741,15 @@
         var mapLink = !isDone
           ? `<a class="p-goal-map-link" href="/app/?node=${esc(g.node_external_id)}">${t('btn.go_to_map')}</a>`
           : '';
+        var setBy = g.suggested_by_role === 'teacher'
+          ? `<div class="p-goal-set-by">${t('label.goal_set_by_teacher').replace('{name}', esc(g.suggested_by_name || ''))}</div>`
+          : '';
         return `<div class="p-goal-card p-goal-card-node ${isDone ? 'p-goal-card-done' : 'p-goal-card-active'}">
           <div class="p-goal-node-header">
             <div class="p-goal-node-crumb">${esc(crumb)}</div>
             ${!isDone ? `<div class="p-goal-eta">${eta}</div>` : ''}
           </div>
+          ${setBy}
           ${!isDone ? `<div class="p-goal-bar-track"><div class="p-goal-bar-fill" style="width:${pct}%"></div></div>
           <div class="p-goal-bar-label">${pct}% ${t('label.goal_progress')}</div>` : ''}
           <div class="p-goal-footer">

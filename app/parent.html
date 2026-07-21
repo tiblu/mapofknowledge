@@ -552,8 +552,12 @@ function renderGoalsSection(goals) {
       var pct = Math.round(Number(g.progress) || 0);
       var crumb = g.node_breadcrumb || g.node_label || g.text;
       var target = g.target_date ? '<span class="p-goal-target">' + esc(t('label.goal_target_date')) + ': ' + esc(fmtDateLong(g.target_date)) + '</span>' : '';
+      var setBy = g.suggested_by_role === 'teacher'
+        ? '<div class="p-goal-set-by">' + esc(t('label.goal_set_by_teacher').replace('{name}', g.suggested_by_name || '')) + '</div>'
+        : '';
       return '<div class="p-goal-card p-goal-card-node ' + (isDone ? 'p-goal-card-done' : 'p-goal-card-active') + '">'
         + '<div class="p-goal-node-header"><div class="p-goal-node-crumb">' + esc(crumb) + '</div></div>'
+        + setBy
         + (!isDone ? '<div class="p-goal-bar-track"><div class="p-goal-bar-fill" style="width:' + pct + '%"></div></div><div class="p-goal-bar-label">' + pct + '% ' + esc(t('label.goal_progress')) + '</div>' : '')
         + '<div class="p-goal-footer">'
         + '<div class="p-goal-meta">' + target + (setDate ? '<span class="p-goal-date">' + esc(setDate + doneDate) + '</span>' : '') + '</div>'

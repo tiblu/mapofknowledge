@@ -833,6 +833,10 @@ select.p-edit-input { cursor: pointer; }
 .p-goal-eta {
   font-size: 11px; color: var(--c6);
 }
+.p-goal-set-by {
+  font-size: 11px; color: var(--accent-dark);
+  margin-bottom: 6px;
+}
 .p-goal-map-link {
   font-size: 11px; color: var(--accent); text-decoration: none;
   border-bottom: 1px solid rgba(196,130,106,0.30);

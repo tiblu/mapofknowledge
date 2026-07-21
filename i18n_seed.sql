@@ -961,3 +961,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('help.soon',                 'et', 'Peagi')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Teacher-assigned goals (goal.js / profile.js / parent.html / teacher.html)
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('label.goal_set_by_teacher', 'en', 'Set by your teacher {name}'),
+('label.goal_set_by_teacher', 'et', 'Eesmärgi seadis õpetaja {name}')
+
+ON DUPLICATE KEY UPDATE value = VALUES(value);

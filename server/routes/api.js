@@ -120,11 +120,15 @@ async function _fetchFullPassport(passportId, locale) {
             (SELECT COUNT(*) FROM knobit_progress kp
              JOIN knobits k2 ON k2.id = kp.knobit_id
              WHERE k2.node_id = n.id AND kp.passport_id = g.passport_id
-               AND kp.phase_reached = 'done') AS knobit_done
+               AND kp.phase_reached = 'done') AS knobit_done,
+            su.role AS suggested_by_role,
+            su_lp.display_name AS suggested_by_name
      FROM passport_goals g
      LEFT JOIN nodes n ON n.external_id = g.node_external_id
      LEFT JOIN user_node_knowledge unk
        ON unk.node_external_id = g.node_external_id AND unk.passport_id = g.passport_id
+     LEFT JOIN users su ON su.id = g.suggested_by_user_id
+     LEFT JOIN learner_passports su_lp ON su_lp.id = su.passport_id
      WHERE g.passport_id = ?
      ORDER BY g.status ASC, g.created_at DESC`,
     [passportId]
@@ -206,6 +210,49 @@ router.get('/map', async (req, res) => {
 router.post('/map/bust-cache', (req, res) => {
   Object.keys(mapCaches).forEach(k => delete mapCaches[k]);
   res.json({ ok: true });
+});
+
+// ── Node search — L4/L5 only, locale-aware. Used by the teacher goal-setting
+// modal's search box (no client-side map data loaded on teacher.html). ──────
+router.get('/nodes/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (q.length < 2) return res.json({ nodes: [] });
+  try {
+    const locale = await getUserLocale(req.user?.id);
+    const like = '%' + q + '%';
+    const startsWith = q + '%';
+    const [rows] = await db.execute(
+      `SELECT n.external_id AS id, COALESCE(tr.label, n.label) AS label, n.level,
+              COALESCE(tr_p1.label, p1.label) AS p1,
+              COALESCE(tr_p2.label, p2.label) AS p2,
+              COALESCE(tr_p3.label, p3.label) AS p3,
+              COALESCE(tr_p4.label, p4.label) AS p4
+       FROM nodes n
+       LEFT JOIN node_translations tr ON tr.node_external_id = n.external_id AND tr.locale = ?
+       LEFT JOIN nodes p1 ON p1.id = n.parent_id
+       LEFT JOIN node_translations tr_p1 ON tr_p1.node_external_id = p1.external_id AND tr_p1.locale = ?
+       LEFT JOIN nodes p2 ON p2.id = p1.parent_id
+       LEFT JOIN node_translations tr_p2 ON tr_p2.node_external_id = p2.external_id AND tr_p2.locale = ?
+       LEFT JOIN nodes p3 ON p3.id = p2.parent_id
+       LEFT JOIN node_translations tr_p3 ON tr_p3.node_external_id = p3.external_id AND tr_p3.locale = ?
+       LEFT JOIN nodes p4 ON p4.id = p3.parent_id
+       LEFT JOIN node_translations tr_p4 ON tr_p4.node_external_id = p4.external_id AND tr_p4.locale = ?
+       WHERE n.level IN (4,5) AND n.is_active = 1
+         AND COALESCE(tr.label, n.label) LIKE ?
+       ORDER BY (COALESCE(tr.label, n.label) LIKE ?) DESC, n.level DESC, COALESCE(tr.label, n.label) ASC
+       LIMIT 20`,
+      [locale, locale, locale, locale, locale, like, startsWith]
+    );
+    const nodes = rows.map(r => ({
+      id: r.id,
+      label: r.label,
+      level: r.level,
+      breadcrumb: [r.p4, r.p3, r.p2, r.p1].filter(Boolean).join(' › '),
+    }));
+    res.json({ nodes });
+  } catch (err) {
+    res.status(500).json({ error: 'Search failed' });
+  }
 });
 
 // ── Node overview (generate once, cache in DB) ───────────────────────────────
@@ -2315,31 +2362,87 @@ router.get('/teacher/students/:passport_id/activity', async (req, res) => {
   }
 });
 
-router.post('/teacher/students/:passport_id/goals', async (req, res) => {
+// Teacher-set goals: bulk (one student / a whole rühm / all linked
+// students). A teacher has no delete/edit route for a goal once set —
+// only the student themself can remove it from their own Õppija pass —
+// so the frontend confirms with the teacher before calling this.
+router.post('/teacher/goals', async (req, res) => {
   const userId = req.user?.id;
-  const { passport_id } = req.params;
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
-  const { node_external_id, node_breadcrumb, target_date } = req.body;
+  const { node_external_id, node_breadcrumb, target_date, target_type, target_id } = req.body;
   if (!node_external_id) return res.status(400).json({ error: 'node_external_id required' });
+  if (!['student', 'group', 'all'].includes(target_type)) return res.status(400).json({ error: 'invalid target_type' });
   try {
-    const [auth] = await db.execute(
-      `SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'teacher' AND status = 'active'`,
-      [passport_id, userId]
+    let passportIds = [];
+    if (target_type === 'all') {
+      const [rows] = await db.execute(
+        `SELECT passport_id FROM learner_links WHERE linked_user_id = ? AND role = 'teacher' AND status = 'active'`,
+        [userId]
+      );
+      passportIds = rows.map(r => r.passport_id);
+    } else if (target_type === 'group') {
+      if (!target_id) return res.status(400).json({ error: 'target_id required' });
+      const [group] = await db.execute(
+        `SELECT id FROM teacher_groups WHERE id = ? AND teacher_user_id = ?`, [target_id, userId]
+      );
+      if (!group.length) return res.status(404).json({ error: 'Group not found' });
+      const [rows] = await db.execute(
+        `SELECT passport_id FROM teacher_group_members WHERE group_id = ?`, [target_id]
+      );
+      passportIds = rows.map(r => r.passport_id);
+    } else {
+      if (!target_id) return res.status(400).json({ error: 'target_id required' });
+      const [auth] = await db.execute(
+        `SELECT passport_id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'teacher' AND status = 'active'`,
+        [target_id, userId]
+      );
+      if (!auth.length) return res.status(403).json({ error: 'Not linked to this student' });
+      passportIds = [Number(target_id)];
+    }
+
+    if (!passportIds.length) return res.json({ ok: true, created: 0, skipped: 0, total: 0 });
+
+    const [[teacherRow]] = await db.execute(
+      `SELECT lp.display_name FROM users u LEFT JOIN learner_passports lp ON lp.id = u.passport_id WHERE u.id = ?`,
+      [userId]
     );
-    if (!auth.length) return res.status(403).json({ error: 'Not linked' });
-    const [existing] = await db.execute(
-      `SELECT id FROM passport_goals WHERE passport_id = ? AND node_external_id = ? AND status = 'in_progress'`,
-      [passport_id, node_external_id]
-    );
-    if (existing.length) return res.json({ ok: true, duplicate: true, id: existing[0].id });
-    const [r] = await db.execute(
-      `INSERT INTO passport_goals (passport_id, text, node_external_id, node_breadcrumb, target_date, status, suggested_by_user_id, created_at)
-       VALUES (?, ?, ?, ?, ?, 'in_progress', ?, NOW())`,
-      [passport_id, node_breadcrumb || node_external_id, node_external_id, node_breadcrumb || null, target_date || null, userId]
-    );
-    res.json({ ok: true, id: r.insertId });
+
+    let created = 0, skipped = 0;
+    for (const pid of passportIds) {
+      const [existing] = await db.execute(
+        `SELECT id FROM passport_goals WHERE passport_id = ? AND node_external_id = ? AND status = 'in_progress'`,
+        [pid, node_external_id]
+      );
+      if (existing.length) { skipped++; continue; }
+
+      await db.execute(
+        `INSERT INTO passport_goals (passport_id, text, node_external_id, node_breadcrumb, target_date, status, suggested_by_user_id, created_at)
+         VALUES (?, ?, ?, ?, ?, 'in_progress', ?, NOW())`,
+        [pid, node_breadcrumb || node_external_id, node_external_id, node_breadcrumb || null, target_date || null, userId]
+      );
+      created++;
+
+      const [studentUsers] = await db.execute('SELECT id FROM users WHERE passport_id = ?', [pid]);
+      if (studentUsers.length) {
+        const studentLocale = await getUserLocale(studentUsers[0].id);
+        const isEt = studentLocale !== 'en';
+        const teacherName = (teacherRow && teacherRow.display_name) || (isEt ? 'Sinu õpetaja' : 'Your teacher');
+        const title = isEt ? 'Õpetaja seadis sulle eesmärgi' : 'Your teacher set you a goal';
+        let body = isEt
+          ? teacherName + ' seadis sulle uue eesmärgi: ' + (node_breadcrumb || node_external_id)
+          : teacherName + ' set you a new goal: ' + (node_breadcrumb || node_external_id);
+        if (target_date) {
+          const dateStr = new Date(target_date).toLocaleDateString(isEt ? 'et-EE' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+          body += isEt ? ' (tähtaeg: ' + dateStr + ')' : ' (due ' + dateStr + ')';
+        }
+        notify(studentUsers[0].id, 'goal_assigned', title, body, node_external_id);
+      }
+    }
+
+    res.json({ ok: true, created, skipped, total: passportIds.length });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to suggest goal' });
+    console.error('[api/teacher/goals]', err.message);
+    res.status(500).json({ error: 'Failed to set goal' });
   }
 });
 

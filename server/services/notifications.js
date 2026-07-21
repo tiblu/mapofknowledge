@@ -18,6 +18,7 @@ const TYPE_COLOR = {
   credential:       'amber',
   test_result:      'lavender',
   goal_complete:    'sage',
+  goal_assigned:    'terra',
   knowledge_marked: 'terra',
   admin:            'lavender',
   badge:            'amber',
