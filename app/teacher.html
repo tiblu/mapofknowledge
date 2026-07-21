@@ -125,21 +125,6 @@
         <span class="ta-group-label">Minu õpilased</span>
         <span class="ta-group-count" id="group-count-all">–</span>
       </div>
-      <div class="ta-group-item" data-group="7A">
-        <div class="ta-group-dot" style="background:#378ADD"></div>
-        <span class="ta-group-label">7A klass</span>
-        <span class="ta-group-count">4</span>
-      </div>
-      <div class="ta-group-item" data-group="7B">
-        <div class="ta-group-dot" style="background:#9B8FB5"></div>
-        <span class="ta-group-label">7B klass</span>
-        <span class="ta-group-count">4</span>
-      </div>
-      <div class="ta-group-item" data-group="mat-tugi">
-        <div class="ta-group-dot" style="background:#C4A55A"></div>
-        <span class="ta-group-label">Matemaatika tugi</span>
-        <span class="ta-group-count">3</span>
-      </div>
     </div>
 
     <div class="ta-divider"></div>
@@ -214,29 +199,10 @@
     <div style="font-size:12px;color:var(--c5);margin-bottom:12px;line-height:1.6">
       Rühmad on sildid, mida saad õpilastele vabalt määrata. Õpilasel võib olla mitu silti.
     </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--i10);border-radius:9px;background:var(--panel-a)">
-        <div style="width:10px;height:10px;border-radius:50%;background:#378ADD;flex-shrink:0"></div>
-        <span style="font-size:13px;font-weight:600;color:var(--c1);flex:1">7A klass</span>
-        <span style="font-size:11px;color:var(--c5)">4 õpilast</span>
-        <button style="border:none;background:none;color:var(--c5);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--i10);border-radius:9px;background:var(--panel-a)">
-        <div style="width:10px;height:10px;border-radius:50%;background:#9B8FB5;flex-shrink:0"></div>
-        <span style="font-size:13px;font-weight:600;color:var(--c1);flex:1">7B klass</span>
-        <span style="font-size:11px;color:var(--c5)">4 õpilast</span>
-        <button style="border:none;background:none;color:var(--c5);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--i10);border-radius:9px;background:var(--panel-a)">
-        <div style="width:10px;height:10px;border-radius:50%;background:#C4A55A;flex-shrink:0"></div>
-        <span style="font-size:13px;font-weight:600;color:var(--c1);flex:1">Matemaatika tugi</span>
-        <span style="font-size:11px;color:var(--c5)">3 õpilast</span>
-        <button style="border:none;background:none;color:var(--c5);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>
-      </div>
-    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px" id="group-manage-list"></div>
     <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px dashed var(--i18);border-radius:9px;margin-bottom:14px">
-      <input type="text" placeholder="Uue rühma nimi..." style="flex:1;border:none;background:none;font-size:13px;color:var(--c1);font-family:inherit;outline:none">
-      <button class="ta-action-btn ta-btn-primary" style="padding:5px 12px;font-size:12px">Lisa</button>
+      <input type="text" placeholder="Uue rühma nimi..." id="new-group-name" style="flex:1;border:none;background:none;font-size:13px;color:var(--c1);font-family:inherit;outline:none">
+      <button class="ta-action-btn ta-btn-primary" style="padding:5px 12px;font-size:12px" id="btn-create-group">Lisa</button>
     </div>
     <button class="ta-action-btn" onclick="document.getElementById('group-modal').style.display='none'" style="width:100%">Valmis</button>
   </div>
@@ -247,17 +213,24 @@
 <script>
 (function () {
 
-var GROUPS = {
-  'all':      { label: 'Minu õpilased', color: '#8BAD7E' },
-  '7A':       { label: '7A klass',       color: '#378ADD' },
-  '7B':       { label: '7B klass',       color: '#9B8FB5' },
-  'mat-tugi': { label: 'Matemaatika tugi', color: '#C4A55A' }
-};
-
+var GROUP_COLORS = ['#378ADD', '#9B8FB5', '#C4A55A', '#5CAD72', '#C4826A', '#4AA8A0'];
 var AVATAR_CLASSES = ['pa-avatar-a', 'pa-avatar-b', 'pa-avatar-c', 'pa-avatar-d'];
 var STUDENTS = [];
+var REAL_GROUPS = []; // [{id, label, color}], loaded from /api/teacher/groups
 var activeGroup = 'all';
 var selectedId  = null;
+
+function groupById(gid) { return REAL_GROUPS.find(function (g) { return g.id === gid; }); }
+
+function groupLabel(gid) {
+  if (gid === 'all') return 'Minu õpilased';
+  var g = groupById(gid);
+  return g ? g.label : 'Minu õpilased';
+}
+
+function groupMemberCount(gid) {
+  return STUDENTS.filter(function (s) { return (s.group_ids || []).indexOf(gid) !== -1; }).length;
+}
 
 function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
@@ -312,6 +285,7 @@ function loadStudents() {
   fetch('/api/teacher/students').then(function (r) { return r.json(); }).then(function (d) {
     STUDENTS = d.students || [];
     document.getElementById('group-count-all').textContent = STUDENTS.length;
+    renderGroupSidebar();
     renderSidebar();
     renderDashboard();
   }).catch(function () {
@@ -319,12 +293,74 @@ function loadStudents() {
   });
 }
 
-// No real group/tag data exists yet — only "Minu õpilased" (all linked
-// students) is backed by anything real. The other sidebar groups (7A/7B/
-// Matemaatika tugi) are placeholders for a future grouping feature.
+function loadGroups() {
+  return fetch('/api/teacher/groups').then(function (r) { return r.json(); }).then(function (d) {
+    REAL_GROUPS = d.groups || [];
+    renderGroupSidebar();
+    renderGroupManageModal();
+  });
+}
+
 function studentsInGroup(gid) {
   if (gid === 'all') return STUDENTS;
-  return [];
+  return STUDENTS.filter(function (s) { return (s.group_ids || []).indexOf(gid) !== -1; });
+}
+
+/* ── Groups sidebar ── */
+function renderGroupSidebar() {
+  var list = document.getElementById('group-list');
+  document.getElementById('group-count-all').textContent = STUDENTS.length;
+  var extra = REAL_GROUPS.map(function (g) {
+    var active = g.id === activeGroup ? ' ta-group-active' : '';
+    return '<div class="ta-group-item' + active + '" data-group="' + g.id + '">'
+      + '<div class="ta-group-dot" style="background:' + esc(g.color) + '"></div>'
+      + '<span class="ta-group-label">' + esc(g.label) + '</span>'
+      + '<span class="ta-group-count">' + groupMemberCount(g.id) + '</span>'
+      + '</div>';
+  }).join('');
+  var allItem = list.querySelector('[data-group="all"]');
+  list.innerHTML = '';
+  list.appendChild(allItem);
+  list.insertAdjacentHTML('beforeend', extra);
+  list.querySelectorAll('.ta-group-item').forEach(function (el) {
+    var gid = el.dataset.group === 'all' ? 'all' : Number(el.dataset.group);
+    el.classList.toggle('ta-group-active', gid === activeGroup);
+  });
+}
+
+/* ── Group management modal ── */
+function renderGroupManageModal() {
+  var box = document.getElementById('group-manage-list');
+  if (!REAL_GROUPS.length) {
+    box.innerHTML = '<div style="font-size:12px;color:var(--c5);font-style:italic;padding:4px 0">Ühtegi rühma pole veel loodud.</div>';
+    return;
+  }
+  box.innerHTML = REAL_GROUPS.map(function (g) {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--i10);border-radius:9px;background:var(--panel-a)">'
+      + '<div style="width:10px;height:10px;border-radius:50%;background:' + esc(g.color) + ';flex-shrink:0"></div>'
+      + '<span style="font-size:13px;font-weight:600;color:var(--c1);flex:1">' + esc(g.label) + '</span>'
+      + '<span style="font-size:11px;color:var(--c5)">' + groupMemberCount(g.id) + ' õpilast</span>'
+      + '<button class="btn-delete-group" data-id="' + g.id + '" style="border:none;background:none;color:var(--c5);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>'
+      + '</div>';
+  }).join('');
+  box.querySelectorAll('.btn-delete-group').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var gid = Number(btn.dataset.id);
+      var g = groupById(gid);
+      if (!confirm('Kustuta rühm "' + (g ? g.label : '') + '"?')) return;
+      fetch('/api/teacher/groups/' + gid, { method: 'DELETE' }).then(function () {
+        STUDENTS.forEach(function (s) {
+          s.group_ids = (s.group_ids || []).filter(function (id) { return id !== gid; });
+        });
+        if (activeGroup === gid) { activeGroup = 'all'; }
+        return loadGroups();
+      }).then(function () {
+        renderSidebar();
+        renderDashboard();
+        if (selectedId != null) renderDetailGroupChips(selectedId);
+      });
+    });
+  });
 }
 
 /* ── Sidebar ── */
@@ -332,7 +368,7 @@ function renderSidebar() {
   var list = document.getElementById('student-list');
   var students = studentsInGroup(activeGroup);
   if (!students.length) {
-    list.innerHTML = '<div class="pa-empty">' + (activeGroup === 'all' ? 'Ühtegi õpilast pole veel ühendatud.' : 'See rühm ei ole veel saadaval.') + '</div>';
+    list.innerHTML = '<div class="pa-empty">' + (activeGroup === 'all' ? 'Ühtegi õpilast pole veel ühendatud.' : 'Selles rühmas pole veel õpilasi.') + '</div>';
     return;
   }
   list.innerHTML = students.map(function (s) {
@@ -355,12 +391,12 @@ function renderSidebar() {
    child cards, family name in place of age. ── */
 function renderDashboard() {
   var students = studentsInGroup(activeGroup);
-  document.getElementById('dashboard-title').textContent = GROUPS[activeGroup].label;
-  document.getElementById('student-list-label').textContent = GROUPS[activeGroup].label;
+  document.getElementById('dashboard-title').textContent = groupLabel(activeGroup);
+  document.getElementById('student-list-label').textContent = groupLabel(activeGroup);
 
   var grid = document.getElementById('cards-grid');
   if (!students.length) {
-    grid.innerHTML = '<div class="pa-empty">' + (activeGroup === 'all' ? 'Ühtegi õpilast pole veel ühendatud. Kasuta "+ Lisa õpilane", et alustada.' : 'See rühm ei ole veel saadaval.') + '</div>';
+    grid.innerHTML = '<div class="pa-empty">' + (activeGroup === 'all' ? 'Ühtegi õpilast pole veel ühendatud. Kasuta "+ Lisa õpilane", et alustada.' : 'Selles rühmas pole veel õpilasi. Lisa õpilasi tema kaardilt.') + '</div>';
     return;
   }
   grid.innerHTML = students.map(function (s) {
@@ -428,8 +464,10 @@ function selectStudent(id) {
       + '<div class="ta-detail-name">' + esc(passport.display_name || '?') + '</div>'
       + '</div>'
       + '</div>'
+      + '<div class="ta-detail-section"><div class="ta-section-label">Rühmad</div><div class="ta-detail-group-chips" id="detail-group-chips"></div></div>'
       + '<div class="ta-detail-section"><div class="ta-section-label">Aktiivsed eesmärgid</div>' + goalHtml + '</div>'
       + '<div class="ta-detail-section"><div class="ta-section-label">Viimane tegevus</div><div class="ta-event-list">' + eventsHtml + '</div></div>';
+    renderDetailGroupChips(id);
   }).catch(function () {
     document.getElementById('detail-panel').innerHTML = '<div class="pa-empty">Õpilase laadimine ebaõnnestus.</div>';
   });
@@ -438,14 +476,57 @@ function selectStudent(id) {
   document.getElementById('view-detail').style.display = '';
 }
 
+/* ── Detail: group membership toggle chips ── */
+function renderDetailGroupChips(id) {
+  var container = document.getElementById('detail-group-chips');
+  if (!container) return;
+  var student = STUDENTS.find(function (s) { return s.passport_id === id; });
+  var memberIds = (student && student.group_ids) || [];
+  if (!REAL_GROUPS.length) {
+    container.innerHTML = '<span style="font-size:11px;color:var(--c5);font-style:italic">Rühmi pole veel loodud. Lisa "Rühmad" küljeriba + nupust.</span>';
+    return;
+  }
+  container.innerHTML = REAL_GROUPS.map(function (g) {
+    var active = memberIds.indexOf(g.id) !== -1;
+    var style = active
+      ? 'background:' + g.color + '1a;color:' + g.color + ';border-color:' + g.color + '55'
+      : 'background:transparent;color:var(--c5);border-color:var(--i18);border-style:dashed';
+    return '<button type="button" class="ta-chip ta-detail-group-chip" data-id="' + g.id + '" style="' + style + ';cursor:pointer;font-family:inherit">' + (active ? '✓ ' : '+ ') + esc(g.label) + '</button>';
+  }).join('');
+  container.querySelectorAll('.ta-detail-group-chip').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var gid = Number(btn.dataset.id);
+      var s = STUDENTS.find(function (x) { return x.passport_id === id; });
+      if (!s) return;
+      s.group_ids = s.group_ids || [];
+      var isMember = s.group_ids.indexOf(gid) !== -1;
+      var req = isMember
+        ? fetch('/api/teacher/groups/' + gid + '/members/' + id, { method: 'DELETE' })
+        : fetch('/api/teacher/groups/' + gid + '/members', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ passport_id: id })
+          });
+      req.then(function () {
+        s.group_ids = isMember
+          ? s.group_ids.filter(function (x) { return x !== gid; })
+          : s.group_ids.concat([gid]);
+        renderDetailGroupChips(id);
+        renderGroupSidebar();
+        if (activeGroup === gid || activeGroup === 'all') { renderSidebar(); renderDashboard(); }
+      });
+    });
+  });
+}
+
 /* ── Group filter ── */
 document.getElementById('group-list').addEventListener('click', function(e){
   var item = e.target.closest('.ta-group-item');
   if (!item) return;
-  activeGroup = item.dataset.group;
+  activeGroup = item.dataset.group === 'all' ? 'all' : Number(item.dataset.group);
   selectedId  = null;
   document.querySelectorAll('.ta-group-item').forEach(function(el){
-    el.classList.toggle('ta-group-active', el.dataset.group===activeGroup);
+    var gid = el.dataset.group === 'all' ? 'all' : Number(el.dataset.group);
+    el.classList.toggle('ta-group-active', gid === activeGroup);
   });
   renderSidebar();
   renderDashboard();
@@ -466,14 +547,36 @@ document.getElementById('btn-invite').addEventListener('click', function(){
   document.getElementById('invite-modal').style.display = 'flex';
 });
 document.getElementById('btn-add-group').addEventListener('click', function(){
+  renderGroupManageModal();
   document.getElementById('group-modal').style.display = 'flex';
 });
 document.querySelectorAll('.link-modal').forEach(function(m){
   m.addEventListener('click', function(e){ if(e.target===m) m.style.display='none'; });
 });
 
+function createGroup() {
+  var input = document.getElementById('new-group-name');
+  var label = input.value.trim();
+  if (!label) return;
+  var color = GROUP_COLORS[REAL_GROUPS.length % GROUP_COLORS.length];
+  fetch('/api/teacher/groups', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label: label, color: color })
+  }).then(function () {
+    input.value = '';
+    return loadGroups();
+  }).then(function () {
+    if (selectedId != null) renderDetailGroupChips(selectedId);
+  });
+}
+document.getElementById('btn-create-group').addEventListener('click', createGroup);
+document.getElementById('new-group-name').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') createGroup();
+});
+
 /* ── Init ── */
 loadStudents();
+loadGroups();
 
 })();
 </script>

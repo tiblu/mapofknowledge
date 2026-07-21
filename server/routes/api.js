@@ -2165,12 +2165,19 @@ router.get('/teacher/students', async (req, res) => {
     const [students] = await db.execute(
       `SELECT lp.id AS passport_id, lp.display_name, ll.id AS link_id,
               (SELECT COUNT(*) FROM passport_goals pg WHERE pg.passport_id = lp.id AND pg.status='in_progress') AS active_goals,
-              (SELECT MAX(kp.completed_at) FROM knobit_progress kp WHERE kp.passport_id = lp.id) AS last_active
+              (SELECT MAX(kp.completed_at) FROM knobit_progress kp WHERE kp.passport_id = lp.id) AS last_active,
+              (SELECT GROUP_CONCAT(tgm.group_id) FROM teacher_group_members tgm
+                 JOIN teacher_groups tg ON tg.id = tgm.group_id
+                 WHERE tgm.passport_id = lp.id AND tg.teacher_user_id = ?) AS group_ids_raw
        FROM learner_links ll
        JOIN learner_passports lp ON lp.id = ll.passport_id
        WHERE ll.linked_user_id = ? AND ll.role = 'teacher' AND ll.status = 'active'`,
-      [userId]
+      [userId, userId]
     );
+    students.forEach(s => {
+      s.group_ids = s.group_ids_raw ? s.group_ids_raw.split(',').map(Number) : [];
+      delete s.group_ids_raw;
+    });
 
     // 7-day knobits-done sparkline per student, for the card view
     if (students.length) {
@@ -2265,6 +2272,103 @@ router.post('/teacher/students/:passport_id/goals', async (req, res) => {
     res.json({ ok: true, id: r.insertId });
   } catch (err) {
     res.status(500).json({ error: 'Failed to suggest goal' });
+  }
+});
+
+// ── Teacher groups (Rühmad) ────────────────────────────────────────────────────
+router.get('/teacher/groups', async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const [groups] = await db.execute(
+      `SELECT tg.id, tg.label, tg.color,
+              (SELECT COUNT(*) FROM teacher_group_members m WHERE m.group_id = tg.id) AS member_count
+       FROM teacher_groups tg
+       WHERE tg.teacher_user_id = ?
+       ORDER BY tg.created_at ASC`,
+      [userId]
+    );
+    res.json({ groups });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to load groups' });
+  }
+});
+
+router.post('/teacher/groups', async (req, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  const label = (req.body.label || '').trim();
+  const color = (req.body.color || '#8BAD7E').trim();
+  if (!label) return res.status(400).json({ error: 'label required' });
+  try {
+    const [r] = await db.execute(
+      `INSERT INTO teacher_groups (teacher_user_id, label, color, created_at) VALUES (?, ?, ?, NOW())`,
+      [userId, label, color]
+    );
+    res.json({ ok: true, id: r.insertId });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create group' });
+  }
+});
+
+router.delete('/teacher/groups/:group_id', async (req, res) => {
+  const userId = req.user?.id;
+  const { group_id } = req.params;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const [r] = await db.execute(
+      `DELETE FROM teacher_groups WHERE id = ? AND teacher_user_id = ?`,
+      [group_id, userId]
+    );
+    if (!r.affectedRows) return res.status(404).json({ error: 'Group not found' });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete group' });
+  }
+});
+
+router.post('/teacher/groups/:group_id/members', async (req, res) => {
+  const userId = req.user?.id;
+  const { group_id } = req.params;
+  const passport_id = req.body.passport_id;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  if (!passport_id) return res.status(400).json({ error: 'passport_id required' });
+  try {
+    const [group] = await db.execute(
+      `SELECT id FROM teacher_groups WHERE id = ? AND teacher_user_id = ?`, [group_id, userId]
+    );
+    if (!group.length) return res.status(404).json({ error: 'Group not found' });
+    const [link] = await db.execute(
+      `SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'teacher' AND status = 'active'`,
+      [passport_id, userId]
+    );
+    if (!link.length) return res.status(403).json({ error: 'Not linked to this student' });
+    await db.execute(
+      `INSERT IGNORE INTO teacher_group_members (group_id, passport_id, added_at) VALUES (?, ?, NOW())`,
+      [group_id, passport_id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to add member' });
+  }
+});
+
+router.delete('/teacher/groups/:group_id/members/:passport_id', async (req, res) => {
+  const userId = req.user?.id;
+  const { group_id, passport_id } = req.params;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const [group] = await db.execute(
+      `SELECT id FROM teacher_groups WHERE id = ? AND teacher_user_id = ?`, [group_id, userId]
+    );
+    if (!group.length) return res.status(404).json({ error: 'Group not found' });
+    await db.execute(
+      `DELETE FROM teacher_group_members WHERE group_id = ? AND passport_id = ?`,
+      [group_id, passport_id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to remove member' });
   }
 });
 

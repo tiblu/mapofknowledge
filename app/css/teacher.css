@@ -434,6 +434,19 @@ body { overflow-y: auto; }
   margin-bottom: 12px;
 }
 
+.ta-detail-group-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.ta-detail-group-chip {
+  padding: 4px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  border-width: 1px;
+  border-style: solid;
+  transition: opacity 0.12s;
+}
+.ta-detail-group-chip:hover { opacity: 0.8; }
+
 .ta-goal-row {
   background: var(--panel-a);
   border: 1px solid var(--i09);
