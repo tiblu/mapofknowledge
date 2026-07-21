@@ -162,7 +162,7 @@ async function sendChildInviteEmail(toEmail, childName, code, locale) {
 
   const footerNote = locale === 'en'
     ? "You're receiving this because someone entered your email address on KnoBitz to request a connection. If you weren't expecting this or don't want emails like this, just let us know."
-    : 'Saad selle kirja, sest keegi sisestas KnoBitzis sinu e-posti aadressi, et paluda ühendust. Kui sa seda ei oodanud või ei soovi selliseid kirju, anna meile teada.';
+    : 'Said selle kirja, sest keegi sisestas KnoBitzis sinu e-posti aadressi, et paluda ühendust. Kui sa seda ei oodanud või ei soovi selliseid kirju, anna meile teada.';
 
   await _send({ toEmail, subject, bodyHtml, bodyText, footerNoteHtml: footerNote, footerNoteText: footerNote, locale });
 }
