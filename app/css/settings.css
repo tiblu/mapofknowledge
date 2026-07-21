@@ -288,7 +288,12 @@ body {
 }
 
 /* ── Connections (teacher/parent/admin ↔ learner links) ───────────────── */
-.cx-list { margin-bottom: 14px; }
+.cx-list {
+  margin-bottom: 14px;
+  max-height: 340px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .cx-empty { font-size: 13px; color: var(--c7); padding: 6px 4px; }
 .cx-group-label {
   font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
@@ -306,6 +311,8 @@ body {
 }
 .cx-role-badge.teacher { background: rgba(91,168,216,0.18); color: #1868A8; }
 .cx-role-badge.parent  { background: rgba(139,173,126,0.22); color: #3A7030; }
+.cx-role-badge.student { background: rgba(196,130,106,0.20); color: #A5572E; }
+.cx-role-badge.child   { background: rgba(196,130,106,0.20); color: #A5572E; }
 .cx-row-name { flex: 1; font-size: 13px; font-weight: 550; color: var(--c1); }
 .cx-remove-btn {
   background: none; border: none; cursor: pointer; font-size: 16px;

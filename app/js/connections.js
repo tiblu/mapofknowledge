@@ -38,13 +38,16 @@
     });
   }
 
-  /* ── connections list ── */
-  function linkRow(item, isStudentSide) {
-    var roleLabel = item.role === 'teacher' ? t('link.role_teacher') : t('link.role_parent');
-    var name = esc(isStudentSide ? item.linked_name : (item.student_name || t('link.pending_student')));
+  /* ── connections list ──
+     item.role is the TYPE of the connection (teacher-link or parent-link),
+     not the role of the person in this particular row — the badge must be
+     picked relative to which side we're rendering: on my own "as student"
+     side the other party IS a teacher/parent, but on my "as linked" side
+     (viewing my own students/children) the other party is a learner. */
+  function linkRow(item, badgeClass, badgeLabel, name) {
     return '<div class="cx-row-item">'
-      + '<div class="cx-role-badge ' + item.role + '">' + esc(roleLabel) + '</div>'
-      + '<div class="cx-row-name">' + name + '</div>'
+      + '<div class="cx-role-badge ' + badgeClass + '">' + esc(badgeLabel) + '</div>'
+      + '<div class="cx-row-name">' + esc(name) + '</div>'
       + '<button class="cx-remove-btn" data-link-id="' + item.id + '" title="' + esc(t('btn.remove')) + '">×</button>'
       + '</div>';
   }
@@ -56,6 +59,8 @@
     var asLinked  = links.asLinked  || [];
     var teacherLinks = asStudent.filter(function (l) { return l.role === 'teacher'; });
     var parentLinks  = asStudent.filter(function (l) { return l.role === 'parent'; });
+    var studentLinks = asLinked.filter(function (l) { return l.role === 'teacher'; }); // I'm their teacher
+    var childLinks    = asLinked.filter(function (l) { return l.role === 'parent'; }); // I'm their parent
 
     var html = '';
     if (!asStudent.length && !asLinked.length) {
@@ -63,15 +68,19 @@
     } else {
       if (teacherLinks.length) {
         html += '<div class="cx-group-label">' + esc(t('link.my_teachers')) + '</div>'
-          + teacherLinks.map(function (l) { return linkRow(l, true); }).join('');
+          + teacherLinks.map(function (l) { return linkRow(l, 'teacher', t('link.role_teacher'), l.linked_name); }).join('');
       }
       if (parentLinks.length) {
         html += '<div class="cx-group-label">' + esc(t('link.my_parents')) + '</div>'
-          + parentLinks.map(function (l) { return linkRow(l, true); }).join('');
+          + parentLinks.map(function (l) { return linkRow(l, 'parent', t('link.role_parent'), l.linked_name); }).join('');
       }
-      if (asLinked.length) {
-        html += '<div class="cx-group-label">' + esc(t('link.as_linked')) + '</div>'
-          + asLinked.map(function (l) { return linkRow(l, false); }).join('');
+      if (studentLinks.length) {
+        html += '<div class="cx-group-label">' + esc(t('link.my_students')) + '</div>'
+          + studentLinks.map(function (l) { return linkRow(l, 'student', t('link.role_student'), l.student_name || t('link.pending_student')); }).join('');
+      }
+      if (childLinks.length) {
+        html += '<div class="cx-group-label">' + esc(t('link.my_children')) + '</div>'
+          + childLinks.map(function (l) { return linkRow(l, 'child', t('link.role_child'), l.student_name || t('link.pending_student')); }).join('');
       }
     }
     listEl.innerHTML = html;
