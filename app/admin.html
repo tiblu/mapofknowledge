@@ -198,7 +198,7 @@
   <div class="admin-tab-panel hidden" id="admin-tab-panel-links">
 
     <div class="admin-section">
-      <h2>Links</h2>
+      <h2>Add link</h2>
       <div class="admin-add-form">
         <input type="email" id="link-learner-email" placeholder="learner email" autocomplete="off">
         <input type="email" id="link-linked-email" placeholder="teacher/parent email" autocomplete="off">
@@ -209,11 +209,15 @@
         <button class="admin-btn" id="link-create-btn">Create link</button>
         <span class="admin-msg" id="link-add-msg"></span>
       </div>
-      <div class="admin-add-form" style="margin-top:8px">
+    </div>
+
+    <div class="admin-section">
+      <h2>Links</h2>
+      <div class="admin-add-form">
         <input type="text" id="link-search" placeholder="Search by name or email" autocomplete="off">
         <button class="admin-btn" id="link-search-btn">Search</button>
       </div>
-      <div id="links-status" style="color:var(--text-muted,#8899aa);font-size:13px;margin:12px 0;">Loading…</div>
+      <div id="links-status" style="color:var(--text-muted,#8899aa);font-size:13px;margin-bottom:12px;">Loading…</div>
       <div class="admin-table-wrap" id="links-table-wrap" style="display:none">
         <table class="admin-table" id="links-table">
           <thead>
