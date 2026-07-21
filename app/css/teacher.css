@@ -3,6 +3,12 @@
    teacher.html / parent.html
    ═══════════════════════════════════════════════ */
 
+/* style.css sets body { overflow: hidden } for the map view's own pan/zoom.
+   .ta-wrap (teacher) is a fixed-position shell with its own internal scroll
+   regions, so it never needed the body to scroll — but .pa-wrap (parent) is
+   a normal flow layout that relies on the body scrolling once its content
+   (cards + the detail view below them) grows past one viewport. */
+body { overflow-y: auto; }
 
 /* ── Teacher layout ─────────────────────────────── */
 .ta-wrap {
