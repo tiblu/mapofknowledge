@@ -52,4 +52,23 @@ async function sendBillingAlertEmail(toEmail, apiMessage) {
   });
 }
 
-module.exports = { sendVerificationEmail, sendBillingAlertEmail };
+async function sendChildInviteEmail(toEmail, childName, code, locale) {
+  const name = childName || (locale === 'en' ? 'Your child' : 'Sinu laps');
+  const subject = locale === 'en' ? `${name} invited you to connect on KnoBitz` : `${name} kutsub sind KnoBitzis ühenduma`;
+  const text = locale === 'en'
+    ? `${name} would like to connect their KnoBitz account with yours, so you can follow their learning progress.\n\nSign up or log in at ${process.env.BASE_URL}, then open Settings and enter this code under "Have a code from your child?":\n\n${code}\n\nIf you weren't expecting this, you can ignore this email.`
+    : `${name} soovib ühendada oma KnoBitzi konto sinu omaga, et saaksid jälgida tema õppimist.\n\nLogi sisse või loo konto aadressil ${process.env.BASE_URL}, seejärel ava Seaded ja sisesta see kood väljal "Kas sul on lapse kood?":\n\n${code}\n\nKui sa seda ei oodanud, võid selle kirja eirata.`;
+
+  if (!transporter) {
+    console.warn('[mailer] SMTP not configured — child invite code for', toEmail + ':', code);
+    return;
+  }
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || process.env.SMTP_USER,
+    to: toEmail,
+    subject,
+    text,
+  });
+}
+
+module.exports = { sendVerificationEmail, sendBillingAlertEmail, sendChildInviteEmail };

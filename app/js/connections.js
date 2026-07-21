@@ -83,6 +83,9 @@
     }
     listEl.innerHTML = html;
 
+    var errEl = document.getElementById('connections-error');
+    if (errEl) errEl.style.display = 'none';
+
     listEl.querySelectorAll('[data-link-id]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var id = btn.dataset.linkId;
@@ -92,7 +95,19 @@
           t('btn.disconnect'),
           function () {
             fetch('/api/links/' + id, { method: 'DELETE' })
-              .then(function () { loadConnections(); })
+              .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+              .then(function (res) {
+                if (!res.ok) {
+                  var el = document.getElementById('connections-error');
+                  if (el) {
+                    el.textContent = res.d.error === 'too_young_to_disconnect'
+                      ? t('msg.too_young_disconnect') : t('msg.save_failed_short');
+                    el.style.display = '';
+                  }
+                  return;
+                }
+                loadConnections();
+              })
               .catch(function () {});
           }
         );
@@ -141,12 +156,96 @@
             role_not_allowed:    t('msg.link_role_not_allowed'),
             birth_year_required: t('msg.link_birth_year_required'),
             too_old:             t('msg.link_too_old'),
+            max_children:        t('msg.max_children'),
           };
           msg.className = 'cx-msg err';
           msg.textContent = messages[res.d.error] || t('msg.save_failed_short');
         })
         .catch(function () {
           redeemBtn.disabled = false;
+          msg.className = 'cx-msg err';
+          msg.textContent = t('msg.save_failed_short');
+        });
+    });
+  }
+
+  /* ── child: invite a parent by email ── */
+  var inviteParentBtn = document.getElementById('cx-invite-parent-btn');
+  if (inviteParentBtn) {
+    inviteParentBtn.addEventListener('click', function () {
+      var input = document.getElementById('cx-invite-parent-email');
+      var msg   = document.getElementById('cx-invite-parent-msg');
+      var email = input.value.trim();
+      msg.textContent = '';
+      msg.className = 'cx-msg';
+      if (!email) return;
+      inviteParentBtn.disabled = true;
+      fetch('/api/links/invite-parent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email }),
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          inviteParentBtn.disabled = false;
+          if (res.ok) {
+            input.value = '';
+            msg.className = 'cx-msg ok';
+            msg.textContent = t('msg.invite_sent');
+            return;
+          }
+          var messages = {
+            invalid_email:       t('msg.invalid_email'),
+            role_not_allowed:    t('msg.link_role_not_allowed'),
+            birth_year_required: t('msg.link_birth_year_required'),
+            too_old:             t('msg.link_too_old'),
+          };
+          msg.className = 'cx-msg err';
+          msg.textContent = messages[res.d.error] || t('msg.save_failed_short');
+        })
+        .catch(function () {
+          inviteParentBtn.disabled = false;
+          msg.className = 'cx-msg err';
+          msg.textContent = t('msg.save_failed_short');
+        });
+    });
+  }
+
+  /* ── parent: redeem a child's invite code ── */
+  var childCodeBtn = document.getElementById('cx-childcode-btn');
+  if (childCodeBtn) {
+    childCodeBtn.addEventListener('click', function () {
+      var input = document.getElementById('cx-childcode-input');
+      var msg   = document.getElementById('cx-childcode-msg');
+      var code  = input.value.trim();
+      msg.textContent = '';
+      msg.className = 'cx-msg';
+      if (!code) return;
+      childCodeBtn.disabled = true;
+      fetch('/api/links/redeem-child-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code }),
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          childCodeBtn.disabled = false;
+          if (res.ok) {
+            input.value = '';
+            msg.className = 'cx-msg ok';
+            msg.textContent = res.d.alreadyConnected ? t('msg.already_connected') : t('msg.link_accepted');
+            loadConnections();
+            return;
+          }
+          var messages = {
+            invalid_code:     t('msg.invalid_code'),
+            self:             t('msg.invalid_code'),
+            max_children:     t('msg.max_children'),
+            role_not_allowed: t('msg.link_role_not_allowed'),
+          };
+          msg.className = 'cx-msg err';
+          msg.textContent = messages[res.d.error] || t('msg.save_failed_short');
+        })
+        .catch(function () {
+          childCodeBtn.disabled = false;
           msg.className = 'cx-msg err';
           msg.textContent = t('msg.save_failed_short');
         });
@@ -232,6 +331,14 @@
     });
   }
 
+  // Admin can test either side — the child-code redeem field only makes
+  // sense while they're viewing "as parent".
+  function updateChildCodeRowVisibility() {
+    var row = document.getElementById('connections-childcode-row');
+    if (!row) return;
+    row.style.display = (_role === 'parent' || (_isAdmin && _myCodeAsRole === 'parent')) ? '' : 'none';
+  }
+
   /* ── init: show the right rows for this account's role ─────────────── */
   fetch('/auth/me').then(function (r) { return r.json(); }).then(function (user) {
     if (!user || !user.id) return;
@@ -241,6 +348,8 @@
     if (_role === 'learner' || _isAdmin) {
       var row = document.getElementById('connections-redeem-row');
       if (row) row.style.display = '';
+      var inviteRow = document.getElementById('connections-invite-parent-row');
+      if (inviteRow) inviteRow.style.display = '';
     }
 
     if (_role === 'teacher' || _role === 'parent' || _isAdmin) {
@@ -267,12 +376,14 @@
             _myCodeAsRole = btn.dataset.role;
             picker.querySelectorAll('[data-role]').forEach(function (b) { b.classList.toggle('active', b === btn); });
             updateMyCodeLabel(_myCodeAsRole);
+            updateChildCodeRowVisibility();
           });
         }
       }
       loadMyCode();
     }
 
+    updateChildCodeRowVisibility();
     loadConnections();
   }).catch(function () {});
 }());

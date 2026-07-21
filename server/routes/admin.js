@@ -189,4 +189,81 @@ router.delete('/users/:id', async (req, res) => {
   }
 });
 
+// ── Links (support tooling — view/create/disconnect any teacher/parent ↔
+//    learner connection) ────────────────────────────────────────────────────
+router.get('/links', async (req, res) => {
+  try {
+    const search = String(req.query.search || '').trim();
+    const params = [];
+    let whereClause = '';
+    if (search) {
+      whereClause = `WHERE lp.display_name LIKE ? OR lu.email LIKE ? OR llu.email LIKE ?`;
+      const term = `%${search}%`;
+      params.push(term, term, term);
+    }
+    const [rows] = await db.execute(
+      `SELECT ll.id, ll.role, ll.status, ll.invited_at, ll.accepted_at,
+              lp.display_name AS learner_name, lu.email AS learner_email,
+              llu.email AS linked_email, llu.role AS linked_account_role
+       FROM learner_links ll
+       LEFT JOIN learner_passports lp ON lp.id = ll.passport_id
+       LEFT JOIN users lu ON lu.passport_id = ll.passport_id
+       LEFT JOIN users llu ON llu.id = ll.linked_user_id
+       ${whereClause}
+       ORDER BY ll.id DESC
+       LIMIT 200`,
+      params
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('admin GET /links', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/links', async (req, res) => {
+  const { learnerEmail, linkedEmail, role } = req.body || {};
+  if (!['teacher', 'parent'].includes(role)) return res.status(400).json({ error: 'role must be teacher or parent' });
+  if (!learnerEmail || !linkedEmail) return res.status(400).json({ error: 'learnerEmail and linkedEmail required' });
+  try {
+    const [[learner]] = await db.execute(
+      'SELECT id, passport_id FROM users WHERE email = ?', [String(learnerEmail).toLowerCase().trim()]
+    );
+    if (!learner || !learner.passport_id) return res.status(404).json({ error: 'learner_not_found' });
+    const [[linked]] = await db.execute(
+      'SELECT id FROM users WHERE email = ?', [String(linkedEmail).toLowerCase().trim()]
+    );
+    if (!linked) return res.status(404).json({ error: 'linked_not_found' });
+    if (linked.id === learner.id) return res.status(400).json({ error: 'self' });
+
+    const [existing] = await db.execute(
+      'SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = ?',
+      [learner.passport_id, linked.id, role]
+    );
+    if (existing.length) {
+      await db.execute(`UPDATE learner_links SET status = 'active', accepted_at = NOW() WHERE id = ?`, [existing[0].id]);
+      return res.json({ ok: true, id: existing[0].id });
+    }
+    const [ins] = await db.execute(
+      `INSERT INTO learner_links (passport_id, linked_user_id, role, status, accepted_at, invited_at)
+       VALUES (?, ?, ?, 'active', NOW(), NOW())`,
+      [learner.passport_id, linked.id, role]
+    );
+    res.json({ ok: true, id: ins.insertId });
+  } catch (err) {
+    console.error('admin POST /links', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/links/:id', async (req, res) => {
+  try {
+    await db.execute(`UPDATE learner_links SET status = 'revoked' WHERE id = ?`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('admin DELETE /links/:id', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

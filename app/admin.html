@@ -186,6 +186,35 @@
     </div>
   </div>
 
+  <div class="admin-section">
+    <h2>Links (support)</h2>
+    <div class="admin-add-form">
+      <input type="email" id="link-learner-email" placeholder="learner email" autocomplete="off">
+      <input type="email" id="link-linked-email" placeholder="teacher/parent email" autocomplete="off">
+      <select id="link-role">
+        <option value="teacher">teacher</option>
+        <option value="parent">parent</option>
+      </select>
+      <button class="admin-btn" id="link-create-btn">Create link</button>
+      <span class="admin-msg" id="link-add-msg"></span>
+    </div>
+    <div class="admin-add-form" style="margin-top:8px">
+      <input type="text" id="link-search" placeholder="Search by name or email" autocomplete="off">
+      <button class="admin-btn" id="link-search-btn">Search</button>
+    </div>
+    <div id="links-status" style="color:var(--text-muted,#8899aa);font-size:13px;margin:12px 0;">Loading…</div>
+    <div class="admin-table-wrap" id="links-table-wrap" style="display:none">
+      <table class="admin-table" id="links-table">
+        <thead>
+          <tr>
+            <th>ID</th><th>Learner</th><th>Linked account</th><th>Role</th><th>Status</th><th>Created</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="links-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
 </main>
 
 <script src="js/role-nav.js"></script>
@@ -491,6 +520,83 @@
   });
 
   loadUsers();
+
+  /* ── Links (support tooling) ─────────────────────────────────────────────── */
+  function fmtDateTime(s) {
+    if (!s) return '—';
+    var d = new Date(s);
+    return fmtDate(s) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function renderLinksTable(links) {
+    var tbody = document.getElementById('links-tbody');
+    tbody.innerHTML = links.map(function (l) {
+      var learner = escHtml(l.learner_name || l.learner_email || '(no learner found)');
+      var linked  = l.linked_email ? escHtml(l.linked_email) : '(pending — no code redeemed yet)';
+      var statusCls = l.status === 'active' ? 'subscriber' : (l.status === 'pending' ? 'free' : 'cancelled');
+      return '<tr>'
+        + '<td>' + l.id + '</td>'
+        + '<td>' + learner + (l.learner_email ? ' (' + escHtml(l.learner_email) + ')' : '') + '</td>'
+        + '<td>' + linked + '</td>'
+        + '<td>' + escHtml(l.role) + '</td>'
+        + '<td>' + badge(statusCls, l.status) + '</td>'
+        + '<td>' + fmtDateTime(l.invited_at) + '</td>'
+        + '<td>' + (l.status !== 'revoked' ? '<button class="admin-btn admin-btn-danger" data-remove-link="' + l.id + '">Disconnect</button>' : '') + '</td>'
+        + '</tr>';
+    }).join('');
+    tbody.querySelectorAll('[data-remove-link]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (!confirm('Disconnect link #' + btn.dataset.removeLink + '?')) return;
+        fetch('/api/admin/links/' + btn.dataset.removeLink, { method: 'DELETE' })
+          .then(function () { loadLinks(); })
+          .catch(function () { alert('Request failed.'); });
+      });
+    });
+  }
+
+  function loadLinks() {
+    var status = document.getElementById('links-status');
+    var wrap = document.getElementById('links-table-wrap');
+    status.textContent = 'Loading…';
+    var q = document.getElementById('link-search').value.trim();
+    fetch('/api/admin/links' + (q ? '?search=' + encodeURIComponent(q) : ''))
+      .then(function (r) { return r.json(); })
+      .then(function (links) {
+        renderLinksTable(links);
+        status.textContent = links.length + ' link' + (links.length === 1 ? '' : 's');
+        wrap.style.display = '';
+      })
+      .catch(function () { status.textContent = 'Failed to load.'; });
+  }
+
+  document.getElementById('link-create-btn').addEventListener('click', function () {
+    var learnerEmail = document.getElementById('link-learner-email').value.trim();
+    var linkedEmail  = document.getElementById('link-linked-email').value.trim();
+    var role         = document.getElementById('link-role').value;
+    var msg = document.getElementById('link-add-msg');
+    msg.textContent = '';
+    if (!learnerEmail || !linkedEmail) { msg.textContent = 'Both emails required.'; return; }
+    fetch('/api/admin/links', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ learnerEmail: learnerEmail, linkedEmail: linkedEmail, role: role }),
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.textContent = 'Error: ' + res.j.error; return; }
+        document.getElementById('link-learner-email').value = '';
+        document.getElementById('link-linked-email').value = '';
+        msg.textContent = 'Created.';
+        loadLinks();
+      })
+      .catch(function () { msg.textContent = 'Request failed.'; });
+  });
+
+  document.getElementById('link-search-btn').addEventListener('click', loadLinks);
+  document.getElementById('link-search').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') loadLinks();
+  });
+
+  loadLinks();
 }());
 </script>
 </body>

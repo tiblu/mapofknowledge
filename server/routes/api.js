@@ -6,7 +6,7 @@ const game    = require('../services/game');
 const { notify, getUserLocale } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
 const { renderPassportText } = require('../services/passportText');
-const { redeemLinkCode, generateCode } = require('../services/links');
+const { redeemLinkCode, sendChildInvite, acceptChildInvite, generateCode } = require('../services/links');
 const testlog = require('../testlog'); // TESTLOG
 
 // ── User profile helper ──────────────────────────────────────────────────────
@@ -2056,13 +2056,59 @@ router.post('/links/redeem', async (req, res) => {
   }
 });
 
+// Child-initiated: learner invites a parent by email (the reverse of the
+// persistent-code flow — only children can start it this way).
+router.post('/links/invite-parent', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.status(400).json({ error: 'no_passport' });
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
+  try {
+    const [passportRows] = await db.execute('SELECT birth_year FROM learner_passports WHERE id = ?', [passportId]);
+    const birthYear = passportRows[0]?.birth_year || null;
+    const result = await sendChildInvite({
+      passportId,
+      userRole: req.user.role,
+      birthYear,
+      email: req.body?.email,
+      bypassChecks: isAdmin,
+    });
+    if (!result.ok) return res.status(400).json(result);
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/links/invite-parent failed:', err);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// Parent redeems the one-time code from a child's invite email.
+router.post('/links/redeem-child-invite', async (req, res) => {
+  const parentUserId = req.user?.id;
+  const parentPassportId = req.user?.passport_id;
+  if (!parentUserId || !parentPassportId) return res.status(400).json({ error: 'no_passport' });
+  const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
+  if (!isAdmin && req.user.role !== 'parent') return res.status(403).json({ error: 'role_not_allowed' });
+  try {
+    const result = await acceptChildInvite({
+      parentUserId,
+      parentPassportId,
+      code: req.body?.code,
+      bypassChecks: isAdmin,
+    });
+    if (!result.ok) return res.status(400).json(result);
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/links/redeem-child-invite failed:', err);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 router.delete('/links/:id', async (req, res) => {
   const userId = req.user?.id;
   const passportId = req.user?.passport_id;
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
   try {
     const [rows] = await db.execute(
-      `SELECT ll.*, lp.display_name AS student_name, lu_lp.display_name AS linked_name
+      `SELECT ll.*, lp.display_name AS student_name, lp.birth_year AS student_birth_year, lu_lp.display_name AS linked_name
        FROM learner_links ll
        LEFT JOIN learner_passports lp ON lp.id = ll.passport_id
        LEFT JOIN users lu ON lu.id = ll.linked_user_id
@@ -2072,6 +2118,17 @@ router.delete('/links/:id', async (req, res) => {
     );
     if (!rows.length) return res.status(404).json({ error: 'not_found' });
     const link = rows[0];
+
+    // Parent-child links: under-13 children can't disconnect themselves —
+    // only the parent side can. Teacher-student links stay symmetric.
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'super_admin';
+    if (!isAdmin && link.role === 'parent' && link.student_birth_year) {
+      const age = new Date().getFullYear() - link.student_birth_year;
+      const isParentSide = userId === link.linked_user_id;
+      if (age < 13 && !isParentSide) {
+        return res.status(403).json({ error: 'too_young_to_disconnect' });
+      }
+    }
 
     await db.execute(`UPDATE learner_links SET status = 'revoked' WHERE id = ?`, [req.params.id]);
 

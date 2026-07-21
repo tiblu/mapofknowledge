@@ -206,6 +206,7 @@
 
     <div class="settings-card">
       <div id="connections-list" class="cx-list"></div>
+      <div class="cx-msg err" id="connections-error" style="display:none"></div>
 
       <div class="cx-block" id="connections-redeem-row" style="display:none">
         <div class="settings-row-label" data-i18n="link.have_code">Have a code?</div>
@@ -214,6 +215,15 @@
           <button class="settings-save-btn settings-save-btn-inline" id="cx-redeem-btn" data-i18n="btn.join">Join</button>
         </div>
         <div class="cx-msg" id="cx-redeem-msg"></div>
+      </div>
+
+      <div class="cx-block" id="connections-invite-parent-row" style="display:none">
+        <div class="settings-row-label" data-i18n="link.invite_parent_label">Invite a parent by email</div>
+        <div class="cx-row">
+          <input id="cx-invite-parent-email" type="email" class="sf-input cx-code-field" data-i18n-placeholder="link.invite_parent_placeholder" placeholder="parent@example.com">
+          <button class="settings-save-btn settings-save-btn-inline" id="cx-invite-parent-btn" data-i18n="btn.send_invite">Send invite</button>
+        </div>
+        <div class="cx-msg" id="cx-invite-parent-msg"></div>
       </div>
 
       <div class="cx-block" id="connections-mycode-row" style="display:none">
@@ -225,6 +235,15 @@
         <div class="cx-code-display" id="cx-code-display"></div>
         <div class="cx-mycode-hint" id="cx-mycode-hint"></div>
         <button class="settings-save-btn settings-save-btn-inline" id="cx-generate-btn" data-i18n="btn.generate_code">Generate code</button>
+      </div>
+
+      <div class="cx-block" id="connections-childcode-row" style="display:none">
+        <div class="settings-row-label" data-i18n="link.have_child_code">Have a code from your child?</div>
+        <div class="cx-row">
+          <input id="cx-childcode-input" class="sf-input cx-code-field" maxlength="8" data-i18n-placeholder="link.code_placeholder" placeholder="Code">
+          <button class="settings-save-btn settings-save-btn-inline" id="cx-childcode-btn" data-i18n="btn.join">Join</button>
+        </div>
+        <div class="cx-msg" id="cx-childcode-msg"></div>
       </div>
     </div>
   </div>
