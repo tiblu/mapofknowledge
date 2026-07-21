@@ -4,7 +4,7 @@
      1. Mark the current page's own item active-page (no click), using
         data-nav on each item — same markup, every page, no per-page drift.
      2. Inject role-conditional items (Minu õpilased / Minu lapsed / Admin)
-        after the "Kaart" item.
+        right after "Õppija pass".
    Does NOT build the old top-center role-switcher tabs — removed.
    ══════════════════════════════════════════════ */
 
@@ -48,8 +48,8 @@
       var role = user.role;
       var isAdmin = role === 'admin' || role === 'super_admin';
 
-      var mapItem = dropdown.querySelector('[data-nav="index.html"]');
-      var insertBefore = mapItem ? mapItem.nextSibling : null;
+      var anchorItem = dropdown.querySelector('[data-nav="profile.html"]');
+      var insertBefore = anchorItem ? anchorItem.nextSibling : null;
 
       var ICONS = {
         'teacher.html': '<svg width="15" height="15" viewBox="0 0 15 15" fill="none">'
