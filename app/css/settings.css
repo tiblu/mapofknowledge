@@ -50,6 +50,15 @@ body {
   font-size: 12px; color: var(--c5); line-height: 1.5;
 }
 
+/* ── generic section card (e.g. Connections) ── */
+.settings-card {
+  background: rgba(255,255,255,0.65);
+  border: 1px solid var(--i08);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 10px var(--i05);
+}
+
 /* ── toggle ── */
 .st-toggle {
   width: 42px; height: 24px; border-radius: 12px;

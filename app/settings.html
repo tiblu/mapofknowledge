@@ -113,33 +113,6 @@
 
   <h1 class="settings-title" data-i18n="settings.title">Settings</h1>
 
-  <!-- MAP BEHAVIOUR -->
-  <div class="settings-section">
-    <div class="settings-section-label" data-i18n="settings.map_behaviour">Map behaviour</div>
-
-    <div class="settings-row">
-      <div class="settings-row-text">
-        <div class="settings-row-label" data-i18n="settings.screensaver">Screen saver</div>
-        <div class="settings-row-desc" data-i18n="settings.screensaver_desc">After one minute of inactivity the map slowly pans and zooms through the knowledge graph.</div>
-      </div>
-      <button class="st-toggle on" id="screensaver-toggle" aria-label="Toggle screen saver">
-        <div class="st-toggle-thumb"></div>
-      </button>
-    </div>
-
-    <div class="settings-row">
-      <div class="settings-row-text">
-        <div class="settings-row-label" data-i18n="settings.map_animation">Map animation</div>
-        <div class="settings-row-desc" data-i18n="settings.animation_desc">How much the knowledge graph moves.</div>
-      </div>
-      <div class="st-picker" id="animation-picker">
-        <button class="st-picker-btn" data-value="lively" data-i18n="settings.anim_lively">Lively</button>
-        <button class="st-picker-btn active" data-value="moderate" data-i18n="settings.anim_moderate">Moderate</button>
-        <button class="st-picker-btn" data-value="static" data-i18n="settings.anim_static">Static</button>
-      </div>
-    </div>
-  </div>
-
   <!-- FOCUS -->
   <div class="settings-section">
     <div class="settings-section-label" data-i18n="settings.focus_section">Focus</div>
@@ -227,6 +200,62 @@
     </div>
   </div>
 
+  <!-- CONNECTIONS -->
+  <div class="settings-section" id="connections">
+    <div class="settings-section-label" data-i18n="settings.connections">Connections</div>
+
+    <div class="settings-card">
+      <div id="connections-list" class="cx-list"></div>
+
+      <div class="cx-block" id="connections-redeem-row" style="display:none">
+        <div class="settings-row-label" data-i18n="link.have_code">Have a code?</div>
+        <div class="cx-row">
+          <input id="cx-code-input" class="sf-input cx-code-field" maxlength="8" data-i18n-placeholder="link.code_placeholder" placeholder="Code">
+          <button class="settings-save-btn settings-save-btn-inline" id="cx-redeem-btn" data-i18n="btn.join">Join</button>
+        </div>
+        <div class="cx-msg" id="cx-redeem-msg"></div>
+      </div>
+
+      <div class="cx-block" id="connections-mycode-row" style="display:none">
+        <div class="settings-row-label" id="cx-mycode-label"></div>
+        <div class="cx-role-picker" id="cx-role-picker" style="display:none">
+          <button type="button" class="st-picker-btn" data-role="teacher" data-i18n="teacher.title">Teacher view</button>
+          <button type="button" class="st-picker-btn" data-role="parent" data-i18n="parent.title">Parent view</button>
+        </div>
+        <div class="cx-code-display" id="cx-code-display"></div>
+        <div class="cx-mycode-hint" id="cx-mycode-hint"></div>
+        <button class="settings-save-btn settings-save-btn-inline" id="cx-generate-btn" data-i18n="btn.generate_code">Generate code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP BEHAVIOUR -->
+  <div class="settings-section">
+    <div class="settings-section-label" data-i18n="settings.map_behaviour">Map behaviour</div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="settings.screensaver">Screen saver</div>
+        <div class="settings-row-desc" data-i18n="settings.screensaver_desc">After one minute of inactivity the map slowly pans and zooms through the knowledge graph.</div>
+      </div>
+      <button class="st-toggle on" id="screensaver-toggle" aria-label="Toggle screen saver">
+        <div class="st-toggle-thumb"></div>
+      </button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="settings.map_animation">Map animation</div>
+        <div class="settings-row-desc" data-i18n="settings.animation_desc">How much the knowledge graph moves.</div>
+      </div>
+      <div class="st-picker" id="animation-picker">
+        <button class="st-picker-btn" data-value="lively" data-i18n="settings.anim_lively">Lively</button>
+        <button class="st-picker-btn active" data-value="moderate" data-i18n="settings.anim_moderate">Moderate</button>
+        <button class="st-picker-btn" data-value="static" data-i18n="settings.anim_static">Static</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MAP FILTERS -->
   <div class="settings-section" id="filters">
     <div class="settings-section-label" data-i18n="settings.map_filters">Map filters</div>
@@ -245,35 +274,8 @@
 
   </div>
 
-  <!-- CONNECTIONS -->
-  <div class="settings-section" id="connections">
-    <div class="settings-section-label" data-i18n="settings.connections">Connections</div>
-
-    <div id="connections-list" class="cx-list"></div>
-
-    <div class="cx-block" id="connections-redeem-row" style="display:none">
-      <div class="settings-row-label" data-i18n="link.have_code">Have a code?</div>
-      <div class="cx-row">
-        <input id="cx-code-input" class="sf-input cx-code-field" maxlength="8" data-i18n-placeholder="link.code_placeholder" placeholder="Code">
-        <button class="settings-save-btn settings-save-btn-inline" id="cx-redeem-btn" data-i18n="btn.join">Join</button>
-      </div>
-      <div class="cx-msg" id="cx-redeem-msg"></div>
-    </div>
-
-    <div class="cx-block" id="connections-mycode-row" style="display:none">
-      <div class="settings-row-label" id="cx-mycode-label"></div>
-      <div class="cx-role-picker" id="cx-role-picker" style="display:none">
-        <button type="button" class="st-picker-btn" data-role="teacher" data-i18n="teacher.title">Teacher view</button>
-        <button type="button" class="st-picker-btn" data-role="parent" data-i18n="parent.title">Parent view</button>
-      </div>
-      <div class="cx-code-display" id="cx-code-display"></div>
-      <div class="cx-mycode-hint" id="cx-mycode-hint"></div>
-      <button class="settings-save-btn settings-save-btn-inline" id="cx-generate-btn" data-i18n="btn.generate_code">Generate code</button>
-    </div>
-  </div>
-
-  <button class="settings-save-btn" data-i18n="btn.save_settings" onclick="if(window.parent!==window&&typeof window.parent.closeOverlay==='function'){window.parent.closeOverlay();}">
-    Save settings
+  <button class="settings-save-btn" data-i18n="btn.done" onclick="if(window.parent!==window&&typeof window.parent.closeOverlay==='function'){window.parent.closeOverlay();}">
+    Done
   </button>
 
 </main>
