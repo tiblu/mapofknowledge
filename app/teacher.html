@@ -179,19 +179,6 @@
   </main>
 </div>
 
-<!-- Invite modal -->
-<div class="link-modal" id="invite-modal" style="display:none">
-  <div class="link-modal-box">
-    <div class="link-modal-title">Lisa õpilane</div>
-    <div style="font-size:12px;color:var(--c5);margin-bottom:16px;line-height:1.6">
-      Jaga seda koodi õpilasele. Ta sisestab selle oma profiili lehe jaotises "Seosed".
-    </div>
-    <div class="link-code-display">KN7X2MPQ</div>
-    <div class="link-modal-hint">Kood aegub 48 tunni pärast.</div>
-    <button class="ta-action-btn" onclick="document.getElementById('invite-modal').style.display='none'">Sulge</button>
-  </div>
-</div>
-
 <!-- Group manager modal -->
 <div class="link-modal" id="group-modal" style="display:none">
   <div class="link-modal-box" style="max-width:420px">
@@ -544,7 +531,7 @@ document.getElementById('btn-back-detail').addEventListener('click', function(){
 
 /* ── Modals ── */
 document.getElementById('btn-invite').addEventListener('click', function(){
-  document.getElementById('invite-modal').style.display = 'flex';
+  navOverlay('settings.html#connections');
 });
 document.getElementById('btn-add-group').addEventListener('click', function(){
   renderGroupManageModal();
