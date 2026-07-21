@@ -446,6 +446,18 @@
     }, 1000);
   }
 
+  // Called at the start of every knobit. Previously this always hard-reset
+  // the countdown to a fresh N minutes — so a learner moving quickly from
+  // knobit to knobit (each one finishing well under the limit) never
+  // actually reached zero and never got prompted to take a break, since the
+  // clock kept getting wound back before it could run out. Now it only
+  // starts a fresh cycle if one isn't already ticking; an in-progress
+  // countdown carries over across knobit boundaries untouched.
+  function _continueOrStartFocusTimer() {
+    if (_focusInterval) { _primeChimeContext(); return; }
+    _startFocusTimer();
+  }
+
   function _stopFocusTimer() {
     clearInterval(_focusInterval);
     clearInterval(_breakInterval);
@@ -755,7 +767,7 @@
     if (navLabel) navLabel.textContent = k.title || '';
 
     showLmView('lm-knobit');
-    _startFocusTimer();
+    _continueOrStartFocusTimer();
 
     if (_resumeSession && _resumeSession.knobitId === k.id && _resumeSession.blocks && _resumeSession.blocks.length) {
       _resumeFromSession(_resumeSession);
@@ -1221,7 +1233,10 @@
   /* ─── Knobit completion ───────────────────────────────────────── */
   function _completeKnobit() {
     _knobitStarted = false;
-    _stopFocusTimer();
+    // Deliberately NOT stopping the focus timer here — the learner is very
+    // likely about to start another knobit, and the countdown should keep
+    // running across that boundary (see _continueOrStartFocusTimer). It
+    // still gets stopped properly on a real exit via closeLearningMode().
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
     KNOBIT_DONE_COUNT++;
     apiComplete(k.id);
