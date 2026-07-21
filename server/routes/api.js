@@ -567,7 +567,7 @@ router.post('/nodes/:id/learn', async (req, res) => {
 
     // Knobits are always stored in English
     let [knobits] = await db.execute(
-      `SELECT id, sequence, title FROM knobits WHERE node_id = ? ORDER BY sequence`,
+      `SELECT id, sequence, title, target_bytes FROM knobits WHERE node_id = ? ORDER BY sequence`,
       [node.db_id]
     );
 
@@ -578,12 +578,12 @@ router.post('/nodes/:id/learn', async (req, res) => {
       const generated  = await llm.generateKnobits(node.label, domain, breadcrumb);
       for (const k of generated) {
         await db.execute(
-          'INSERT INTO knobits (node_id, sequence, locale, title) VALUES (?, ?, ?, ?)',
-          [node.db_id, k.sequence, 'en', k.title]
+          'INSERT INTO knobits (node_id, sequence, locale, title, target_bytes) VALUES (?, ?, ?, ?, ?)',
+          [node.db_id, k.sequence, 'en', k.title, k.byteCount]
         );
       }
       [knobits] = await db.execute(
-        `SELECT id, sequence, title FROM knobits WHERE node_id = ? ORDER BY sequence`,
+        `SELECT id, sequence, title, target_bytes FROM knobits WHERE node_id = ? ORDER BY sequence`,
         [node.db_id]
       );
 
