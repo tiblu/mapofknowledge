@@ -119,10 +119,27 @@
 
     <div class="settings-row">
       <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="settings.map_animation">Map animation</div>
+        <div class="settings-row-desc" data-i18n="settings.animation_desc">How much the knowledge graph moves.</div>
+      </div>
+      <div class="st-picker" id="animation-picker">
+        <button class="st-picker-btn" data-value="lively" data-i18n="settings.anim_lively">Lively</button>
+        <button class="st-picker-btn active" data-value="moderate" data-i18n="settings.anim_moderate">Moderate</button>
+        <button class="st-picker-btn" data-value="static" data-i18n="settings.anim_static">Static</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOCUS -->
+  <div class="settings-section">
+    <div class="settings-section-label" data-i18n="settings.focus_section">Focus</div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
         <div class="settings-row-label" data-i18n="settings.ambient_sound">Café ambience</div>
         <div class="settings-row-desc" data-i18n="settings.ambient_sound_desc">Plays soft background café sounds while learning to help with focus.</div>
       </div>
-      <button class="st-toggle on" id="ambient-toggle" aria-label="Toggle background music">
+      <button class="st-toggle on" id="ambient-toggle" aria-label="Toggle background sound">
         <div class="st-toggle-thumb"></div>
       </button>
     </div>
@@ -143,6 +160,11 @@
       </div>
       <input type="number" class="sf-input st-number-input" id="focus-timer-minutes-input" min="5" max="90" step="5" value="20">
     </div>
+  </div>
+
+  <!-- APPEARANCE -->
+  <div class="settings-section">
+    <div class="settings-section-label" data-i18n="settings.appearance">Appearance</div>
 
     <div class="settings-row">
       <div class="settings-row-text">
@@ -155,23 +177,6 @@
         <button class="st-picker-btn" data-value="large" data-i18n="settings.size_large">Large</button>
       </div>
     </div>
-
-    <div class="settings-row">
-      <div class="settings-row-text">
-        <div class="settings-row-label" data-i18n="settings.map_animation">Map animation</div>
-        <div class="settings-row-desc" data-i18n="settings.animation_desc">How much the knowledge graph moves.</div>
-      </div>
-      <div class="st-picker" id="animation-picker">
-        <button class="st-picker-btn" data-value="lively" data-i18n="settings.anim_lively">Lively</button>
-        <button class="st-picker-btn active" data-value="moderate" data-i18n="settings.anim_moderate">Moderate</button>
-        <button class="st-picker-btn" data-value="static" data-i18n="settings.anim_static">Static</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- APPEARANCE -->
-  <div class="settings-section">
-    <div class="settings-section-label" data-i18n="settings.appearance">Appearance</div>
 
     <div class="settings-row settings-row-column">
       <div class="settings-row-label" data-i18n="settings.colour_palette">Colour palette</div>

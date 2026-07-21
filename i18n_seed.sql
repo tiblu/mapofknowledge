@@ -297,6 +297,14 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('settings.map_behaviour',  'en', 'Map behaviour'),
 ('settings.screensaver',    'en', 'Screen saver'),
 ('settings.screensaver_desc','en','After one minute of inactivity the map slowly pans and zooms through the knowledge graph.'),
+('settings.focus_section',  'en', 'Focus'),
+('settings.focus_section',  'et', 'Fookus'),
+('settings.ambient_sound',      'en', 'Café ambience'),
+('settings.ambient_sound',      'et', 'Taustaheli'),
+('settings.ambient_sound_desc', 'en', 'Plays soft background café sounds while learning to help with focus.'),
+-- Fixed drift: previously said "taustamuusikat" (background music) — this plays
+-- ambient café sound effects, not music, so the Estonian wording was actively wrong.
+('settings.ambient_sound_desc', 'et', 'Mängib taustal rahulikku kohvikuheli, mis aitab õppimisele keskenduda.'),
 ('settings.focus_timer',         'en', 'Focus timer'),
 ('settings.focus_timer',         'et', 'Fookuse taimer'),
 ('settings.focus_timer_desc',    'en', 'Reminds you to take a short break after a set number of focused learning minutes.'),
