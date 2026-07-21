@@ -2218,32 +2218,100 @@ router.get('/teacher/students/:passport_id', async (req, res) => {
   const { passport_id } = req.params;
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
   try {
-    // Verify teacher is linked to this student
     const [auth] = await db.execute(
       `SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'teacher' AND status = 'active'`,
       [passport_id, userId]
     );
     if (!auth.length) return res.status(403).json({ error: 'Not linked to this student' });
 
-    const [[passport]] = await db.execute(
-      'SELECT display_name, about FROM learner_passports WHERE id = ?', [passport_id]
-    );
-    const [goals] = await db.execute(
-      `SELECT g.*, n.label AS node_label, COALESCE(unk.percentage,0) AS progress
-       FROM passport_goals g
-       LEFT JOIN nodes n ON n.external_id = g.node_external_id
-       LEFT JOIN user_node_knowledge unk ON unk.node_external_id = g.node_external_id AND unk.passport_id = g.passport_id
-       WHERE g.passport_id = ? AND g.status = 'in_progress' ORDER BY g.created_at DESC`,
-      [passport_id]
-    );
-    const [events] = await db.execute(
-      `SELECT title, institution, event_date, type FROM passport_events
-       WHERE passport_id = ? ORDER BY event_date DESC LIMIT 10`,
-      [passport_id]
-    );
-    res.json({ passport, goals, events });
+    // Same source of truth as the learner's own Õppija pass and the parent
+    // dashboard's child detail — Õpisündmused/Nutikus/Eesmärgid render
+    // identically here. Deliberately NOT including gameState: Mäng stays
+    // personal to the learner.
+    const locale = await getUserLocale(userId);
+    const data = await _fetchFullPassport(passport_id, locale);
+    res.json({
+      passport: data.passport,
+      goals: data.goals,
+      events: data.events,
+      competence: data.competence,
+      mapKnowledge: data.mapKnowledge,
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load student detail' });
+  }
+});
+
+router.get('/teacher/students/:passport_id/activity', async (req, res) => {
+  const userId = req.user?.id;
+  const { passport_id } = req.params;
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+  const period = ['7d', '30d', '90d'].includes(req.query.period) ? req.query.period : '30d';
+  const days = period === '7d' ? 7 : period === '90d' ? 90 : 30;
+  try {
+    const [auth] = await db.execute(
+      `SELECT id FROM learner_links WHERE passport_id = ? AND linked_user_id = ? AND role = 'teacher' AND status = 'active'`,
+      [passport_id, userId]
+    );
+    if (!auth.length) return res.status(403).json({ error: 'Not linked' });
+
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - (days - 1));
+    const fromStr = fromDate.getFullYear() + '-' + String(fromDate.getMonth() + 1).padStart(2, '0') + '-' + String(fromDate.getDate()).padStart(2, '0');
+
+    const [doneRows] = await db.execute(
+      `SELECT DATE_FORMAT(DATE(completed_at), '%Y-%m-%d') AS day, COUNT(*) AS n
+       FROM knobit_progress
+       WHERE phase_reached = 'done' AND passport_id = ? AND completed_at >= ?
+       GROUP BY DATE(completed_at)`,
+      [passport_id, fromStr]
+    );
+
+    // Time spent isn't recorded directly — estimated from gaps between
+    // consecutive interaction timestamps within the same day, capped at 5
+    // minutes per gap so overnight/away gaps don't inflate the total.
+    const [timeRows] = await db.execute(
+      `SELECT DATE_FORMAT(day, '%Y-%m-%d') AS day, SUM(LEAST(raw_gap, 300)) AS seconds
+       FROM (
+         SELECT DATE(created_at) AS day,
+                TIMESTAMPDIFF(SECOND, LAG(created_at) OVER (PARTITION BY DATE(created_at) ORDER BY created_at), created_at) AS raw_gap
+         FROM knobit_interactions
+         WHERE passport_id = ? AND created_at >= ?
+       ) t
+       WHERE raw_gap IS NOT NULL
+       GROUP BY day`,
+      [passport_id, fromStr]
+    );
+
+    // Knowledge tests (the 4-tier diagnostic under a node) leave no
+    // per-question interaction log, only the final result — add a flat
+    // per-test estimate so a test-only day isn't invisible in the chart.
+    const TEST_MINUTES_ESTIMATE = 4;
+    const [testRows] = await db.execute(
+      `SELECT DATE_FORMAT(DATE(updated_at), '%Y-%m-%d') AS day, COUNT(*) AS n
+       FROM user_node_knowledge
+       WHERE source = 'tested' AND passport_id = ? AND updated_at >= ?
+       GROUP BY DATE(updated_at)`,
+      [passport_id, fromStr]
+    );
+
+    const doneMap = {}; doneRows.forEach(r => { doneMap[r.day] = Number(r.n); });
+    const timeMap = {}; timeRows.forEach(r => { timeMap[r.day] = Number(r.seconds); });
+    const testMinutesMap = {}; testRows.forEach(r => { testMinutesMap[r.day] = Number(r.n) * TEST_MINUTES_ESTIMATE; });
+
+    const today = new Date();
+    const localYMD = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const series = Array.from({ length: days }, (_, i) => {
+      const d = new Date(today); d.setDate(d.getDate() - (days - 1 - i));
+      const key = localYMD(d);
+      const minutes = Math.round((timeMap[key] || 0) / 60) + (testMinutesMap[key] || 0);
+      return { date: key, knobitsDone: doneMap[key] || 0, minutes: minutes };
+    });
+
+    res.json({ period, series });
+  } catch (err) {
+    console.error('[api/teacher/students/:id/activity]', err.message);
+    res.status(500).json({ error: 'Failed to load activity' });
   }
 });
 

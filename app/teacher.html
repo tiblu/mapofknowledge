@@ -169,7 +169,6 @@
         </button>
         <div style="flex:1"></div>
         <button class="ta-action-btn ta-btn-primary" id="btn-suggest-goal">Sea eesmärk</button>
-        <button class="ta-action-btn" id="btn-view-map">Vaata kaardil</button>
       </div>
 
       <div class="ta-detail" id="detail-panel"></div>
@@ -206,6 +205,9 @@ var STUDENTS = [];
 var REAL_GROUPS = []; // [{id, label, color}], loaded from /api/teacher/groups
 var activeGroup = 'all';
 var selectedId  = null;
+var chartPeriod = '30d';
+var chartMetric = 'knobits';
+var _lastSeries = [];
 
 function groupById(gid) { return REAL_GROUPS.find(function (g) { return g.id === gid; }); }
 
@@ -407,9 +409,16 @@ function renderDashboard() {
   });
 }
 
-/* ── Detail ── */
+/* ── Detail — same chart + Õpisündmused/Nutikus/Eesmärgid sections as the
+   parent dashboard's child detail view (identical markup/CSS), plus the
+   Rühmad chips row which parent.html doesn't have. ── */
 function selectStudent(id) {
-  selectedId = id;
+  selectedId  = id;
+  chartPeriod = '30d';
+  chartMetric = 'knobits';
+  var s = STUDENTS.find(function (x) { return x.passport_id === id; });
+  if (!s) return;
+
   document.querySelectorAll('.ta-student-item').forEach(function (el) {
     el.classList.toggle('ta-student-selected', +el.dataset.id === id);
   });
@@ -417,50 +426,343 @@ function selectStudent(id) {
     el.classList.toggle('pa-card-selected', +el.dataset.id === id);
   });
 
-  fetch('/api/teacher/students/' + id).then(function (r) { return r.json(); }).then(function (d) {
-    if (selectedId !== id) return;
-    var passport = d.passport || {};
-    var goals    = (d.goals || []).filter(function (g) { return g.status === 'in_progress'; });
-    var events   = d.events || [];
+  var detail = document.getElementById('detail-panel');
+  detail.innerHTML =
+    '<div class="pa-detail-header">'
+    + '<div class="pa-detail-avatar ' + avatarClass(s.passport_id) + '" style="width:56px;height:56px;font-size:20px">' + esc(initials(s.display_name)) + '</div>'
+    + '<div>'
+    + '<div class="pa-detail-name">' + esc(s.display_name || '?') + '</div>'
+    + '<div class="pa-detail-sub">' + esc(familyName(s.display_name)) + '</div>'
+    + '<div class="pa-detail-last">Aktiivne: ' + esc(fmtLastActive(s.last_active)) + '</div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="pa-detail-section"><div class="ta-section-label">Rühmad</div><div class="ta-detail-group-chips" id="detail-group-chips"></div></div>'
+    + '<div class="pa-detail-section">'
+    + '<div class="pa-chart-head">'
+    + '<div class="pa-detail-section-label" style="margin-bottom:0">Kasutuse ülevaade</div>'
+    + '<div class="pa-chart-controls">'
+    + '<select class="pa-period-select" id="chart-metric-select">'
+    + '<option value="knobits">Lõpetatud knobitid</option>'
+    + '<option value="minutes">Aktiivne aeg</option>'
+    + '</select>'
+    + '<select class="pa-period-select" id="chart-period-select">'
+    + '<option value="7d">7 päeva</option>'
+    + '<option value="30d" selected>30 päeva</option>'
+    + '<option value="90d">90 päeva</option>'
+    + '</select>'
+    + '</div>'
+    + '</div>'
+    + '<div class="pa-chart-block">'
+    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label" id="chart-metric-label">Lõpetatud knobitid</span><span class="pa-chart-block-total" id="chart-total">—</span></div>'
+    + '<div id="chart-line-wrap" class="pa-chart-line-wrap"></div>'
+    + '</div>'
+    + '</div>'
+    + '<div class="pa-detail-section p-card" id="goal-section"></div>'
+    + '<div class="pa-detail-section p-card" id="competence-section"></div>'
+    + '<div class="pa-detail-section p-card" id="events-section"></div>';
 
-    var goalHtml = goals.length
-      ? goals.map(function (g) {
-          var pct = Math.round(Number(g.progress) || 0);
-          var label = g.node_breadcrumb || g.node_label || g.text;
-          return '<div class="ta-goal-row">'
-            + '<div class="ta-goal-header"><div class="ta-goal-name">' + esc(label) + '</div><div class="ta-goal-pct">' + pct + '%</div></div>'
-            + '<div class="ta-bar-track"><div class="ta-bar-fill ' + (pct >= 80 ? 'ta-bar-green' : '') + '" style="width:' + pct + '%"></div></div>'
-            + (g.target_date ? '<div class="ta-goal-date">⏰ Tähtaeg: ' + esc(new Date(g.target_date).toLocaleDateString('et-EE', { year: 'numeric', month: 'long', day: 'numeric' })) + '</div>' : '')
-            + '</div>';
-        }).join('')
-      : '<div style="font-size:13px;color:var(--c6);font-style:italic;padding:12px 0">Eesmärk ei ole seatud.</div>';
+  renderDetailGroupChips(id);
 
-    var eventsHtml = events.length
-      ? events.map(function (e) {
-          var when = e.event_date ? new Date(e.event_date).toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-          return '<div class="ta-event-row">'
-            + '<div class="ta-event-body"><div class="ta-event-title">' + esc(e.title) + '</div><div class="ta-event-date">' + esc(when) + '</div></div>'
-            + '</div>';
-        }).join('')
-      : '<div style="font-size:13px;color:var(--c6);font-style:italic">Tegevusi ei ole.</div>';
-
-    document.getElementById('detail-panel').innerHTML =
-      '<div class="ta-detail-header">'
-      + '<div class="ta-detail-avatar ' + avatarClass(id) + '" style="width:52px;height:52px;font-size:16px">' + esc(initials(passport.display_name)) + '</div>'
-      + '<div class="ta-detail-info">'
-      + '<div class="ta-detail-name">' + esc(passport.display_name || '?') + '</div>'
-      + '</div>'
-      + '</div>'
-      + '<div class="ta-detail-section"><div class="ta-section-label">Rühmad</div><div class="ta-detail-group-chips" id="detail-group-chips"></div></div>'
-      + '<div class="ta-detail-section"><div class="ta-section-label">Aktiivsed eesmärgid</div>' + goalHtml + '</div>'
-      + '<div class="ta-detail-section"><div class="ta-section-label">Viimane tegevus</div><div class="ta-event-list">' + eventsHtml + '</div></div>';
-    renderDetailGroupChips(id);
-  }).catch(function () {
-    document.getElementById('detail-panel').innerHTML = '<div class="pa-empty">Õpilase laadimine ebaõnnestus.</div>';
+  document.getElementById('chart-metric-select').value = chartMetric;
+  document.getElementById('chart-metric-select').addEventListener('change', function () {
+    chartMetric = this.value;
+    renderActivityChart();
   });
+  document.getElementById('chart-period-select').addEventListener('change', function () {
+    chartPeriod = this.value;
+    loadChart(id);
+  });
+
+  loadChart(id);
+  loadDetailInfo(id);
 
   document.getElementById('view-dashboard').style.display = 'none';
   document.getElementById('view-detail').style.display = '';
+}
+
+function loadChart(passportId) {
+  fetch('/api/teacher/students/' + passportId + '/activity?period=' + chartPeriod)
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (selectedId !== passportId) return;
+      _lastSeries = d.series || [];
+      renderActivityChart();
+    })
+    .catch(function () {});
+}
+
+function renderActivityChart() {
+  var isKnobits = chartMetric === 'knobits';
+  var values = _lastSeries.map(function (s) { return isKnobits ? s.knobitsDone : s.minutes; });
+  var dates  = _lastSeries.map(function (s) { return s.date; });
+  var total  = values.reduce(function (a, b) { return a + b; }, 0);
+
+  document.getElementById('chart-metric-label').textContent = isKnobits ? 'Lõpetatud knobitid' : 'Aktiivne aeg (hinnanguline)';
+  document.getElementById('chart-total').textContent = isKnobits
+    ? total + ' kokku'
+    : (total >= 60 ? Math.floor(total / 60) + 'h ' + (total % 60) + 'min kokku' : total + ' min kokku');
+
+  document.getElementById('chart-line-wrap').innerHTML = lineChart(dates, values, {
+    unit: isKnobits ? '' : ' min',
+    emptyText: 'Tegevust pole veel',
+  });
+  bindChartInteraction();
+}
+
+/* ── Line chart — one metric at a time (never dual-axis), dotted grid,
+   value labels on local peaks only, hover crosshair + tooltip. Same as
+   the parent dashboard's chart, verbatim. ── */
+function _niceMax(v) {
+  if (v <= 0) return 1;
+  var pow = Math.pow(10, Math.floor(Math.log(v) / Math.LN10));
+  var frac = v / pow;
+  var niceFrac = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+  return niceFrac * pow;
+}
+
+function _fmtDateShort(iso) {
+  try { return new Date(iso + 'T00:00:00').toLocaleDateString('et-EE', { day: 'numeric', month: 'short' }); }
+  catch (e) { return iso; }
+}
+
+var CHART_W = 460, CHART_H = 140, CHART_PAD_L = 32, CHART_PAD_R = 10, CHART_PAD_T = 16, CHART_PAD_B = 18;
+
+function lineChart(dates, values, opts) {
+  opts = opts || {};
+  var padL = CHART_PAD_L, padR = CHART_PAD_R, padT = CHART_PAD_T, padB = CHART_PAD_B;
+  var plotW = CHART_W - padL - padR, plotH = CHART_H - padT - padB;
+  var n = values.length;
+  var hasData = values.some(function (v) { return v > 0; });
+
+  if (!n || !hasData) {
+    return '<div class="pa-chart-empty">' + esc(opts.emptyText || '—') + '</div>';
+  }
+
+  var niceMax = _niceMax(Math.max.apply(null, values));
+  function xAt(i) { return n === 1 ? padL + plotW / 2 : padL + (i * plotW / (n - 1)); }
+  function yAt(v) { return padT + plotH - (v / niceMax) * plotH; }
+
+  var yTickCount = 4, hGrid = '', yLabels = '';
+  for (var t = 0; t <= yTickCount; t++) {
+    var val = niceMax * t / yTickCount;
+    var y = yAt(val);
+    hGrid += '<line x1="' + padL + '" y1="' + y + '" x2="' + (CHART_W - padR) + '" y2="' + y + '" class="pa-chart-gridline"/>';
+    yLabels += '<text x="' + (padL - 8) + '" y="' + (y + 3) + '" class="pa-chart-axis-label" text-anchor="end">' + Math.round(val) + '</text>';
+  }
+
+  var xTickCount = Math.min(6, n), vGrid = '', xLabels = '';
+  for (var k = 0; k < xTickCount; k++) {
+    var idx = xTickCount === 1 ? 0 : Math.round(k * (n - 1) / (xTickCount - 1));
+    var x = xAt(idx);
+    vGrid += '<line x1="' + x + '" y1="' + padT + '" x2="' + x + '" y2="' + (padT + plotH) + '" class="pa-chart-gridline"/>';
+    xLabels += '<text x="' + x + '" y="' + (CHART_H - 8) + '" class="pa-chart-axis-label" text-anchor="middle">' + esc(_fmtDateShort(dates[idx])) + '</text>';
+  }
+
+  var linePts = values.map(function (v, i) { return xAt(i) + ',' + yAt(v); });
+  var lineD = 'M' + linePts.join(' L');
+  var areaD = 'M' + xAt(0) + ',' + (padT + plotH) + ' L' + linePts.join(' L') + ' L' + xAt(n - 1) + ',' + (padT + plotH) + ' Z';
+
+  var peakLabels = '';
+  values.forEach(function (v, i) {
+    if (v <= 0) return;
+    var prev = i > 0 ? values[i - 1] : -1;
+    var next = i < n - 1 ? values[i + 1] : -1;
+    if (v >= prev && v >= next && (v > prev || v > next)) {
+      peakLabels += '<text x="' + xAt(i) + '" y="' + (yAt(v) - 8) + '" class="pa-chart-value-label" text-anchor="middle">' + v + esc(opts.unit || '') + '</text>';
+    }
+  });
+
+  var dots = values.map(function (v, i) {
+    return '<circle cx="' + xAt(i) + '" cy="' + yAt(v) + '" r="2.75" class="pa-chart-dot"/>';
+  }).join('');
+
+  var svgId = 'lc' + Math.random().toString(36).slice(2, 8);
+
+  return '<svg viewBox="0 0 ' + CHART_W + ' ' + CHART_H + '" class="pa-chart-svg" id="' + svgId + '" '
+    + 'data-n="' + n + '" data-padl="' + padL + '" data-plotw="' + plotW + '" data-padt="' + padT + '" data-ploth="' + plotH + '" data-nicemax="' + niceMax + '" data-unit="' + esc(opts.unit || '') + '">'
+    + '<g>' + hGrid + vGrid + '</g>'
+    + '<path d="' + areaD + '" class="pa-chart-area"/>'
+    + '<path d="' + lineD + '" class="pa-chart-line"/>'
+    + dots + peakLabels + yLabels + xLabels
+    + '<g class="pa-chart-crosshair" id="' + svgId + '-cross" style="display:none">'
+    + '<line x1="0" y1="' + padT + '" x2="0" y2="' + (padT + plotH) + '"/>'
+    + '<circle r="4"/>'
+    + '</g>'
+    + '<rect x="' + padL + '" y="' + padT + '" width="' + plotW + '" height="' + plotH + '" class="pa-chart-hit" id="' + svgId + '-hit"/>'
+    + '</svg>'
+    + '<div class="pa-chart-tooltip" id="' + svgId + '-tip" style="display:none"></div>';
+}
+
+function bindChartInteraction() {
+  var hit = document.querySelector('.pa-chart-hit');
+  if (!hit) return;
+  var svgId = hit.id.replace(/-hit$/, '');
+  var svg   = document.getElementById(svgId);
+  var cross = document.getElementById(svgId + '-cross');
+  var tip   = document.getElementById(svgId + '-tip');
+  var n      = parseInt(svg.dataset.n, 10);
+  var padL   = parseFloat(svg.dataset.padl);
+  var plotW  = parseFloat(svg.dataset.plotw);
+  var padT   = parseFloat(svg.dataset.padt);
+  var plotH  = parseFloat(svg.dataset.ploth);
+  var niceMax = parseFloat(svg.dataset.nicemax);
+  var unit   = svg.dataset.unit || '';
+
+  function xAt(i) { return n === 1 ? padL + plotW / 2 : padL + (i * plotW / (n - 1)); }
+  function yAt(v) { return padT + plotH - (v / niceMax) * plotH; }
+
+  hit.addEventListener('mousemove', function (e) {
+    var rect  = svg.getBoundingClientRect();
+    var scale = CHART_W / rect.width;
+    var mx    = (e.clientX - rect.left) * scale;
+    var idx   = Math.round((mx - padL) / plotW * (n - 1));
+    idx = Math.max(0, Math.min(n - 1, idx));
+
+    var point = _lastSeries[idx];
+    var val   = chartMetric === 'knobits' ? point.knobitsDone : point.minutes;
+    var x = xAt(idx), y = yAt(val);
+
+    cross.style.display = '';
+    cross.querySelector('line').setAttribute('x1', x);
+    cross.querySelector('line').setAttribute('x2', x);
+    cross.querySelector('circle').setAttribute('cx', x);
+    cross.querySelector('circle').setAttribute('cy', y);
+
+    tip.style.display = '';
+    tip.textContent = _fmtDateShort(point.date) + ': ' + val + unit;
+    tip.style.left = (rect.left + (x / CHART_W) * rect.width) + 'px';
+    tip.style.top  = (rect.top + (y / CHART_H) * rect.height - 10) + 'px';
+  });
+
+  hit.addEventListener('mouseleave', function () {
+    cross.style.display = 'none';
+    tip.style.display = 'none';
+  });
+}
+
+/* ── Õpisündmused / Nutikus / Eesmärgid — identical sections, CSS
+   classes (profile.css) and structure to the parent dashboard's child
+   detail (and the learner's own Õppija pass), read-only. ── */
+function fmtDateLong(d) {
+  if (!d) return '';
+  try { return new Date(d).toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' }); }
+  catch (e) { return String(d).substring(0, 10); }
+}
+
+var _evFilterType = 'all';
+
+window.__setTeacherEvFilter = function (type) {
+  _evFilterType = type;
+  renderEventsSection(window.__lastEvents || []);
+};
+
+function renderEventsSection(events) {
+  window.__lastEvents = events;
+  var filtered = (events || []).filter(function (ev) { return _evFilterType === 'all' || ev.type === _evFilterType; });
+
+  var typePills = ['all', 'activity', 'assessment', 'evidence'].map(function (type) {
+    var label = type === 'all' ? (t('tab.all') || 'Kõik') : (t('label.' + type) || type);
+    var active = _evFilterType === type;
+    return '<button onclick="window.__setTeacherEvFilter(\'' + type + '\')" class="p-ev-pill ' + (active ? 'p-ev-pill-active' : 'p-ev-pill-inactive') + '">' + esc(label) + '</button>';
+  }).join('');
+
+  var rowsHtml = !filtered.length
+    ? '<div class="p-empty">' + esc(t('msg.no_events') || 'Tegevust pole veel.') + '</div>'
+    : filtered.slice(0, 20).map(function (ev) {
+        return '<div class="p-ledger-row">'
+          + '<div class="p-ledger-date">' + esc(fmtDateLong(ev.event_date)) + '</div>'
+          + '<div class="p-ledger-info">'
+          + '<div class="p-ledger-title">' + esc(ev.title) + '</div>'
+          + (ev.institution ? '<div class="p-ledger-sub">' + esc(ev.institution) + '</div>' : '')
+          + (ev.result ? '<div class="p-ledger-result">' + esc(ev.result) + '</div>' : '')
+          + '</div>'
+          + '<span class="p-type ' + esc(ev.type) + '">' + esc(t('label.' + ev.type) || ev.type) + '</span>'
+          + '</div>';
+      }).join('');
+
+  document.getElementById('events-section').innerHTML =
+    '<div class="p-card-title">' + esc(t('section.s2_title')) + '</div>'
+    + '<div class="p-ev-filter-row"><div class="p-ev-type-pills">' + typePills + '</div></div>'
+    + '<div class="p-scroll-lg">' + rowsHtml + '</div>';
+}
+
+function renderCompetenceSection(mapKnowledge) {
+  var items = mapKnowledge || [];
+  var el = document.getElementById('competence-section');
+  if (!items.length) {
+    el.innerHTML = '<div class="p-card-title">' + esc(t('section.s5_title')) + '</div>' + '<div class="p-empty">' + esc(t('msg.no_knowledge') || 'Teadmisi pole veel.') + '</div>';
+    return;
+  }
+  var BAR_COLORS = { tested: 'var(--color-success)', self_reported: 'var(--accent)', estimated: 'var(--c7)' };
+  var rows = items.map(function (k) {
+    var pct = Math.round(k.percentage) || 0;
+    var barColor = BAR_COLORS[k.source] || BAR_COLORS.estimated;
+    var srcClass = k.source === 'tested' ? 'tested' : 'self-reported';
+    var srcLabel = k.source === 'tested' ? t('label.tested') : k.source === 'self_reported' ? t('label.self_reported') : t('label.estimated');
+    return '<div class="p-prof-row">'
+      + '<div class="p-prof-info p-flex-1-noclip">'
+      + '<div class="p-prof-name">' + esc(k.label) + '</div>'
+      + (k.breadcrumb ? '<div class="p-prof-sub">' + esc(k.breadcrumb) + '</div>' : '')
+      + '<span class="p-source ' + srcClass + '">' + esc(srcLabel) + '</span>'
+      + '</div>'
+      + '<div class="p-bar-wrap">'
+      + '<div class="p-bar-track"><div class="p-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>'
+      + '<span class="p-bar-pct">' + pct + '%</span>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = '<div class="p-card-title">' + esc(t('section.s5_title')) + '</div><div class="p-scroll-xl">' + rows + '</div>';
+}
+
+function renderGoalsSection(goals) {
+  var all = goals || [];
+  var active = all.filter(function (g) { return g.status === 'in_progress'; });
+  var done = all.filter(function (g) { return g.status === 'completed'; });
+
+  function goalRow(g) {
+    var isDone = g.status === 'completed';
+    var isNodeGoal = !!g.node_external_id;
+    var doneDate = g.completed_at ? ' · ' + fmtDateLong(g.completed_at) : '';
+    var setDate = g.created_at ? fmtDateLong(g.created_at) : '';
+    var badge = isDone
+      ? '<span class="p-goal-badge-done">' + esc(t('label.completed_badge')) + '</span>'
+      : '<span class="p-goal-badge-active">' + esc(t('label.in_progress')) + '</span>';
+
+    if (isNodeGoal) {
+      var pct = Math.round(Number(g.progress) || 0);
+      var crumb = g.node_breadcrumb || g.node_label || g.text;
+      var target = g.target_date ? '<span class="p-goal-target">' + esc(t('label.goal_target_date')) + ': ' + esc(fmtDateLong(g.target_date)) + '</span>' : '';
+      return '<div class="p-goal-card p-goal-card-node ' + (isDone ? 'p-goal-card-done' : 'p-goal-card-active') + '">'
+        + '<div class="p-goal-node-header"><div class="p-goal-node-crumb">' + esc(crumb) + '</div></div>'
+        + (!isDone ? '<div class="p-goal-bar-track"><div class="p-goal-bar-fill" style="width:' + pct + '%"></div></div><div class="p-goal-bar-label">' + pct + '% ' + esc(t('label.goal_progress')) + '</div>' : '')
+        + '<div class="p-goal-footer">'
+        + '<div class="p-goal-meta">' + target + (setDate ? '<span class="p-goal-date">' + esc(setDate + doneDate) + '</span>' : '') + '</div>'
+        + '<div class="p-goal-actions">' + badge + '</div>'
+        + '</div></div>';
+    }
+    return '<div class="p-goal-card ' + (isDone ? 'p-goal-card-done' : 'p-goal-card-active') + '">'
+      + '<div class="p-goal-text">' + esc(g.text) + '</div>'
+      + '<div class="p-goal-footer"><span class="p-goal-date">' + esc(setDate + doneDate) + '</span><div class="p-goal-actions">' + badge + '</div></div>'
+      + '</div>';
+  }
+
+  var activeRows = active.length ? active.map(goalRow).join('') : '<div class="p-no-goals-text">' + esc(t('msg.no_active_goals') || 'Aktiivseid eesmärke pole') + '</div>';
+  var doneRows = done.length ? '<div class="p-goals-completed-label">' + esc(t('label.completed')) + '</div>' + done.map(goalRow).join('') : '';
+
+  document.getElementById('goal-section').innerHTML = '<div class="p-card-title">' + esc(t('section.s6_title')) + '</div>' + activeRows + doneRows;
+}
+
+function loadDetailInfo(passportId) {
+  _evFilterType = 'all';
+  fetch('/api/teacher/students/' + passportId)
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (selectedId !== passportId) return;
+      renderGoalsSection(d.goals || []);
+      renderCompetenceSection(d.mapKnowledge || []);
+      renderEventsSection(d.events || []);
+    })
+    .catch(function () {});
 }
 
 /* ── Detail: group membership toggle chips ── */
