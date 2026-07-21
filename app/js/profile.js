@@ -966,12 +966,6 @@
         renderCompetence(d.competence, d.mapKnowledge);
         renderReflections(d.reflections);
         renderGoals(d.goals);
-
-        var gameAllowed = d.role === 'learner' || d.role === 'admin' || d.role === 'super_admin';
-        var s8section = document.getElementById('s8');
-        var s8nav     = document.querySelector('.pnav-link.s8');
-        if (s8section) s8section.style.display = gameAllowed ? '' : 'none';
-        if (s8nav)     s8nav.style.display     = gameAllowed ? '' : 'none';
       })
       .catch(err => {
         console.error('Profile load failed:', err);
