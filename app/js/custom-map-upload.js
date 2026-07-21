@@ -122,15 +122,15 @@ window.CMUpload = (function () {
 
   async function _submit() {
     var name = document.getElementById('cm-name').value.trim();
-    if (!name) { _showMessage('error', 'Please enter a name for this map.'); return; }
+    if (!name) { _showMessage('error', t('msg.enter_map_name')); return; }
 
     var manual = window.CMManual && window.CMManual.isActive();
     var terms;
     if (manual) {
       terms = window.CMManual.getTerms();
-      if (!terms.length) { _showMessage('error', 'Please add at least one node.'); return; }
+      if (!terms.length) { _showMessage('error', t('msg.add_one_node')); return; }
     } else {
-      if (!_parsedTerms || !_parsedTerms.length) { _showMessage('error', 'Please upload a JSON or CSV file first.'); return; }
+      if (!_parsedTerms || !_parsedTerms.length) { _showMessage('error', t('msg.upload_file_first')); return; }
       terms = _parsedTerms;
     }
 
@@ -158,7 +158,7 @@ window.CMUpload = (function () {
       // Hand off to review module
       window.CMReview.show(_subsetId, importRes.stagingRows);
     } catch (err) {
-      _showMessage('error', 'Import failed: ' + err.message);
+      _showMessage('error', t('msg.import_failed_prefix') + err.message);
       btn.disabled = false;
       spinner.style.display = 'none';
     }

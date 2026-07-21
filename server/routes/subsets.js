@@ -8,6 +8,7 @@ const express        = require('express');
 const router         = express.Router();
 const db             = require('../db');
 const { matchTerms } = require('../services/subsetMatcher');
+const { getUserLocale } = require('../services/notifications');
 
 const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 const isAdmin = (user) => ADMIN_ROLES.has(user?.role);
@@ -101,18 +102,20 @@ router.get('/:id/nodes', async (req, res) => {
 // ── Get staging rows for a subset ────────────────────────────────────────────
 router.get('/:id/staging', async (req, res) => {
   try {
+    const locale = await getUserLocale(req.user.id);
     const [rows] = await db.execute(
       `SELECT s.id, s.input_term, s.input_breadcrumb, s.matched_node_id,
               s.match_method, s.confidence, s.status, s.candidates_json,
-              n.label AS node_label, n.level AS node_level
+              COALESCE(ntr.label, n.label) AS node_label, n.level AS node_level
        FROM subset_import_staging s
        LEFT JOIN nodes n ON n.id = s.matched_node_id
+       LEFT JOIN node_translations ntr ON ntr.node_external_id = n.external_id AND ntr.locale = ?
        WHERE s.subset_id = ?
        ORDER BY s.id ASC`,
-      [req.params.id]
+      [locale, req.params.id]
     );
     // Attach breadcrumb for matched nodes
-    const enriched = await _attachBreadcrumbs(rows);
+    const enriched = await _attachBreadcrumbs(rows, locale);
     res.json(enriched);
   } catch (err) {
     console.error('[subsets GET staging]', err.message);
@@ -154,10 +157,12 @@ router.post('/:id/import', async (req, res) => {
   }
 
   try {
+    const locale = await getUserLocale(req.user.id);
+
     // Clear any previous staging for this subset
     await db.execute('DELETE FROM subset_import_staging WHERE subset_id = ?', [subsetId]);
 
-    const staged = await matchTerms(terms, db);
+    const staged = await matchTerms(terms, db, locale);
 
     // Insert staging rows
     for (const row of staged) {
@@ -175,13 +180,14 @@ router.post('/:id/import', async (req, res) => {
     const [rows] = await db.execute(
       `SELECT s.id, s.input_term, s.input_breadcrumb, s.matched_node_id,
               s.match_method, s.confidence, s.status, s.candidates_json,
-              n.label AS node_label, n.level AS node_level
+              COALESCE(ntr.label, n.label) AS node_label, n.level AS node_level
        FROM subset_import_staging s
        LEFT JOIN nodes n ON n.id = s.matched_node_id
+       LEFT JOIN node_translations ntr ON ntr.node_external_id = n.external_id AND ntr.locale = ?
        WHERE s.subset_id = ? ORDER BY s.id ASC`,
-      [subsetId]
+      [locale, subsetId]
     );
-    const enriched = await _attachBreadcrumbs(rows);
+    const enriched = await _attachBreadcrumbs(rows, locale);
     res.json({ stagingRows: enriched });
   } catch (err) {
     console.error('[subsets POST import]', err.message);
@@ -310,7 +316,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-async function _attachBreadcrumbs(rows) {
+async function _attachBreadcrumbs(rows, locale) {
   const nodeIds = [...new Set(rows.map(r => r.matched_node_id).filter(Boolean))];
   if (!nodeIds.length) return rows;
 
@@ -318,12 +324,15 @@ async function _attachBreadcrumbs(rows) {
   for (const nodeId of nodeIds) {
     const [anc] = await db.execute(
       `WITH RECURSIVE anc AS (
-         SELECT id, label, level, parent_id FROM nodes WHERE id = ?
+         SELECT id, external_id, label, level, parent_id FROM nodes WHERE id = ?
          UNION ALL
-         SELECT n.id, n.label, n.level, n.parent_id FROM nodes n JOIN anc a ON n.id = a.parent_id
+         SELECT n.id, n.external_id, n.label, n.level, n.parent_id FROM nodes n JOIN anc a ON n.id = a.parent_id
        )
-       SELECT label FROM anc ORDER BY level ASC`,
-      [nodeId]
+       SELECT COALESCE(tr.label, anc.label) AS label
+       FROM anc
+       LEFT JOIN node_translations tr ON tr.node_external_id = anc.external_id AND tr.locale = ?
+       ORDER BY anc.level ASC`,
+      [nodeId, locale]
     );
     breadcrumbMap[nodeId] = anc.map(a => a.label).join(' › ');
   }

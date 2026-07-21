@@ -48,10 +48,10 @@ window.CMReview = (function () {
     });
     var el = document.getElementById('cm-summary');
     el.innerHTML = '';
-    _pill(el, counts.exact + ' matched',    'p-exact',     counts.exact);
-    _pill(el, counts.pending + ' review',   'p-pending',   counts.pending);
-    _pill(el, counts.ambiguous + ' ambiguous', 'p-ambiguous', counts.ambiguous);
-    _pill(el, counts.no_match + ' not found', 'p-no-match', counts.no_match);
+    _pill(el, counts.exact + ' ' + t('cm.pill_matched'),       'p-exact',     counts.exact);
+    _pill(el, counts.pending + ' ' + t('cm.pill_review'),      'p-pending',   counts.pending);
+    _pill(el, counts.ambiguous + ' ' + t('cm.pill_ambiguous'), 'p-ambiguous', counts.ambiguous);
+    _pill(el, counts.no_match + ' ' + t('cm.pill_no_match'),   'p-no-match',  counts.no_match);
   }
 
   function _pill(parent, text, cls, count) {
@@ -90,7 +90,7 @@ window.CMReview = (function () {
         '<div class="cm-node-label">' + _esc(row.node_label) + '</div>' +
         (row.node_breadcrumb ? '<div class="cm-node-path">' + _esc(row.node_breadcrumb) + '</div>' : '');
     } else {
-      tdNode.innerHTML = '<span class="cm-no-match-text">Not found on map</span>';
+      tdNode.innerHTML = '<span class="cm-no-match-text">' + _esc(t('cm.not_found_on_map')) + '</span>';
     }
     tr.appendChild(tdNode);
 
@@ -117,11 +117,11 @@ window.CMReview = (function () {
   function _buildMethodBadge(row) {
     var span = document.createElement('span');
     var map = {
-      exact:      ['Exact',      'm-exact'],
-      breadcrumb: ['Path',       'm-breadcrumb'],
+      exact:      [t('cm.method_exact'),      'm-exact'],
+      breadcrumb: [t('cm.method_path'),       'm-breadcrumb'],
       llm:        ['AI ' + (row.confidence || '') + '%', 'm-llm'],
-      ambiguous:  ['Ambiguous',  'm-ambiguous'],
-      no_match:   ['No match',   'm-no-match'],
+      ambiguous:  [t('cm.method_ambiguous'),  'm-ambiguous'],
+      no_match:   [t('cm.method_no_match'),   'm-no-match'],
     };
     var key = row.status === 'ambiguous' ? 'ambiguous'
             : row.status === 'no_match'  ? 'no_match'
@@ -139,7 +139,7 @@ window.CMReview = (function () {
     sel.className = 'cm-candidate-select';
     var opt0 = document.createElement('option');
     opt0.value = '';
-    opt0.textContent = '— pick one —';
+    opt0.textContent = t('cm.pick_one');
     sel.appendChild(opt0);
     (row.candidates || []).forEach(function (c) {
       var opt = document.createElement('option');
@@ -172,25 +172,25 @@ window.CMReview = (function () {
     if (row.status === 'no_match') {
       var span = document.createElement('span');
       span.style.cssText = 'font-size:11px;color:#B0A496;';
-      span.textContent = 'Cannot add';
+      span.textContent = t('cm.cannot_add');
       wrap.appendChild(span);
       return wrap;
     }
 
     if (row._decision === 'accept') {
-      var undo = _makeBtn('Undo', 'undo', function () {
+      var undo = _makeBtn(t('btn.undo'), 'undo', function () {
         _rows[idx]._decision = 'pending';
         _updateRow(idx);
         _renderSummary();
       });
       wrap.appendChild(undo);
     } else if (row._decision === 'pending') {
-      var acc = _makeBtn('Accept', 'accept', function () {
+      var acc = _makeBtn(t('btn.accept'), 'accept', function () {
         _rows[idx]._decision = 'accept';
         _updateRow(idx);
         _renderSummary();
       });
-      var rej = _makeBtn('Reject', 'reject', function () {
+      var rej = _makeBtn(t('btn.reject'), 'reject', function () {
         _rows[idx]._decision = 'reject';
         _updateRow(idx);
         _renderSummary();
@@ -198,7 +198,7 @@ window.CMReview = (function () {
       wrap.appendChild(acc);
       wrap.appendChild(rej);
     } else {
-      var unrej = _makeBtn('Undo', 'undo', function () {
+      var unrej = _makeBtn(t('btn.undo'), 'undo', function () {
         _rows[idx]._decision = 'pending';
         _updateRow(idx);
         _renderSummary();
@@ -257,10 +257,10 @@ window.CMReview = (function () {
     });
 
     document.getElementById('cm-discard-btn').addEventListener('click', function () {
-      if (!confirm('Discard this map? It will be permanently deleted.')) return;
+      if (!confirm(t('msg.discard_map_confirm'))) return;
       fetch('/api/subsets/' + _subsetId, { method: 'DELETE' })
         .then(function () { window.location.href = 'settings.html#filters'; })
-        .catch(function () { _showMsg('error', 'Could not discard map.'); });
+        .catch(function () { _showMsg('error', t('msg.discard_map_failed')); });
     });
   }
 
@@ -271,7 +271,7 @@ window.CMReview = (function () {
       .map(function (r) { return r.matched_node_id; });
 
     if (!nodeIds.length) {
-      _showMsg('error', 'Accept at least one node before saving.');
+      _showMsg('error', t('msg.accept_one_node'));
       return;
     }
 
@@ -279,7 +279,7 @@ window.CMReview = (function () {
 
     var btn = document.getElementById('cm-commit-btn');
     btn.disabled = true;
-    btn.textContent = 'Saving…';
+    btn.textContent = t('msg.saving_ellipsis');
 
     try {
       await _fetch('POST', '/api/subsets/' + _subsetId + '/commit', {
@@ -289,9 +289,9 @@ window.CMReview = (function () {
       // Return to settings
       window.location.href = 'settings.html#filters';
     } catch (err) {
-      _showMsg('error', 'Save failed: ' + err.message);
+      _showMsg('error', t('msg.save_failed_prefix') + err.message);
       btn.disabled = false;
-      btn.textContent = 'Save map';
+      btn.textContent = t('btn.save_map');
     }
   }
 

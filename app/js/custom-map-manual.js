@@ -181,7 +181,7 @@ window.CMManual = (function () {
         + '<div class="cm-manual-row-label">' + _esc(r.label) + '</div>'
         + (pathStr ? '<div class="cm-manual-row-path">' + _esc(pathStr) + '</div>' : '')
         + '</div>'
-        + '<button type="button" class="cm-manual-row-remove" title="Remove">×</button>'
+        + '<button type="button" class="cm-manual-row-remove" title="' + _esc(t('btn.remove')) + '">×</button>'
         + '</div>';
     }).join('');
   }

@@ -2,6 +2,11 @@
    SUBSET MATCHER
    Three-stage pipeline: exact → breadcrumb → LLM fallback.
    Returns staging rows; never writes to DB itself.
+
+   Locale-aware throughout: node_translations is keyed by external_id
+   (not nodes.id) and only holds rows for non-English locales, so
+   COALESCE(tr.label, n.label) against locale=? correctly falls back to
+   the English base label with zero special-casing for locale='en'.
    ═══════════════════════════════════════════════════════════════ */
 
 const Anthropic = require('@anthropic-ai/sdk');
@@ -15,18 +20,18 @@ _wrapWithBillingAlert(client);
 // ── Public entry point ────────────────────────────────────────────────────────
 // terms: [{ label: string, breadcrumb?: string }]
 // Returns: staging row objects (not yet inserted — caller inserts them)
-async function matchTerms(terms, db) {
+async function matchTerms(terms, db, locale) {
   const results = [];
   for (const term of terms) {
-    const row = await _matchOne(term.label, term.breadcrumb || null, db);
+    const row = await _matchOne(term.label, term.breadcrumb || null, locale, db);
     results.push({ input_term: term.label, input_breadcrumb: term.breadcrumb || null, ...row });
   }
   return results;
 }
 
 // ── Stage routing ─────────────────────────────────────────────────────────────
-async function _matchOne(label, breadcrumb, db) {
-  const exact = await _exactMatch(label, db);
+async function _matchOne(label, breadcrumb, locale, db) {
+  const exact = await _exactMatch(label, locale, db);
 
   if (exact.length === 1) {
     const node = exact[0];
@@ -35,7 +40,7 @@ async function _matchOne(label, breadcrumb, db) {
 
   if (exact.length > 1) {
     if (breadcrumb) {
-      const resolved = await _resolveByBreadcrumb(exact, breadcrumb, db);
+      const resolved = await _resolveByBreadcrumb(exact, breadcrumb, locale, db);
       if (resolved) {
         return { matched_node_id: resolved.id, match_method: 'breadcrumb', confidence: 95, status: 'accepted', candidates_json: null };
       }
@@ -47,48 +52,57 @@ async function _matchOne(label, breadcrumb, db) {
   }
 
   // No exact match — fuzzy search then LLM
-  return _fuzzyAndLLM(label, db);
+  return _fuzzyAndLLM(label, locale, db);
 }
 
 // ── Stage 1: exact ────────────────────────────────────────────────────────────
-async function _exactMatch(label, db) {
+async function _exactMatch(label, locale, db) {
   const [rows] = await db.execute(
-    'SELECT id, label, level FROM nodes WHERE LOWER(label) = LOWER(?) AND is_active = 1',
-    [label]
+    `SELECT n.id, COALESCE(tr.label, n.label) AS label, n.level
+     FROM nodes n
+     LEFT JOIN node_translations tr ON tr.node_external_id = n.external_id AND tr.locale = ?
+     WHERE LOWER(COALESCE(tr.label, n.label)) = LOWER(?) AND n.is_active = 1`,
+    [locale, label]
   );
   return rows;
 }
 
 // ── Stage 2: breadcrumb disambiguation ───────────────────────────────────────
-async function _resolveByBreadcrumb(candidates, breadcrumb, db) {
+async function _resolveByBreadcrumb(candidates, breadcrumb, locale, db) {
   const parts = breadcrumb.split('>').map(s => s.trim().toLowerCase()).filter(Boolean);
   for (const candidate of candidates) {
-    const ancestors = await _getAncestors(candidate.id, db);
+    const ancestors = await _getAncestors(candidate.id, locale, db);
     const ancestorLabels = ancestors.map(a => a.label.toLowerCase());
     if (parts.some(p => ancestorLabels.includes(p))) return candidate;
   }
   return null;
 }
 
-async function _getAncestors(nodeId, db) {
+async function _getAncestors(nodeId, locale, db) {
   const [rows] = await db.execute(
     `WITH RECURSIVE anc AS (
-       SELECT id, label, parent_id FROM nodes WHERE id = ?
+       SELECT id, external_id, label, parent_id FROM nodes WHERE id = ?
        UNION ALL
-       SELECT n.id, n.label, n.parent_id FROM nodes n JOIN anc a ON n.id = a.parent_id
+       SELECT n.id, n.external_id, n.label, n.parent_id FROM nodes n JOIN anc a ON n.id = a.parent_id
      )
-     SELECT id, label FROM anc`,
-    [nodeId]
+     SELECT anc.id, COALESCE(tr.label, anc.label) AS label
+     FROM anc
+     LEFT JOIN node_translations tr ON tr.node_external_id = anc.external_id AND tr.locale = ?`,
+    [nodeId, locale]
   );
   return rows;
 }
 
 // ── Stage 3: fuzzy search + LLM ──────────────────────────────────────────────
-async function _fuzzyAndLLM(label, db) {
+async function _fuzzyAndLLM(label, locale, db) {
   const firstWord = label.split(' ')[0];
   const [fuzzy] = await db.execute(
-    'SELECT id, label, level FROM nodes WHERE label LIKE ? AND is_active = 1 LIMIT 12',
-    ['%' + firstWord + '%']
+    `SELECT n.id, COALESCE(tr.label, n.label) AS label, n.level
+     FROM nodes n
+     LEFT JOIN node_translations tr ON tr.node_external_id = n.external_id AND tr.locale = ?
+     WHERE COALESCE(tr.label, n.label) LIKE ? AND n.is_active = 1
+     LIMIT 12`,
+    [locale, '%' + firstWord + '%']
   );
 
   if (!fuzzy.length) {
