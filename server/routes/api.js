@@ -2329,15 +2329,31 @@ router.get('/parent/children/:passport_id/activity', async (req, res) => {
       [passport_id, fromStr]
     );
 
+    // Knowledge tests (the 4-tier diagnostic under a node) are a completely
+    // separate flow from knobit_interactions - no per-question interaction
+    // log is kept, only the final result (user_node_knowledge, source =
+    // 'tested'). So a day spent only taking tests showed zero active time
+    // above. Add a flat per-test estimate so that activity isn't invisible.
+    const TEST_MINUTES_ESTIMATE = 4;
+    const [testRows] = await db.execute(
+      `SELECT DATE_FORMAT(DATE(updated_at), '%Y-%m-%d') AS day, COUNT(*) AS n
+       FROM user_node_knowledge
+       WHERE source = 'tested' AND passport_id = ? AND updated_at >= ?
+       GROUP BY DATE(updated_at)`,
+      [passport_id, fromStr]
+    );
+
     const doneMap = {}; doneRows.forEach(r => { doneMap[r.day] = Number(r.n); });
     const timeMap = {}; timeRows.forEach(r => { timeMap[r.day] = Number(r.seconds); });
+    const testMinutesMap = {}; testRows.forEach(r => { testMinutesMap[r.day] = Number(r.n) * TEST_MINUTES_ESTIMATE; });
 
     const today = new Date();
     const localYMD = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     const series = Array.from({ length: days }, (_, i) => {
       const d = new Date(today); d.setDate(d.getDate() - (days - 1 - i));
       const key = localYMD(d);
-      return { date: key, knobitsDone: doneMap[key] || 0, minutes: Math.round((timeMap[key] || 0) / 60) };
+      const minutes = Math.round((timeMap[key] || 0) / 60) + (testMinutesMap[key] || 0);
+      return { date: key, knobitsDone: doneMap[key] || 0, minutes: minutes };
     });
 
     res.json({ period, series });
