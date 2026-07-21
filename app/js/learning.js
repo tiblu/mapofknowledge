@@ -974,7 +974,12 @@
       }
     }
 
-    var lastContent = _getLastContent(['byte']);
+    // Advancing to a genuinely new byte needs the FULL explanation so far, not
+    // just the single most recent byte — otherwise the model loses track of
+    // what's already been covered a few bytes in and starts repeating or
+    // contradicting itself. Rephrasing the current byte only needs that one
+    // byte's own text (it's rewriting it, not building on it).
+    var lastContent = opt === 'ok' ? _getAllContent(['byte']) : _getLastContent(['byte']);
     // action mapping: 'ok' → advance (undefined), 'no' → 'rephrase', 'simpler'/'complex' → pass through
     var action = opt === 'ok' ? undefined : (opt === 'no' ? 'rephrase' : opt);
     var wantVisual = (opt === 'ok');
@@ -1522,6 +1527,15 @@
       }
     }
     return '';
+  }
+
+  // _streamBlocks is reset at the start of every knobit (startKnobit /
+  // _resumeFromSession), so this is always scoped to the current knobit only.
+  function _getAllContent(types) {
+    return _streamBlocks
+      .filter(function (b) { return !types || types.indexOf(b.type) !== -1; })
+      .map(function (b) { return b.content || ''; })
+      .join('\n\n');
   }
 
   function _scrollStream() {
