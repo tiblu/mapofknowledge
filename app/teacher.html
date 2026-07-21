@@ -228,11 +228,6 @@ function initials(name) {
   return ((parts[0] || '')[0] || '').toUpperCase() + ((parts[1] || '')[0] || '').toUpperCase();
 }
 
-function familyName(name) {
-  var parts = String(name || '').trim().split(/\s+/);
-  return parts.length > 1 ? parts[parts.length - 1] : '';
-}
-
 function avatarClass(passportId) {
   return AVATAR_CLASSES[passportId % AVATAR_CLASSES.length];
 }
@@ -394,7 +389,6 @@ function renderDashboard() {
       + '<div class="pa-avatar ' + avatarClass(s.passport_id) + '">' + esc(initials(s.display_name)) + '</div>'
       + '<div class="pa-card-nameblock">'
       + '<div class="pa-card-name">' + esc(s.display_name || '?') + '</div>'
-      + '<div class="pa-card-sub">' + esc(familyName(s.display_name)) + '</div>'
       + '<div class="pa-last-active">Aktiivne: ' + esc(fmtLastActive(s.last_active)) + '</div>'
       + '</div>'
       + '</div>'
@@ -432,7 +426,6 @@ function selectStudent(id) {
     + '<div class="pa-detail-avatar ' + avatarClass(s.passport_id) + '" style="width:56px;height:56px;font-size:20px">' + esc(initials(s.display_name)) + '</div>'
     + '<div>'
     + '<div class="pa-detail-name">' + esc(s.display_name || '?') + '</div>'
-    + '<div class="pa-detail-sub">' + esc(familyName(s.display_name)) + '</div>'
     + '<div class="pa-detail-last">Aktiivne: ' + esc(fmtLastActive(s.last_active)) + '</div>'
     + '</div>'
     + '</div>'
