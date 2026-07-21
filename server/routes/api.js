@@ -1950,9 +1950,10 @@ router.get('/links', async (req, res) => {
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
   try {
     const [asStudent] = await db.execute(
-      `SELECT ll.*, u.display_name AS linked_name
+      `SELECT ll.*, lp.display_name AS linked_name
        FROM learner_links ll
        JOIN users u ON u.id = ll.linked_user_id
+       LEFT JOIN learner_passports lp ON lp.id = u.passport_id
        WHERE ll.passport_id = ? AND ll.status != 'revoked'`,
       [passportId]
     );
@@ -1966,6 +1967,7 @@ router.get('/links', async (req, res) => {
     );
     res.json({ asStudent, asLinked });
   } catch (err) {
+    console.error('GET /api/links failed:', err);
     res.status(500).json({ error: 'Failed to load links' });
   }
 });

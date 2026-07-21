@@ -94,7 +94,13 @@
   }
 
   function loadConnections() {
-    fetch('/api/links').then(function (r) { return r.json(); }).then(renderList).catch(function () {});
+    fetch('/api/links').then(function (r) {
+      if (!r.ok) throw new Error('load_failed');
+      return r.json();
+    }).then(renderList).catch(function () {
+      var listEl = document.getElementById('connections-list');
+      if (listEl) listEl.innerHTML = '<div class="cx-empty">' + esc(t('msg.load_failed')) + '</div>';
+    });
   }
 
   /* ── learner: redeem a code ── */
