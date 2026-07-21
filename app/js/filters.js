@@ -108,10 +108,12 @@
           list.appendChild(div);
         });
 
-        // Restore saved filter, or default to Estonian Basic School 2023 (db-1)
+        // Restore saved filter, if any. There's no universal default any
+        // more — subsets are now one-per-grade (db-1..db-12 = "1. klass"
+        // .."12. klass"), so defaulting everyone to db-1 silently applied
+        // "1. klass" to every brand-new account, teachers included.
         var saved;
         try { saved = localStorage.getItem(window.lsKey('kq_base_filter')); } catch(e) { saved = null; }
-        if (saved === null) saved = 'db-1';   // first visit default
         if (saved && saved !== 'none' && FILTERS[saved]) {
           baseFilterId = saved;
           ensureFilterLabels(saved, FILTERS[saved]);
