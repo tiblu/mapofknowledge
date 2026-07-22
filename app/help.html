@@ -18,16 +18,13 @@
 <link rel="stylesheet" href="css/help.css">
 <script src="js/strings.js"></script>
 <script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}
-  // Estonian walkthrough video is filmed; English isn't yet — only enable
-  // the "Watch the video" card for the 'et' locale, everyone else keeps
-  // seeing the disabled "Coming soon" card.
-  if ((s.ui_locale || 'et') === 'et') {
-    var optVideo = document.getElementById('opt-video');
-    if (optVideo) {
-      optVideo.classList.remove('help-option-disabled');
-      var badge = document.getElementById('opt-video-badge');
-      if (badge) badge.style.display = 'none';
-    }
+  // Both the Estonian and English walkthrough videos are filmed now — enable
+  // the "Watch the video" card for every locale.
+  var optVideo = document.getElementById('opt-video');
+  if (optVideo) {
+    optVideo.classList.remove('help-option-disabled');
+    var badge = document.getElementById('opt-video-badge');
+    if (badge) badge.style.display = 'none';
   }
 }).catch(function(){});</script>
 <!-- Anne lives in the parent frame (index.html) and is hidden for every other
@@ -219,9 +216,9 @@
 
 </main>
 
-<!-- Video modal — Estonian walkthrough, embedded on open (src set/cleared so
-     playback actually stops when closed). English version not filmed yet;
-     the option card stays disabled ("Coming soon") for any locale but 'et'. -->
+<!-- Video modal — locale-specific walkthrough (Estonian or English YouTube
+     ID picked in openVideoModal()), embedded on open (src set/cleared so
+     playback actually stops when closed). -->
 <div class="help-video-modal" id="video-modal" style="display:none">
   <div class="help-video-modal-backdrop" id="video-modal-backdrop"></div>
   <div class="help-video-modal-box">
@@ -256,10 +253,24 @@
     document.getElementById('help-guide').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
-  var YOUTUBE_VIDEO_ID = 'W8Q65CCqNxI'; // Estonian walkthrough
+  var YOUTUBE_VIDEO_IDS = {
+    et: 'W8Q65CCqNxI', // Estonian walkthrough
+    en: '_Czo3jVCi2w', // English walkthrough
+  };
+
+  function _videoLocale() {
+    var loc = window._uiLocale
+      || (function () { try { return localStorage.getItem('kq_ui_locale'); } catch (e) { return null; } }())
+      || document.documentElement.getAttribute('lang')
+      || 'et';
+    return loc === 'en' ? 'en' : 'et';
+  }
 
   function openVideoModal() {
-    document.getElementById('video-modal-iframe').src = 'https://www.youtube.com/embed/' + YOUTUBE_VIDEO_ID + '?autoplay=1';
+    var loc = _videoLocale();
+    var iframe = document.getElementById('video-modal-iframe');
+    iframe.title = loc === 'en' ? 'KnoBitz walkthrough' : 'KnoBitz tutvustus';
+    iframe.src = 'https://www.youtube.com/embed/' + YOUTUBE_VIDEO_IDS[loc] + '?autoplay=1';
     document.getElementById('video-modal').style.display = 'flex';
   }
   function closeVideoModal() {
