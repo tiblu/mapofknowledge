@@ -66,6 +66,14 @@ body {
   opacity: 1;
   transform: translateY(-50%) translateX(3px) rotate(45deg);
 }
+/* "Read the guide" scrolls the page down to the guide section below, not
+   away to another view — point the affordance arrow down instead of right. */
+#opt-doc::after {
+  transform: translateY(-50%) rotate(135deg);
+}
+#opt-doc:hover::after {
+  transform: translateY(-50%) translateY(3px) rotate(135deg);
+}
 .help-option-icon {
   width: 44px; height: 44px; margin-bottom: 14px;
   border-radius: 50%;
