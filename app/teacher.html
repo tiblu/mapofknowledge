@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="css/profile.css">
 <link rel="stylesheet" href="css/teacher.css">
 <link rel="stylesheet" href="css/font-scale.css">
+<link rel="stylesheet" href="css/anne.css">
 <script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
 <script src="js/strings.js"></script>
 </head>
@@ -246,8 +247,27 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════════════
+     ANNE — MENTOR CHAT WIDGET
+     ════════════════════════════════════════ -->
+<div id="anne-widget">
+  <button id="anne-avatar" style="background-image:url(images/anne.png)" aria-label="Anne"></button>
+  <div id="anne-panel">
+    <div class="anne-panel-header">
+      <span class="anne-panel-title">Anne</span>
+      <button id="anne-minimize" aria-label="Minimize">▾</button>
+    </div>
+    <div class="anne-messages" id="anne-messages"></div>
+    <div class="anne-input-row">
+      <input id="anne-input" type="text" data-i18n-placeholder="anne.input_placeholder" placeholder="Ask Anne...">
+      <button id="anne-send" aria-label="Send">➤</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/topbar-notif.js"></script>
 <script src="js/role-nav.js"></script>
+<script src="js/anne.js?v=2"></script>
 <script>
 (function () {
 

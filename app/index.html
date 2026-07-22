@@ -15,6 +15,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <link rel="stylesheet" href="css/palette.css">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/anne.css">
 <link rel="stylesheet" href="css/learning.css">
 <link rel="stylesheet" href="css/testing.css">
 <link rel="stylesheet" href="css/tour.css">
@@ -747,9 +748,11 @@
     document.getElementById('nav-dropdown').classList.remove('open');
     document.getElementById('page-overlay-frame').src = url;
     document.getElementById('page-overlay').classList.add('open');
-    // Anne stays visible over Settings/Õppija pass/Teated/Abi too — her
-    // z-index already sits above #page-overlay. Only the product tour
-    // hides her now.
+    // Every overlay page now has its own independent Anne widget (so she's
+    // present even when that page is reached as a standalone top-level nav,
+    // not just via this iframe) — hide the map's own copy while the overlay
+    // is open so there aren't two avatars stacked in the same corner.
+    if (window.Anne) window.Anne.setVisible(false);
   };
   window.closeOverlay = function () {
     document.getElementById('page-overlay').classList.remove('open');
