@@ -27,11 +27,6 @@
     if (badge) badge.style.display = 'none';
   }
 }).catch(function(){});</script>
-<!-- Anne lives in the parent frame (index.html) and is hidden for every other
-     overlay page — this is the one page she should stay visible/usable on, so
-     we self-declare that on load rather than relying on the parent's entry
-     point (which only fires when arriving here directly from the map). -->
-<script>if (window.parent !== window && window.parent.Anne) window.parent.Anne.setVisible(true);</script>
 </head>
 <body>
 

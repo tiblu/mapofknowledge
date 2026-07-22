@@ -747,7 +747,9 @@
     document.getElementById('nav-dropdown').classList.remove('open');
     document.getElementById('page-overlay-frame').src = url;
     document.getElementById('page-overlay').classList.add('open');
-    if (window.Anne) window.Anne.setVisible(false);
+    // Anne stays visible over Settings/Õppija pass/Teated/Abi too — her
+    // z-index already sits above #page-overlay. Only the product tour
+    // hides her now.
   };
   window.closeOverlay = function () {
     document.getElementById('page-overlay').classList.remove('open');

@@ -129,7 +129,7 @@
     showTmView('tm-path');
     var overlay = document.getElementById('testing-mode');
     if (overlay) overlay.classList.add('active');
-    if (window.Anne) window.Anne.setVisible(false);
+    // Anne stays visible in testing mode — only the product tour hides her now.
   };
 
   window.closeTestingMode = function () {

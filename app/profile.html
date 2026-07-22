@@ -18,9 +18,6 @@
 <link rel="stylesheet" href="css/font-scale.css">
 <script src="js/strings.js"></script>
 <script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
-<!-- Anne (parent-frame widget) is only shown on the map and on help.html —
-     self-declare hidden here in case of an internal nav-hop from help.html. -->
-<script>if (window.parent !== window && window.parent.Anne) window.parent.Anne.setVisible(false);</script>
 </head>
 <body>
 

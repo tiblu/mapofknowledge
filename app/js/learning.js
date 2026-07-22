@@ -180,7 +180,8 @@
 
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.add('active');
-    if (window.Anne) window.Anne.setVisible(false);
+    // Anne stays visible in learning mode (her own z-index already sits
+    // above #learning-mode) — only the product tour hides her now.
 
     // Show one-time fullscreen tip
     if (!localStorage.getItem(window.lsKey('lm_fs_tip_shown'))) {
