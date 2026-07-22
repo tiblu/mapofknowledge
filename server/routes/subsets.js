@@ -13,6 +13,20 @@ const { getUserLocale } = require('../services/notifications');
 const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 const isAdmin = (user) => ADMIN_ROLES.has(user?.role);
 
+// The 12 grade-level presets ("1. klass".."12. klass") are system-generated
+// (type='public', created_by IS NULL) — purely mechanical numbering, not
+// real translated content, so a regex swap is enough; no ui_strings rows
+// needed. Any other public subset (curriculum imports, etc.) and every
+// personal/custom subset pass through unchanged — a user's own filter name
+// stays exactly as they typed it, in whatever language that was.
+function _localizeSubsetName(name, type, createdBy, locale) {
+  if (type === 'public' && createdBy == null && locale === 'en') {
+    const m = /^(\d+)\.\s*klass$/i.exec(name || '');
+    if (m) return 'Grade ' + m[1];
+  }
+  return name;
+}
+
 // ── Sample file downloads ─────────────────────────────────────────────────────
 // These routes must come before /:id to avoid conflicts.
 
@@ -76,6 +90,8 @@ router.get('/', async (req, res) => {
        ORDER BY s.type DESC, CAST(s.name AS UNSIGNED), s.name ASC`,
       [userId]
     );
+    const locale = await getUserLocale(userId);
+    rows.forEach(r => { r.name = _localizeSubsetName(r.name, r.type, r.created_by, locale); });
     res.json(rows);
   } catch (err) {
     console.error('[subsets GET /]', err.message);

@@ -901,6 +901,11 @@
   function renderGameState(state, achievements) {
     var gsCard = document.getElementById('game-state-card');
     var achCard = document.getElementById('game-achievements-card');
+    // Rank titles and achievement names come from the server pre-bundled in
+    // both languages (title/title_et, name/name_et) rather than through
+    // ui_strings — so this file (not the server) decides which one to show,
+    // using the same window._uiLocale convention as fmtDate() above.
+    var isEt = window._uiLocale === 'et';
 
     if (gsCard) {
       if (!state) {
@@ -908,8 +913,8 @@
       } else {
         var lumens     = state.lumens || 0;
         var rankKey    = state.rank || '';
-        var rankTitle  = state.rankTitle_et || state.rankTitle || rankKey;
-        var nextTitle  = state.nextRank ? (state.nextRank.title_et || state.nextRank.title || '') : '';
+        var rankTitle  = (isEt && state.rankTitle_et) || state.rankTitle || rankKey;
+        var nextTitle  = state.nextRank ? ((isEt && state.nextRank.title_et) || state.nextRank.title || '') : '';
         var rankMin    = state.rankMin || 0;
         var nextMin    = state.nextRank ? state.nextRank.min : lumens;
         var pct        = nextMin > rankMin
@@ -943,13 +948,13 @@
       unlocked.forEach(function(a) {
         achHtml += `<div class="p-ach p-ach-unlocked">
           <div class="p-ach-icon">${esc(a.icon || '🏅')}</div>
-          <div class="p-ach-name">${esc(a.name_et || a.name)}</div>
+          <div class="p-ach-name">${esc((isEt && a.name_et) || a.name)}</div>
         </div>`;
       });
       locked.slice(0, 6).forEach(function(a) {
         achHtml += `<div class="p-ach p-ach-locked">
           <div class="p-ach-icon p-ach-icon-locked">${esc(a.icon || '🔒')}</div>
-          <div class="p-ach-name p-ach-name-locked">${esc(a.name_et || a.name)}</div>
+          <div class="p-ach-name p-ach-name-locked">${esc((isEt && a.name_et) || a.name)}</div>
         </div>`;
       });
       achCard.innerHTML = `<div class="p-card-title">${t('game.achievements')}</div>
