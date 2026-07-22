@@ -17,7 +17,19 @@
 <link rel="stylesheet" href="css/font-scale.css">
 <link rel="stylesheet" href="css/help.css">
 <script src="js/strings.js"></script>
-<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}
+  // Estonian walkthrough video is filmed; English isn't yet — only enable
+  // the "Watch the video" card for the 'et' locale, everyone else keeps
+  // seeing the disabled "Coming soon" card.
+  if ((s.ui_locale || 'et') === 'et') {
+    var optVideo = document.getElementById('opt-video');
+    if (optVideo) {
+      optVideo.classList.remove('help-option-disabled');
+      var badge = document.getElementById('opt-video-badge');
+      if (badge) badge.style.display = 'none';
+    }
+  }
+}).catch(function(){});</script>
 <!-- Anne lives in the parent frame (index.html) and is hidden for every other
      overlay page — this is the one page she should stay visible/usable on, so
      we self-declare that on load rather than relying on the parent's entry
@@ -149,8 +161,8 @@
       <div class="help-option-desc" data-i18n="help.opt_doc_desc">A written, step-by-step overview you can skim at your own pace.</div>
     </button>
 
-    <div class="help-option help-option-disabled" id="opt-video" title="Coming soon">
-      <span class="help-option-badge" data-i18n="help.soon">Coming soon</span>
+    <button class="help-option help-option-disabled" id="opt-video">
+      <span class="help-option-badge" data-i18n="help.soon" id="opt-video-badge">Coming soon</span>
       <div class="help-option-icon">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.4"/>
@@ -159,7 +171,7 @@
       </div>
       <div class="help-option-title" data-i18n="help.opt_video_title">Watch the video</div>
       <div class="help-option-desc" data-i18n="help.opt_video_desc">A short video walkthrough.</div>
-    </div>
+    </button>
 
   </div>
 
@@ -207,6 +219,21 @@
 
 </main>
 
+<!-- Video modal — Estonian walkthrough, embedded on open (src set/cleared so
+     playback actually stops when closed). English version not filmed yet;
+     the option card stays disabled ("Coming soon") for any locale but 'et'. -->
+<div class="help-video-modal" id="video-modal" style="display:none">
+  <div class="help-video-modal-backdrop" id="video-modal-backdrop"></div>
+  <div class="help-video-modal-box">
+    <button class="help-video-modal-close" id="video-modal-close" aria-label="Close">&times;</button>
+    <div class="help-video-modal-frame">
+      <iframe id="video-modal-iframe" src="" title="KnoBitz tutvustus" frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen></iframe>
+    </div>
+  </div>
+</div>
+
 <script src="js/topbar-notif.js"></script>
 <script src="js/role-nav.js"></script>
 <script>
@@ -227,6 +254,27 @@
 
   document.getElementById('opt-doc').addEventListener('click', function () {
     document.getElementById('help-guide').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  var YOUTUBE_VIDEO_ID = 'W8Q65CCqNxI'; // Estonian walkthrough
+
+  function openVideoModal() {
+    document.getElementById('video-modal-iframe').src = 'https://www.youtube.com/embed/' + YOUTUBE_VIDEO_ID + '?autoplay=1';
+    document.getElementById('video-modal').style.display = 'flex';
+  }
+  function closeVideoModal() {
+    document.getElementById('video-modal').style.display = 'none';
+    document.getElementById('video-modal-iframe').src = ''; // stop playback
+  }
+
+  document.getElementById('opt-video').addEventListener('click', function () {
+    if (this.classList.contains('help-option-disabled')) return;
+    openVideoModal();
+  });
+  document.getElementById('video-modal-close').addEventListener('click', closeVideoModal);
+  document.getElementById('video-modal-backdrop').addEventListener('click', closeVideoModal);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeVideoModal();
   });
 </script>
 </body>
