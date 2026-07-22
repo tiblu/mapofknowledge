@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="css/profile.css">
 <link rel="stylesheet" href="css/teacher.css">
 <link rel="stylesheet" href="css/font-scale.css">
-<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);}).catch(function(){});</script>
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
 <script src="js/strings.js"></script>
 </head>
 <body>
@@ -115,14 +115,14 @@
   <aside class="ta-aside">
 
     <div class="ta-section-header" style="padding-top:16px">
-      <span class="ta-section-title">Rühmad</span>
-      <button class="ta-icon-btn" id="btn-add-group" title="Lisa rühm">+</button>
+      <span class="ta-section-title" data-i18n="teacher.groups_title">Rühmad</span>
+      <button class="ta-icon-btn" id="btn-add-group" data-i18n-title="teacher.add_group_title" title="Lisa rühm">+</button>
     </div>
 
     <div class="ta-group-list" id="group-list">
       <div class="ta-group-item ta-group-active" data-group="all">
         <div class="ta-group-dot" style="background:#8BAD7E"></div>
-        <span class="ta-group-label">Minu õpilased</span>
+        <span class="ta-group-label" data-i18n="teacher.my_students">Minu õpilased</span>
         <span class="ta-group-count" id="group-count-all">–</span>
       </div>
     </div>
@@ -130,13 +130,13 @@
     <div class="ta-divider"></div>
 
     <div class="ta-section-header">
-      <span class="ta-section-title" id="student-list-label">Kõik õpilased</span>
+      <span class="ta-section-title" id="student-list-label" data-i18n="teacher.my_students">Minu õpilased</span>
     </div>
 
     <div class="ta-student-scroll" id="student-list"></div>
 
     <div class="ta-aside-footer">
-      <button class="ta-invite-btn" id="btn-invite">+ Lisa õpilane</button>
+      <button class="ta-invite-btn" id="btn-invite">+ <span data-i18n="teacher.invite_student">Lisa õpilane</span></button>
     </div>
 
   </aside>
@@ -148,9 +148,9 @@
     <div id="view-dashboard">
 
       <div class="ta-main-header">
-        <span class="ta-main-title" id="dashboard-title">Minu õpilased</span>
+        <span class="ta-main-title" id="dashboard-title" data-i18n="teacher.my_students">Minu õpilased</span>
         <div style="flex:1"></div>
-        <button class="ta-action-btn ta-btn-primary" id="btn-suggest-goal">Sea eesmärk</button>
+        <button class="ta-action-btn ta-btn-primary" id="btn-suggest-goal" data-i18n="teacher.set_goal">Sea eesmärk</button>
       </div>
 
       <div class="ta-cards-section">
@@ -167,7 +167,7 @@
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M9 3L5 7l4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Tagasi nimekirja
+          <span data-i18n="teacher.back_to_list">Tagasi nimekirja</span>
         </button>
       </div>
 
@@ -181,50 +181,50 @@
 <!-- Goal-setting modal -->
 <div class="link-modal" id="goal-modal" style="display:none">
   <div class="link-modal-box goal-modal-box">
-    <div class="link-modal-title">Sea eesmärk</div>
+    <div class="link-modal-title" data-i18n="teacher.set_goal">Sea eesmärk</div>
 
     <div id="goal-step-build">
-      <div class="goal-modal-label">Otsi teemat</div>
+      <div class="goal-modal-label" data-i18n="teacher.goal_search_label">Otsi teemat</div>
       <div class="goal-search-wrap">
-        <input type="text" id="goal-node-search" class="ta-input" placeholder="Nt. Murrud, Fotosüntees, Eesti ajalugu…" autocomplete="off">
+        <input type="text" id="goal-node-search" class="ta-input" data-i18n-placeholder="teacher.goal_search_placeholder" placeholder="Nt. Murrud, Fotosüntees, Eesti ajalugu…" autocomplete="off">
         <div class="goal-search-results" id="goal-search-results" style="display:none"></div>
       </div>
       <div class="goal-selected-node" id="goal-selected-node" style="display:none"></div>
 
-      <div class="goal-modal-label">Kellele</div>
+      <div class="goal-modal-label" data-i18n="teacher.goal_target_label">Kellele</div>
       <div class="goal-target-tabs" id="goal-target-tabs">
-        <button type="button" class="goal-target-tab active" data-target="student">Üksik õpilane</button>
-        <button type="button" class="goal-target-tab" data-target="group">Rühm</button>
-        <button type="button" class="goal-target-tab" data-target="all">Kõik õpilased</button>
+        <button type="button" class="goal-target-tab active" data-target="student" data-i18n="teacher.target_one_student">Üksik õpilane</button>
+        <button type="button" class="goal-target-tab" data-target="group" data-i18n="teacher.target_group">Rühm</button>
+        <button type="button" class="goal-target-tab" data-target="all" data-i18n="teacher.target_all_students">Kõik õpilased</button>
       </div>
       <select class="ta-input" id="goal-target-student" style="margin-top:10px"></select>
       <select class="ta-input" id="goal-target-group" style="margin-top:10px;display:none"></select>
       <div class="goal-target-all-hint" id="goal-target-all-hint" style="display:none"></div>
 
-      <div class="goal-modal-label">Tähtaeg (valikuline)</div>
+      <div class="goal-modal-label" data-i18n="teacher.deadline_optional">Tähtaeg (valikuline)</div>
       <input type="date" id="goal-deadline" class="ta-input">
 
       <div class="goal-modal-msg err" id="goal-build-msg"></div>
 
       <div class="goal-modal-actions">
-        <button class="ta-action-btn" id="btn-goal-cancel">Tühista</button>
-        <button class="ta-action-btn ta-btn-primary" id="btn-goal-next">Edasi</button>
+        <button class="ta-action-btn" id="btn-goal-cancel" data-i18n="btn.cancel">Tühista</button>
+        <button class="ta-action-btn ta-btn-primary" id="btn-goal-next" data-i18n="btn.next">Edasi</button>
       </div>
     </div>
 
     <div id="goal-step-confirm" style="display:none">
       <div class="goal-confirm-summary" id="goal-confirm-summary"></div>
-      <div class="goal-confirm-warning">Tähtis: kui eesmärk on seatud, ei saa õpetaja seda enam eemaldada. Õpilane saab selle vajadusel ise oma Õppija passist kustutada.</div>
+      <div class="goal-confirm-warning" data-i18n="teacher.goal_confirm_warning">Tähtis: kui eesmärk on seatud, ei saa õpetaja seda enam eemaldada. Õpilane saab selle vajadusel ise oma Õppija passist kustutada.</div>
       <div class="goal-modal-actions">
-        <button class="ta-action-btn" id="btn-goal-back">Tagasi</button>
-        <button class="ta-action-btn ta-btn-primary" id="btn-goal-confirm">Kinnita ja sea eesmärk</button>
+        <button class="ta-action-btn" id="btn-goal-back" data-i18n="btn.back">Tagasi</button>
+        <button class="ta-action-btn ta-btn-primary" id="btn-goal-confirm" data-i18n="teacher.goal_confirm_btn">Kinnita ja sea eesmärk</button>
       </div>
     </div>
 
     <div id="goal-step-result" style="display:none">
       <div class="goal-result-msg" id="goal-result-msg"></div>
       <div class="goal-modal-actions">
-        <button class="ta-action-btn ta-btn-primary" id="btn-goal-close" style="width:100%">Sulge</button>
+        <button class="ta-action-btn ta-btn-primary" id="btn-goal-close" data-i18n="btn.close" style="width:100%">Sulge</button>
       </div>
     </div>
   </div>
@@ -233,16 +233,16 @@
 <!-- Group manager modal -->
 <div class="link-modal" id="group-modal" style="display:none">
   <div class="link-modal-box" style="max-width:420px">
-    <div class="link-modal-title">Rühmade haldamine</div>
-    <div style="font-size:12px;color:var(--c5);margin-bottom:12px;line-height:1.6">
+    <div class="link-modal-title" data-i18n="teacher.manage_groups_title">Rühmade haldamine</div>
+    <div style="font-size:12px;color:var(--c5);margin-bottom:12px;line-height:1.6" data-i18n="teacher.groups_hint">
       Rühmad on sildid, mida saad õpilastele vabalt määrata. Õpilasel võib olla mitu silti.
     </div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px" id="group-manage-list"></div>
     <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px dashed var(--i18);border-radius:9px;margin-bottom:14px">
-      <input type="text" placeholder="Uue rühma nimi..." id="new-group-name" style="flex:1;border:none;background:none;font-size:13px;color:var(--c1);font-family:inherit;outline:none">
-      <button class="ta-action-btn ta-btn-primary" style="padding:5px 12px;font-size:12px" id="btn-create-group">Lisa</button>
+      <input type="text" data-i18n-placeholder="teacher.new_group_placeholder" placeholder="Uue rühma nimi..." id="new-group-name" style="flex:1;border:none;background:none;font-size:13px;color:var(--c1);font-family:inherit;outline:none">
+      <button class="ta-action-btn ta-btn-primary" style="padding:5px 12px;font-size:12px" id="btn-create-group" data-i18n="btn.add">Lisa</button>
     </div>
-    <button class="ta-action-btn" onclick="document.getElementById('group-modal').style.display='none'" style="width:100%">Valmis</button>
+    <button class="ta-action-btn" onclick="document.getElementById('group-modal').style.display='none'" style="width:100%" data-i18n="btn.done">Valmis</button>
   </div>
 </div>
 
@@ -264,9 +264,9 @@ var _lastSeries = [];
 function groupById(gid) { return REAL_GROUPS.find(function (g) { return g.id === gid; }); }
 
 function groupLabel(gid) {
-  if (gid === 'all') return 'Minu õpilased';
+  if (gid === 'all') return t('teacher.my_students');
   var g = groupById(gid);
-  return g ? g.label : 'Minu õpilased';
+  return g ? g.label : t('teacher.my_students');
 }
 
 function groupMemberCount(gid) {
@@ -284,14 +284,22 @@ function avatarClass(passportId) {
   return AVATAR_CLASSES[passportId % AVATAR_CLASSES.length];
 }
 
+function _dateLocale() {
+  var loc = window._uiLocale
+    || (function () { try { return localStorage.getItem('kq_ui_locale'); } catch (e) { return null; } }())
+    || document.documentElement.getAttribute('lang')
+    || 'et';
+  return loc === 'en' ? 'en-US' : 'et-EE';
+}
+
 function fmtLastActive(iso) {
-  if (!iso) return 'pole veel õppinud';
+  if (!iso) return t('dash.not_active_yet');
   var d = new Date(iso);
   var days = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (days <= 0) return 'täna';
-  if (days === 1) return 'eile';
-  if (days < 14) return days + ' päeva tagasi';
-  return d.toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' });
+  if (days <= 0) return t('dash.today');
+  if (days === 1) return t('label.yesterday');
+  if (days < 14) return days + ' ' + t('label.days_ago');
+  return d.toLocaleDateString(_dateLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 /* Same rendering approach as Admin's per-user "Activity (7d)" column and
@@ -325,7 +333,7 @@ function loadStudents() {
     renderSidebar();
     renderDashboard();
   }).catch(function () {
-    document.getElementById('cards-grid').innerHTML = '<div class="pa-empty">Õpilaste laadimine ebaõnnestus.</div>';
+    document.getElementById('cards-grid').innerHTML = '<div class="pa-empty">' + esc(t('teacher.students_load_failed')) + '</div>';
   });
 }
 
@@ -368,14 +376,14 @@ function renderGroupSidebar() {
 function renderGroupManageModal() {
   var box = document.getElementById('group-manage-list');
   if (!REAL_GROUPS.length) {
-    box.innerHTML = '<div style="font-size:12px;color:var(--c5);font-style:italic;padding:4px 0">Ühtegi rühma pole veel loodud.</div>';
+    box.innerHTML = '<div style="font-size:12px;color:var(--c5);font-style:italic;padding:4px 0">' + esc(t('teacher.no_groups_yet')) + '</div>';
     return;
   }
   box.innerHTML = REAL_GROUPS.map(function (g) {
     return '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--i10);border-radius:9px;background:var(--panel-a)">'
       + '<div style="width:10px;height:10px;border-radius:50%;background:' + esc(g.color) + ';flex-shrink:0"></div>'
       + '<span style="font-size:13px;font-weight:600;color:var(--c1);flex:1">' + esc(g.label) + '</span>'
-      + '<span style="font-size:11px;color:var(--c5)">' + groupMemberCount(g.id) + ' õpilast</span>'
+      + '<span style="font-size:11px;color:var(--c5)">' + esc(t('teacher.n_students_suffix').replace('{n}', groupMemberCount(g.id))) + '</span>'
       + '<button class="btn-delete-group" data-id="' + g.id + '" style="border:none;background:none;color:var(--c5);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">×</button>'
       + '</div>';
   }).join('');
@@ -383,7 +391,7 @@ function renderGroupManageModal() {
     btn.addEventListener('click', function () {
       var gid = Number(btn.dataset.id);
       var g = groupById(gid);
-      if (!confirm('Kustuta rühm "' + (g ? g.label : '') + '"?')) return;
+      if (!confirm(t('teacher.delete_group_confirm').replace('{name}', g ? g.label : ''))) return;
       fetch('/api/teacher/groups/' + gid, { method: 'DELETE' }).then(function () {
         STUDENTS.forEach(function (s) {
           s.group_ids = (s.group_ids || []).filter(function (id) { return id !== gid; });
@@ -404,12 +412,12 @@ function renderSidebar() {
   var list = document.getElementById('student-list');
   var students = studentsInGroup(activeGroup);
   if (!students.length) {
-    list.innerHTML = '<div class="pa-empty">' + (activeGroup === 'all' ? 'Ühtegi õpilast pole veel ühendatud.' : 'Selles rühmas pole veel õpilasi.') + '</div>';
+    list.innerHTML = '<div class="pa-empty">' + esc(activeGroup === 'all' ? t('teacher.no_students') : t('teacher.no_students_in_group')) + '</div>';
     return;
   }
   list.innerHTML = students.map(function (s) {
     var sel = s.passport_id === selectedId ? ' ta-student-selected' : '';
-    var sub = s.active_goals > 0 ? s.active_goals + ' aktiivset eesmärki' : 'Eesmärk puudub';
+    var sub = s.active_goals > 0 ? s.active_goals + ' ' + t('teacher.active_goals_n') : t('teacher.no_goal_short');
     return '<div class="ta-student-item' + sel + '" data-id="' + s.passport_id + '">'
       + '<div class="ta-avatar ' + avatarClass(s.passport_id) + '">' + esc(initials(s.display_name)) + '</div>'
       + '<div class="ta-student-info">'
@@ -432,7 +440,7 @@ function renderDashboard() {
 
   var grid = document.getElementById('cards-grid');
   if (!students.length) {
-    grid.innerHTML = '<div class="pa-empty">' + (activeGroup === 'all' ? 'Ühtegi õpilast pole veel ühendatud. Kasuta "+ Lisa õpilane", et alustada.' : 'Selles rühmas pole veel õpilasi. Lisa õpilasi tema kaardilt.') + '</div>';
+    grid.innerHTML = '<div class="pa-empty">' + esc(activeGroup === 'all' ? t('teacher.no_students_cta') : t('teacher.no_students_in_group_cta')) + '</div>';
     return;
   }
   grid.innerHTML = students.map(function (s) {
@@ -441,12 +449,12 @@ function renderDashboard() {
       + '<div class="pa-avatar ' + avatarClass(s.passport_id) + '">' + esc(initials(s.display_name)) + '</div>'
       + '<div class="pa-card-nameblock">'
       + '<div class="pa-card-name">' + esc(s.display_name || '?') + '</div>'
-      + '<div class="pa-last-active">Aktiivne: ' + esc(fmtLastActive(s.last_active)) + '</div>'
+      + '<div class="pa-last-active">' + esc(t('dash.active_label')) + ': ' + esc(fmtLastActive(s.last_active)) + '</div>'
       + '</div>'
       + '</div>'
-      + '<div class="pa-card-chart">' + sparkline(s.activity7d || [0, 0, 0, 0, 0, 0, 0], { width: 260, height: 34, emptyText: 'Tegevust pole veel' }) + '</div>'
+      + '<div class="pa-card-chart">' + sparkline(s.activity7d || [0, 0, 0, 0, 0, 0, 0], { width: 260, height: 34, emptyText: t('dash.no_activity_yet') }) + '</div>'
       + '<div class="pa-card-footer">'
-      + '<span class="pa-card-view-link">Vaata lähemalt →</span>'
+      + '<span class="pa-card-view-link">' + esc(t('dash.view_more')) + '</span>'
       + '</div>'
       + '</div>';
   }).join('');
@@ -478,27 +486,27 @@ function selectStudent(id) {
     + '<div class="pa-detail-avatar ' + avatarClass(s.passport_id) + '" style="width:56px;height:56px;font-size:20px">' + esc(initials(s.display_name)) + '</div>'
     + '<div>'
     + '<div class="pa-detail-name">' + esc(s.display_name || '?') + '</div>'
-    + '<div class="pa-detail-last">Aktiivne: ' + esc(fmtLastActive(s.last_active)) + '</div>'
+    + '<div class="pa-detail-last">' + esc(t('dash.active_label')) + ': ' + esc(fmtLastActive(s.last_active)) + '</div>'
     + '</div>'
     + '</div>'
-    + '<div class="pa-detail-section"><div class="ta-section-label">Rühmad</div><div class="ta-detail-group-chips" id="detail-group-chips"></div></div>'
+    + '<div class="pa-detail-section"><div class="ta-section-label">' + esc(t('teacher.groups_title')) + '</div><div class="ta-detail-group-chips" id="detail-group-chips"></div></div>'
     + '<div class="pa-detail-section">'
     + '<div class="pa-chart-head">'
-    + '<div class="pa-detail-section-label" style="margin-bottom:0">Kasutuse ülevaade</div>'
+    + '<div class="pa-detail-section-label" style="margin-bottom:0">' + esc(t('dash.usage_overview')) + '</div>'
     + '<div class="pa-chart-controls">'
     + '<select class="pa-period-select" id="chart-metric-select">'
-    + '<option value="knobits">Lõpetatud knobitid</option>'
-    + '<option value="minutes">Aktiivne aeg</option>'
+    + '<option value="knobits">' + esc(t('dash.completed_knobits')) + '</option>'
+    + '<option value="minutes">' + esc(t('dash.active_time')) + '</option>'
     + '</select>'
     + '<select class="pa-period-select" id="chart-period-select">'
-    + '<option value="7d">7 päeva</option>'
-    + '<option value="30d" selected>30 päeva</option>'
-    + '<option value="90d">90 päeva</option>'
+    + '<option value="7d">' + esc(t('dash.period_7d')) + '</option>'
+    + '<option value="30d" selected>' + esc(t('dash.period_30d')) + '</option>'
+    + '<option value="90d">' + esc(t('dash.period_90d')) + '</option>'
     + '</select>'
     + '</div>'
     + '</div>'
     + '<div class="pa-chart-block">'
-    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label" id="chart-metric-label">Lõpetatud knobitid</span><span class="pa-chart-block-total" id="chart-total">—</span></div>'
+    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label" id="chart-metric-label">' + esc(t('dash.completed_knobits')) + '</span><span class="pa-chart-block-total" id="chart-total">—</span></div>'
     + '<div id="chart-line-wrap" class="pa-chart-line-wrap"></div>'
     + '</div>'
     + '</div>'
@@ -542,14 +550,14 @@ function renderActivityChart() {
   var dates  = _lastSeries.map(function (s) { return s.date; });
   var total  = values.reduce(function (a, b) { return a + b; }, 0);
 
-  document.getElementById('chart-metric-label').textContent = isKnobits ? 'Lõpetatud knobitid' : 'Aktiivne aeg (hinnanguline)';
+  document.getElementById('chart-metric-label').textContent = isKnobits ? t('dash.completed_knobits') : t('dash.active_time_estimated');
   document.getElementById('chart-total').textContent = isKnobits
-    ? total + ' kokku'
-    : (total >= 60 ? Math.floor(total / 60) + 'h ' + (total % 60) + 'min kokku' : total + ' min kokku');
+    ? total + ' ' + t('dash.total_suffix')
+    : (total >= 60 ? Math.floor(total / 60) + 'h ' + (total % 60) + 'min ' + t('dash.total_suffix') : total + ' min ' + t('dash.total_suffix'));
 
   document.getElementById('chart-line-wrap').innerHTML = lineChart(dates, values, {
     unit: isKnobits ? '' : ' min',
-    emptyText: 'Tegevust pole veel',
+    emptyText: t('dash.no_activity_yet'),
   });
   bindChartInteraction();
 }
@@ -566,7 +574,7 @@ function _niceMax(v) {
 }
 
 function _fmtDateShort(iso) {
-  try { return new Date(iso + 'T00:00:00').toLocaleDateString('et-EE', { day: 'numeric', month: 'short' }); }
+  try { return new Date(iso + 'T00:00:00').toLocaleDateString(_dateLocale(), { day: 'numeric', month: 'short' }); }
   catch (e) { return iso; }
 }
 
@@ -690,7 +698,7 @@ function bindChartInteraction() {
    detail (and the learner's own Õppija pass), read-only. ── */
 function fmtDateLong(d) {
   if (!d) return '';
-  try { return new Date(d).toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' }); }
+  try { return new Date(d).toLocaleDateString(_dateLocale(), { year: 'numeric', month: 'short', day: 'numeric' }); }
   catch (e) { return String(d).substring(0, 10); }
 }
 
@@ -821,7 +829,7 @@ function renderDetailGroupChips(id) {
   var student = STUDENTS.find(function (s) { return s.passport_id === id; });
   var memberIds = (student && student.group_ids) || [];
   if (!REAL_GROUPS.length) {
-    container.innerHTML = '<span style="font-size:11px;color:var(--c5);font-style:italic">Rühmi pole veel loodud. Lisa "Rühmad" küljeriba + nupust.</span>';
+    container.innerHTML = '<span style="font-size:11px;color:var(--c5);font-style:italic">' + esc(t('teacher.no_groups_for_chips_hint')) + '</span>';
     return;
   }
   container.innerHTML = REAL_GROUPS.map(function (g) {
@@ -925,14 +933,14 @@ function populateGoalTargetSelects() {
   var studentSel = document.getElementById('goal-target-student');
   studentSel.innerHTML = STUDENTS.length
     ? STUDENTS.map(function (s) { return '<option value="' + s.passport_id + '">' + esc(s.display_name || '?') + '</option>'; }).join('')
-    : '<option value="">Õpilasi pole</option>';
+    : '<option value="">' + esc(t('teacher.no_students_for_select')) + '</option>';
 
   var groupSel = document.getElementById('goal-target-group');
   groupSel.innerHTML = REAL_GROUPS.length
     ? REAL_GROUPS.map(function (g) { return '<option value="' + g.id + '">' + esc(g.label) + ' (' + groupMemberCount(g.id) + ')</option>'; }).join('')
-    : '<option value="">Rühmi pole veel loodud</option>';
+    : '<option value="">' + esc(t('teacher.no_groups_for_select')) + '</option>';
 
-  document.getElementById('goal-target-all-hint').textContent = STUDENTS.length + ' õpilasele';
+  document.getElementById('goal-target-all-hint').textContent = t('teacher.n_students_suffix').replace('{n}', STUDENTS.length);
 }
 
 function showGoalTargetInput(target) {
@@ -1003,7 +1011,7 @@ document.getElementById('goal-node-search').addEventListener('input', function (
               + (n.breadcrumb ? '<div class="goal-search-result-crumb">' + esc(n.breadcrumb) + '</div>' : '')
               + '</div>';
           }).join('')
-        : '<div class="goal-search-empty">Vastavaid teemasid ei leitud.</div>';
+        : '<div class="goal-search-empty">' + esc(t('teacher.no_topics_found')) + '</div>';
       resultsEl.querySelectorAll('.goal-search-result-item').forEach(function (el) {
         el.addEventListener('click', function () {
           _goalNode = _goalSearchResults[Number(el.dataset.idx)];
@@ -1028,31 +1036,31 @@ function goalConfirmSummary(targetId, deadline) {
   var whoText;
   if (_goalTarget === 'student') {
     var s = STUDENTS.find(function (x) { return String(x.passport_id) === String(targetId); });
-    whoText = s ? esc(s.display_name) : '1 õpilasele';
+    whoText = s ? esc(s.display_name) : t('teacher.goal_for_one_student');
   } else if (_goalTarget === 'group') {
     var g = groupById(Number(targetId));
-    whoText = (g ? esc(g.label) : 'rühmale') + ' (' + groupMemberCount(Number(targetId)) + ' õpilast)';
+    whoText = (g ? esc(g.label) : t('teacher.goal_for_group_fallback')) + ' (' + t('teacher.n_students_suffix').replace('{n}', groupMemberCount(Number(targetId))) + ')';
   } else {
-    whoText = 'kõigile õpilastele (' + STUDENTS.length + ')';
+    whoText = t('teacher.goal_for_all_students').replace('{n}', STUDENTS.length);
   }
-  return '<div><strong>Teema:</strong> ' + esc(_goalNode.label) + (_goalNode.breadcrumb ? ' <span style="color:var(--c5)">(' + esc(_goalNode.breadcrumb) + ')</span>' : '') + '</div>'
-    + '<div><strong>Kellele:</strong> ' + whoText + '</div>'
-    + '<div><strong>Tähtaeg:</strong> ' + (deadline ? esc(new Date(deadline).toLocaleDateString('et-EE', { year: 'numeric', month: 'long', day: 'numeric' })) : 'Ei ole määratud') + '</div>';
+  return '<div><strong>' + esc(t('teacher.goal_summary_topic')) + ':</strong> ' + esc(_goalNode.label) + (_goalNode.breadcrumb ? ' <span style="color:var(--c5)">(' + esc(_goalNode.breadcrumb) + ')</span>' : '') + '</div>'
+    + '<div><strong>' + esc(t('teacher.goal_target_label')) + ':</strong> ' + whoText + '</div>'
+    + '<div><strong>' + esc(t('label.goal_target_date')) + ':</strong> ' + (deadline ? esc(new Date(deadline).toLocaleDateString(_dateLocale(), { year: 'numeric', month: 'long', day: 'numeric' })) : esc(t('dash.no_deadline'))) + '</div>';
 }
 
 document.getElementById('btn-goal-next').addEventListener('click', function () {
   var msg = document.getElementById('goal-build-msg');
   msg.textContent = '';
-  if (!_goalNode) { msg.textContent = 'Vali kõigepealt teema.'; return; }
+  if (!_goalNode) { msg.textContent = t('teacher.goal_pick_topic_first'); return; }
   var targetId = null;
   if (_goalTarget === 'student') {
     targetId = document.getElementById('goal-target-student').value;
-    if (!targetId) { msg.textContent = 'Vali õpilane.'; return; }
+    if (!targetId) { msg.textContent = t('teacher.goal_pick_student'); return; }
   } else if (_goalTarget === 'group') {
     targetId = document.getElementById('goal-target-group').value;
-    if (!targetId) { msg.textContent = 'Vali rühm.'; return; }
+    if (!targetId) { msg.textContent = t('teacher.goal_pick_group'); return; }
   } else if (!STUDENTS.length) {
-    msg.textContent = 'Sul pole veel ühtegi õpilast.'; return;
+    msg.textContent = t('teacher.goal_no_students'); return;
   }
 
   var deadline = document.getElementById('goal-deadline').value;
@@ -1084,11 +1092,11 @@ function submitGoal(targetId, deadline) {
     document.getElementById('goal-step-confirm').style.display = 'none';
     document.getElementById('goal-step-result').style.display = '';
     if (!d.ok) {
-      document.getElementById('goal-result-msg').textContent = 'Eesmärgi seadmine ebaõnnestus. Proovi uuesti.';
+      document.getElementById('goal-result-msg').textContent = t('teacher.goal_set_failed');
       return;
     }
-    var msg = 'Eesmärk seati ' + d.created + ' õpilasele.';
-    if (d.skipped) msg += ' (' + d.skipped + ' õpilasel oli see eesmärk juba olemas.)';
+    var msg = t('teacher.goal_set_success').replace('{n}', d.created);
+    if (d.skipped) msg += ' ' + t('teacher.goal_set_skipped').replace('{n}', d.skipped);
     document.getElementById('goal-result-msg').textContent = msg;
     loadStudents();
     if (selectedId != null) loadDetailInfo(selectedId);
@@ -1096,7 +1104,7 @@ function submitGoal(targetId, deadline) {
     confirmBtn.disabled = false;
     document.getElementById('goal-step-confirm').style.display = 'none';
     document.getElementById('goal-step-result').style.display = '';
-    document.getElementById('goal-result-msg').textContent = 'Eesmärgi seadmine ebaõnnestus. Proovi uuesti.';
+    document.getElementById('goal-result-msg').textContent = t('teacher.goal_set_failed');
   });
 }
 

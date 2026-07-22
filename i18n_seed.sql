@@ -968,3 +968,154 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('label.goal_set_by_teacher', 'et', 'Eesmärgi seadis õpetaja {name}')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Fixing seed-file drift: these already exist live with both locales, the
+-- seed file was just missing the 'et' row (or 'et' entirely for btn.add).
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('btn.cancel', 'et', 'Tühista'),
+('btn.add',    'et', 'Lisa')
+
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Shared parent/teacher dashboard vocabulary — chart labels, relative-time
+-- helpers, empty states — used identically by both app/parent.html and
+-- app/teacher.html (2026-07-22 i18n pass; both pages previously had these
+-- hardcoded in Estonian, invisible to the fix since neither page set
+-- window._uiLocale — see the settings-fetch script at the top of each file).
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('dash.today',                 'en', 'today'),
+('dash.today',                 'et', 'täna'),
+('dash.not_active_yet',        'en', "hasn't started learning yet"),
+('dash.not_active_yet',        'et', 'pole veel õppinud'),
+('dash.no_activity_yet',       'en', 'No activity yet'),
+('dash.no_activity_yet',       'et', 'Tegevust pole veel'),
+('dash.view_more',             'en', 'View more →'),
+('dash.view_more',             'et', 'Vaata lähemalt →'),
+('dash.active_label',          'en', 'Active'),
+('dash.active_label',          'et', 'Aktiivne'),
+('dash.usage_overview',        'en', 'Usage overview'),
+('dash.usage_overview',        'et', 'Kasutuse ülevaade'),
+('dash.completed_knobits',     'en', 'Completed knobits'),
+('dash.completed_knobits',     'et', 'Lõpetatud knobitid'),
+('dash.active_time',           'en', 'Active time'),
+('dash.active_time',           'et', 'Aktiivne aeg'),
+('dash.active_time_estimated', 'en', 'Active time (estimated)'),
+('dash.active_time_estimated', 'et', 'Aktiivne aeg (hinnanguline)'),
+('dash.period_7d',             'en', '7 days'),
+('dash.period_7d',             'et', '7 päeva'),
+('dash.period_30d',            'en', '30 days'),
+('dash.period_30d',            'et', '30 päeva'),
+('dash.period_90d',            'en', '90 days'),
+('dash.period_90d',            'et', '90 päeva'),
+('dash.total_suffix',          'en', 'total'),
+('dash.total_suffix',          'et', 'kokku'),
+('dash.no_deadline',           'en', 'Not set'),
+('dash.no_deadline',           'et', 'Ei ole määratud')
+
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Parent dashboard specifics (app/parent.html)
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('parent.no_children_cta',     'en', 'No children linked yet. Use "+ Add child" to get started.'),
+('parent.no_children_cta',     'et', 'Ühtegi last pole veel ühendatud. Kasuta "+ Lisa laps", et alustada.'),
+('parent.children_load_failed','en', 'Failed to load children.'),
+('parent.children_load_failed','et', 'Laste laadimine ebaõnnestus.'),
+('parent.age_years_short',     'en', '{n} yrs'),
+('parent.age_years_short',     'et', '{n} a.'),
+('parent.age_years_full',      'en', '{n} years'),
+('parent.age_years_full',      'et', '{n} aastat')
+
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Teacher dashboard specifics (app/teacher.html) — Rühmad groups + the
+-- goal-setting modal (2026-07-22)
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('teacher.groups_title',           'en', 'Groups'),
+('teacher.groups_title',           'et', 'Rühmad'),
+('teacher.add_group_title',        'en', 'Add group'),
+('teacher.add_group_title',        'et', 'Lisa rühm'),
+('teacher.back_to_list',           'en', 'Back to list'),
+('teacher.back_to_list',           'et', 'Tagasi nimekirja'),
+('teacher.no_students_cta',        'en', 'No students linked yet. Use "+ Add student" to get started.'),
+('teacher.no_students_cta',        'et', 'Ühtegi õpilast pole veel ühendatud. Kasuta "+ Lisa õpilane", et alustada.'),
+('teacher.no_students_in_group',   'en', 'No students in this group yet.'),
+('teacher.no_students_in_group',   'et', 'Selles rühmas pole veel õpilasi.'),
+('teacher.no_students_in_group_cta','en', 'No students in this group yet. Add students from their card.'),
+('teacher.no_students_in_group_cta','et', 'Selles rühmas pole veel õpilasi. Lisa õpilasi tema kaardilt.'),
+('teacher.students_load_failed',   'en', 'Failed to load students.'),
+('teacher.students_load_failed',   'et', 'Õpilaste laadimine ebaõnnestus.'),
+('teacher.no_goal_short',          'en', 'No goal'),
+('teacher.no_goal_short',          'et', 'Eesmärk puudub'),
+('teacher.no_groups_yet',          'en', 'No groups created yet.'),
+('teacher.no_groups_yet',          'et', 'Ühtegi rühma pole veel loodud.'),
+('teacher.groups_hint',            'en', 'Groups are tags you can freely assign to students. A student can have more than one.'),
+('teacher.groups_hint',            'et', 'Rühmad on sildid, mida saad õpilastele vabalt määrata. Õpilasel võib olla mitu silti.'),
+('teacher.new_group_placeholder',  'en', 'New group name...'),
+('teacher.new_group_placeholder',  'et', 'Uue rühma nimi...'),
+('teacher.manage_groups_title',    'en', 'Manage groups'),
+('teacher.manage_groups_title',    'et', 'Rühmade haldamine'),
+('teacher.delete_group_confirm',   'en', 'Delete group "{name}"?'),
+('teacher.delete_group_confirm',   'et', 'Kustuta rühm "{name}"?'),
+('teacher.n_students_suffix',      'en', '{n} students'),
+('teacher.n_students_suffix',      'et', '{n} õpilast'),
+('teacher.no_groups_for_select',   'en', 'No groups yet'),
+('teacher.no_groups_for_select',   'et', 'Rühmi pole veel loodud'),
+('teacher.no_students_for_select', 'en', 'No students'),
+('teacher.no_students_for_select', 'et', 'Õpilasi pole'),
+('teacher.no_groups_for_chips_hint','en', 'No groups yet. Add one from the "Groups" + button in the sidebar.'),
+('teacher.no_groups_for_chips_hint','et', 'Rühmi pole veel loodud. Lisa "Rühmad" küljeriba + nupust.'),
+('teacher.set_goal',               'en', 'Set goal'),
+('teacher.set_goal',               'et', 'Sea eesmärk'),
+('teacher.goal_search_label',      'en', 'Search for a topic'),
+('teacher.goal_search_label',      'et', 'Otsi teemat'),
+('teacher.goal_search_placeholder','en', 'E.g. Fractions, Photosynthesis, Estonian history…'),
+('teacher.goal_search_placeholder','et', 'Nt. Murrud, Fotosüntees, Eesti ajalugu…'),
+('teacher.goal_target_label',      'en', 'Who for'),
+('teacher.goal_target_label',      'et', 'Kellele'),
+('teacher.target_one_student',     'en', 'One student'),
+('teacher.target_one_student',     'et', 'Üksik õpilane'),
+('teacher.target_group',           'en', 'Group'),
+('teacher.target_group',           'et', 'Rühm'),
+('teacher.target_all_students',    'en', 'All students'),
+('teacher.target_all_students',    'et', 'Kõik õpilased'),
+('teacher.deadline_optional',      'en', 'Deadline (optional)'),
+('teacher.deadline_optional',      'et', 'Tähtaeg (valikuline)'),
+('teacher.goal_confirm_warning',   'en', 'Important: once a goal is set, the teacher can no longer remove it. The student can delete it themselves from their Learner Passport if needed.'),
+('teacher.goal_confirm_warning',   'et', 'Tähtis: kui eesmärk on seatud, ei saa õpetaja seda enam eemaldada. Õpilane saab selle vajadusel ise oma Õppija passist kustutada.'),
+('teacher.goal_confirm_btn',       'en', 'Confirm and set goal'),
+('teacher.goal_confirm_btn',       'et', 'Kinnita ja sea eesmärk'),
+('teacher.goal_pick_topic_first',  'en', 'Pick a topic first.'),
+('teacher.goal_pick_topic_first',  'et', 'Vali kõigepealt teema.'),
+('teacher.goal_pick_student',      'en', 'Pick a student.'),
+('teacher.goal_pick_student',      'et', 'Vali õpilane.'),
+('teacher.goal_pick_group',        'en', 'Pick a group.'),
+('teacher.goal_pick_group',        'et', 'Vali rühm.'),
+('teacher.goal_no_students',       'en', "You don't have any students yet."),
+('teacher.goal_no_students',       'et', 'Sul pole veel ühtegi õpilast.'),
+('teacher.no_topics_found',        'en', 'No matching topics found.'),
+('teacher.no_topics_found',        'et', 'Vastavaid teemasid ei leitud.'),
+('teacher.goal_summary_topic',     'en', 'Topic'),
+('teacher.goal_summary_topic',     'et', 'Teema'),
+('teacher.goal_for_one_student',   'en', '1 student'),
+('teacher.goal_for_one_student',   'et', '1 õpilasele'),
+('teacher.goal_for_group_fallback','en', 'a group'),
+('teacher.goal_for_group_fallback','et', 'rühmale'),
+('teacher.goal_for_all_students',  'en', 'all students ({n})'),
+('teacher.goal_for_all_students',  'et', 'kõigile õpilastele ({n})'),
+('teacher.goal_set_failed',        'en', 'Failed to set the goal. Please try again.'),
+('teacher.goal_set_failed',        'et', 'Eesmärgi seadmine ebaõnnestus. Proovi uuesti.'),
+('teacher.goal_set_success',       'en', 'Goal set for {n} student(s).'),
+('teacher.goal_set_success',       'et', 'Eesmärk seati {n} õpilasele.'),
+('teacher.goal_set_skipped',       'en', '({n} already had this goal.)'),
+('teacher.goal_set_skipped',       'et', '({n} õpilasel oli see eesmärk juba olemas.)')
+
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- btn.next / btn.back — generic, but first needed by the goal modal
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('btn.next', 'en', 'Next'),
+('btn.next', 'et', 'Edasi'),
+('btn.back', 'en', 'Back'),
+('btn.back', 'et', 'Tagasi')
+
+ON DUPLICATE KEY UPDATE value = VALUES(value);

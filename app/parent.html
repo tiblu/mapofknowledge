@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="css/profile.css">
 <link rel="stylesheet" href="css/teacher.css">
 <link rel="stylesheet" href="css/font-scale.css">
-<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);}).catch(function(){});</script>
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale){try{localStorage.setItem('kq_ui_locale',s.ui_locale);}catch(e){}}if(s.ui_locale){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
 <script src="js/strings.js"></script>
 </head>
 <body>
@@ -112,8 +112,8 @@
 <div class="pa-wrap">
 
   <div class="pa-header">
-    <span class="pa-title">Minu lapsed</span>
-    <button class="ta-action-btn" id="btn-add-child">+ Lisa laps</button>
+    <span class="pa-title" data-i18n="parent.my_children">Minu lapsed</span>
+    <button class="ta-action-btn" id="btn-add-child">+ <span data-i18n="parent.invite_child">Lisa laps</span></button>
   </div>
 
   <!-- Children cards -->
@@ -154,14 +154,22 @@ function ageFromBirthYear(birthYear) {
   return new Date().getFullYear() - birthYear;
 }
 
+function _dateLocale() {
+  var loc = window._uiLocale
+    || (function () { try { return localStorage.getItem('kq_ui_locale'); } catch (e) { return null; } }())
+    || document.documentElement.getAttribute('lang')
+    || 'et';
+  return loc === 'en' ? 'en-US' : 'et-EE';
+}
+
 function fmtLastActive(iso) {
-  if (!iso) return 'pole veel õppinud';
+  if (!iso) return t('dash.not_active_yet');
   var d = new Date(iso);
   var days = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (days <= 0) return 'täna';
-  if (days === 1) return 'eile';
-  if (days < 14) return days + ' päeva tagasi';
-  return d.toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' });
+  if (days <= 0) return t('dash.today');
+  if (days === 1) return t('label.yesterday');
+  if (days < 14) return days + ' ' + t('label.days_ago');
+  return d.toLocaleDateString(_dateLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 /* ── Sparkline — same rendering approach as the Admin "Activity (7d)"
@@ -193,12 +201,12 @@ function loadChildren() {
   fetch('/api/parent/children').then(function (r) { return r.json(); }).then(function (d) {
     CHILDREN = d.children || [];
     if (!CHILDREN.length) {
-      grid.innerHTML = '<div class="pa-empty">Ühtegi last pole veel ühendatud. Kasuta "+ Lisa laps", et alustada.</div>';
+      grid.innerHTML = '<div class="pa-empty">' + esc(t('parent.no_children_cta')) + '</div>';
       return;
     }
     renderCards();
   }).catch(function () {
-    grid.innerHTML = '<div class="pa-empty">Laste laadimine ebaõnnestus.</div>';
+    grid.innerHTML = '<div class="pa-empty">' + esc(t('parent.children_load_failed')) + '</div>';
   });
 }
 
@@ -212,13 +220,13 @@ function renderCards() {
       + '<div class="pa-avatar ' + avatarClass(c.passport_id) + '">' + esc(initials(c.display_name)) + '</div>'
       + '<div class="pa-card-nameblock">'
       + '<div class="pa-card-name">' + esc(c.display_name || '?') + '</div>'
-      + '<div class="pa-card-sub">' + (age != null ? age + ' a.' : '') + '</div>'
-      + '<div class="pa-last-active">Aktiivne: ' + esc(fmtLastActive(c.last_active)) + '</div>'
+      + '<div class="pa-card-sub">' + (age != null ? esc(t('parent.age_years_short').replace('{n}', age)) : '') + '</div>'
+      + '<div class="pa-last-active">' + esc(t('dash.active_label')) + ': ' + esc(fmtLastActive(c.last_active)) + '</div>'
       + '</div>'
       + '</div>'
-      + '<div class="pa-card-chart">' + sparkline(c.activity7d || [0, 0, 0, 0, 0, 0, 0], { width: 260, height: 34, emptyText: 'Tegevust pole veel' }) + '</div>'
+      + '<div class="pa-card-chart">' + sparkline(c.activity7d || [0, 0, 0, 0, 0, 0, 0], { width: 260, height: 34, emptyText: t('dash.no_activity_yet') }) + '</div>'
       + '<div class="pa-card-footer">'
-      + '<span class="pa-card-view-link">Vaata lähemalt →</span>'
+      + '<span class="pa-card-view-link">' + esc(t('dash.view_more')) + '</span>'
       + '</div>'
       + '</div>';
   }).join('');
@@ -245,30 +253,30 @@ function selectChild(id) {
     + '<div class="pa-detail-avatar ' + avatarClass(c.passport_id) + '" style="width:56px;height:56px;font-size:20px">' + esc(initials(c.display_name)) + '</div>'
     + '<div>'
     + '<div class="pa-detail-name">' + esc(c.display_name || '?') + '</div>'
-    + '<div class="pa-detail-sub">' + (age != null ? age + ' aastat' : '') + '</div>'
-    + '<div class="pa-detail-last">Aktiivne: ' + esc(fmtLastActive(c.last_active)) + '</div>'
+    + '<div class="pa-detail-sub">' + (age != null ? esc(t('parent.age_years_full').replace('{n}', age)) : '') + '</div>'
+    + '<div class="pa-detail-last">' + esc(t('dash.active_label')) + ': ' + esc(fmtLastActive(c.last_active)) + '</div>'
     + '</div>'
     + '<div style="margin-left:auto">'
-    + '<button class="ta-action-btn" onclick="closeDetail()">Sulge</button>'
+    + '<button class="ta-action-btn" onclick="closeDetail()">' + esc(t('btn.close')) + '</button>'
     + '</div>'
     + '</div>'
     + '<div class="pa-detail-section">'
     + '<div class="pa-chart-head">'
-    + '<div class="pa-detail-section-label" style="margin-bottom:0">Kasutuse ülevaade</div>'
+    + '<div class="pa-detail-section-label" style="margin-bottom:0">' + esc(t('dash.usage_overview')) + '</div>'
     + '<div class="pa-chart-controls">'
     + '<select class="pa-period-select" id="chart-metric-select">'
-    + '<option value="knobits">Lõpetatud knobitid</option>'
-    + '<option value="minutes">Aktiivne aeg</option>'
+    + '<option value="knobits">' + esc(t('dash.completed_knobits')) + '</option>'
+    + '<option value="minutes">' + esc(t('dash.active_time')) + '</option>'
     + '</select>'
     + '<select class="pa-period-select" id="chart-period-select">'
-    + '<option value="7d">7 päeva</option>'
-    + '<option value="30d" selected>30 päeva</option>'
-    + '<option value="90d">90 päeva</option>'
+    + '<option value="7d">' + esc(t('dash.period_7d')) + '</option>'
+    + '<option value="30d" selected>' + esc(t('dash.period_30d')) + '</option>'
+    + '<option value="90d">' + esc(t('dash.period_90d')) + '</option>'
     + '</select>'
     + '</div>'
     + '</div>'
     + '<div class="pa-chart-block">'
-    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label" id="chart-metric-label">Lõpetatud knobitid</span><span class="pa-chart-block-total" id="chart-total">—</span></div>'
+    + '<div class="pa-chart-block-head"><span class="pa-chart-block-label" id="chart-metric-label">' + esc(t('dash.completed_knobits')) + '</span><span class="pa-chart-block-total" id="chart-total">—</span></div>'
     + '<div id="chart-line-wrap" class="pa-chart-line-wrap"></div>'
     + '</div>'
     + '</div>'
@@ -310,14 +318,14 @@ function renderActivityChart() {
   var dates  = _lastSeries.map(function (s) { return s.date; });
   var total  = values.reduce(function (a, b) { return a + b; }, 0);
 
-  document.getElementById('chart-metric-label').textContent = isKnobits ? 'Lõpetatud knobitid' : 'Aktiivne aeg (hinnanguline)';
+  document.getElementById('chart-metric-label').textContent = isKnobits ? t('dash.completed_knobits') : t('dash.active_time_estimated');
   document.getElementById('chart-total').textContent = isKnobits
-    ? total + ' kokku'
-    : (total >= 60 ? Math.floor(total / 60) + 'h ' + (total % 60) + 'min kokku' : total + ' min kokku');
+    ? total + ' ' + t('dash.total_suffix')
+    : (total >= 60 ? Math.floor(total / 60) + 'h ' + (total % 60) + 'min ' + t('dash.total_suffix') : total + ' min ' + t('dash.total_suffix'));
 
   document.getElementById('chart-line-wrap').innerHTML = lineChart(dates, values, {
     unit: isKnobits ? '' : ' min',
-    emptyText: 'Tegevust pole veel',
+    emptyText: t('dash.no_activity_yet'),
   });
   bindChartInteraction();
 }
@@ -333,7 +341,7 @@ function _niceMax(v) {
 }
 
 function _fmtDateShort(iso) {
-  try { return new Date(iso + 'T00:00:00').toLocaleDateString('et-EE', { day: 'numeric', month: 'short' }); }
+  try { return new Date(iso + 'T00:00:00').toLocaleDateString(_dateLocale(), { day: 'numeric', month: 'short' }); }
   catch (e) { return iso; }
 }
 
@@ -465,7 +473,7 @@ function bindChartInteraction() {
    this entirely — personal to the learner. ── */
 function fmtDateLong(d) {
   if (!d) return '';
-  try { return new Date(d).toLocaleDateString('et-EE', { year: 'numeric', month: 'short', day: 'numeric' }); }
+  try { return new Date(d).toLocaleDateString(_dateLocale(), { year: 'numeric', month: 'short', day: 'numeric' }); }
   catch (e) { return String(d).substring(0, 10); }
 }
 
