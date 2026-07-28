@@ -338,6 +338,9 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.quit_knobit_text',        'en', 'You''ll learn best by staying focused and finishing in one sitting.'),
 ('msg.download_offer_title',    'en', 'Download this knobit?'),
 ('msg.download_offer_text',     'en', 'You can download this knobit now. After you continue, its content is cleared.'),
-('btn.download',                'en', 'Download')
+('btn.download',                'en', 'Download'),
+
+-- Nav menu reorder (added 2026-07-28): new "Map" item, back to the map from any page
+('nav.map',                     'en', 'Map')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

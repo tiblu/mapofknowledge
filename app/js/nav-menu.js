@@ -8,9 +8,10 @@
    Click behavior is resolved per-item at render time, not hardcoded per
    page:
      - the current page's own item gets .active-page and no handler
-     - Admin always breaks out to a real top-level navigation (it's a
-       standalone page, never an overlay), even from inside an overlay
-       iframe
+     - Admin and Map always break out to a real top-level navigation (Admin
+       is a standalone page, never an overlay; the map is the outer frame
+       everything else overlays *onto*, so it can't overlay itself), even
+       from inside an overlay iframe
      - Log out always breaks out to the top window
      - everything else uses window.openOverlay(page) when that function
        exists (true only on index.html, the one page with a live map +
@@ -45,6 +46,13 @@
       + '<path d="M5.7 5.8a1.8 1.8 0 1 1 2.5 1.7c-.5.3-.7.6-.7 1.1v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>'
       + '<circle cx="7.5" cy="10.8" r="0.6" fill="currentColor"/>'
       + '</svg>',
+    map: '<svg width="15" height="15" viewBox="0 0 15 15" fill="none">'
+      + '<circle cx="7.5" cy="7.5" r="1.3" fill="currentColor"/>'
+      + '<circle cx="7.5" cy="2.2" r="1" fill="currentColor" opacity="0.5"/>'
+      + '<circle cx="7.5" cy="12.8" r="1" fill="currentColor" opacity="0.5"/>'
+      + '<circle cx="2.2" cy="7.5" r="1" fill="currentColor" opacity="0.5"/>'
+      + '<circle cx="12.8" cy="7.5" r="1" fill="currentColor" opacity="0.5"/>'
+      + '</svg>',
   };
 
   var current = (window.location.pathname.split('/').pop() || 'index.html');
@@ -65,8 +73,11 @@
 
     if (opts.page === current) {
       btn.classList.add('active-page');
-    } else if (opts.page === 'admin.html') {
-      btn.addEventListener('click', function () { (window.top || window).location = 'admin.html'; });
+    } else if (opts.page === 'admin.html' || opts.page === 'index.html') {
+      // Admin is a standalone page, never an overlay. The map (index.html) is
+      // the outer frame everything else overlays *onto* — it can't sensibly be
+      // opened as an overlay of itself, so it also always breaks out top-level.
+      btn.addEventListener('click', function () { (window.top || window).location = opts.page; });
     } else {
       btn.addEventListener('click', function () { navigateTo(opts.page); });
     }
@@ -87,10 +98,12 @@
     return d;
   }
 
-  // ── Static items (no role check needed) ────────────────────────────────────
-  dropdown.appendChild(makeItem({ page: 'profile.html', i18nKey: 'nav.account', fallback: 'Account', iconHtml: ICONS.account }));
+  // ── Static items (no role check needed) ─────────────────────────────────────
+  // Order: Notifications, Map, Account, (Admin), divider, Settings, Help, divider, Log out
+  var notifItem   = makeItem({ page: 'notifications.html', i18nKey: 'nav.notifications', fallback: 'Notifications', iconHtml: ICONS.notifications, badge: true });
+  var mapItem     = makeItem({ page: 'index.html', i18nKey: 'nav.map', fallback: 'Map', iconHtml: ICONS.map });
+  var accountItem = makeItem({ page: 'profile.html', i18nKey: 'nav.account', fallback: 'Account', iconHtml: ICONS.account });
 
-  var notifItem = makeItem({ page: 'notifications.html', i18nKey: 'nav.notifications', fallback: 'Notifications', iconHtml: ICONS.notifications, badge: true });
   var settingsBtn = document.createElement('button');
   settingsBtn.className = 'nav-dropdown-item';
   settingsBtn.innerHTML = '<img src="images/icon-settings.svg" width="15" height="15" alt="">'
@@ -98,21 +111,24 @@
   if ('settings.html' === current) settingsBtn.classList.add('active-page');
   else settingsBtn.addEventListener('click', function () { navigateTo('settings.html'); });
 
+  var helpItem = makeItem({ page: 'help.html', i18nKey: 'nav.help', fallback: 'Help', iconHtml: ICONS.help });
+
   dropdown.appendChild(notifItem);
+  dropdown.appendChild(mapItem);
+  dropdown.appendChild(accountItem);
   dropdown.appendChild(divider());
   dropdown.appendChild(settingsBtn);
-  dropdown.appendChild(makeItem({ page: 'help.html', i18nKey: 'nav.help', fallback: 'Help', iconHtml: ICONS.help }));
+  dropdown.appendChild(helpItem);
   dropdown.appendChild(divider());
   dropdown.appendChild(makeLogout());
 
-  // ── Admin item — only for super_admin, inserted after Account once known ──
+  // ── Admin item — only for super_admin, inserted right after Account once known ──
   fetch('/auth/me')
     .then(function (r) { return r.json(); })
     .then(function (user) {
       if (!user || user.role !== 'super_admin') return;
       var adminItem = makeItem({ page: 'admin.html', i18nKey: 'nav.admin', fallback: 'Admin', iconHtml: ICONS.admin });
-      var accountItem = dropdown.firstElementChild;
-      dropdown.insertBefore(adminItem, accountItem ? accountItem.nextSibling : dropdown.firstChild);
+      dropdown.insertBefore(adminItem, accountItem.nextSibling);
     })
     .catch(function () {});
 }());
