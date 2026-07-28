@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZD3FXS60X0"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-ZD3FXS60X0');
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create your account — Map of Knowledge</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Matches the landing page's own dark theme. */
+  --bg:        #080810;
+  --panel:     #12121e;
+  --cream:     #F2EDE6;
+  --terra:     #C4826A;
+  --terra-dim: rgba(196,130,106,0.15);
+  --muted:     rgba(242,237,230,0.45);
+  --border:    rgba(242,237,230,0.10);
+  --border-hi: rgba(242,237,230,0.18);
+  --sage:      #8BAD7E;
+  --red-soft:  #E2867A;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* ── Nav ────────────────────────────────────────────────────────────── */
+.su-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 56px;
+  background: rgba(8,8,16,0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px;
+}
+
+.su-logo {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 15px; font-weight: 640; letter-spacing: -0.2px;
+}
+
+.su-logo-mark {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--terra-dim);
+  border: 1px solid rgba(196,130,106,0.28);
+  display: flex; align-items: center; justify-content: center;
+}
+
+.su-login-link {
+  font-size: 13px; color: var(--muted);
+  transition: color 0.15s;
+  cursor: pointer; background: none; border: none; font-family: inherit;
+}
+.su-login-link:hover { color: var(--cream); }
+
+/* ── Main ───────────────────────────────────────────────────────────── */
+.su-main {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 80px 16px 40px;
+}
+
+/* ── Wizard card ────────────────────────────────────────────────────── */
+.wizard {
+  width: 100%;
+  max-width: 480px;
+  background: var(--panel);
+  border: 1px solid var(--border-hi);
+  border-radius: 20px;
+  padding: 36px 40px 40px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.35);
+}
+
+/* ── Step dots ──────────────────────────────────────────────────────── */
+.step-dots {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 28px;
+}
+
+.sdot {
+  height: 7px; border-radius: 4px;
+  background: var(--border-hi);
+  transition: background 0.2s, width 0.2s;
+  width: 7px;
+}
+.sdot.done    { background: rgba(196,130,106,0.55); }
+.sdot.current { background: var(--terra); width: 22px; }
+
+/* ── Step visibility ────────────────────────────────────────────────── */
+.step { display: none; }
+.step.active { display: block; animation: stepIn 0.22s ease; }
+
+@keyframes stepIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Step header ────────────────────────────────────────────────────── */
+.step h2 {
+  font-size: 22px; font-weight: 680; letter-spacing: -0.4px;
+  color: var(--cream);
+  margin-bottom: 8px;
+}
+
+.step-hint {
+  font-size: 13px; color: var(--muted);
+  margin-bottom: 24px; line-height: 1.55;
+}
+
+/* ── Text input ─────────────────────────────────────────────────────── */
+.su-input {
+  width: 100%;
+  background: rgba(242,237,230,0.04);
+  border: 1.5px solid var(--border-hi);
+  border-radius: 10px;
+  color: var(--cream);
+  font-size: 16px; font-weight: 400; letter-spacing: normal;
+  padding: 12px 16px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+  margin-bottom: 14px;
+}
+.su-input::placeholder { color: rgba(242,237,230,0.28); }
+.su-input:focus  { border-color: rgba(196,130,106,0.6); }
+.su-input.err    { border-color: rgba(226,134,122,0.6); }
+
+/* ── Tag-chip fields (interests / values) ─────────────────────────────── */
+.tag-field { margin-bottom: 16px; }
+.tag-field-label {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 620; color: var(--cream);
+  margin-bottom: 7px;
+}
+.tag-count {
+  font-size: 12px; font-weight: 700;
+  color: var(--muted);
+  background: rgba(242,237,230,0.05);
+  border: 1px solid var(--border-hi);
+  border-radius: 20px;
+  padding: 2px 10px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.tag-count.met {
+  color: var(--sage);
+  background: rgba(139,173,126,0.12);
+  border-color: rgba(139,173,126,0.35);
+}
+.tag-input-wrap {
+  display: flex; flex-wrap: wrap; gap: 7px; align-items: center;
+  width: 100%;
+  background: rgba(242,237,230,0.04);
+  border: 1.5px solid var(--border-hi);
+  border-radius: 10px;
+  padding: 9px 10px;
+  transition: border-color 0.15s;
+}
+.tag-input-wrap:focus-within { border-color: rgba(196,130,106,0.6); }
+.tag-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--terra-dim);
+  color: var(--terra);
+  border-radius: 20px;
+  padding: 5px 6px 5px 12px;
+  font-size: 13px; font-weight: 600;
+  white-space: nowrap;
+}
+.tag-chip-remove {
+  background: none; border: none; padding: 0; margin: 0;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--terra); font-size: 13px; line-height: 1;
+  cursor: pointer; font-family: inherit;
+}
+.tag-chip-remove:hover { background: rgba(196,130,106,0.25); }
+.tag-input {
+  flex: 1; min-width: 120px;
+  background: none; border: none; outline: none;
+  color: var(--cream); font-family: inherit;
+  font-size: 15px; padding: 5px 4px;
+}
+.tag-input::placeholder { color: rgba(242,237,230,0.28); }
+.tag-field-hint { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+
+.field-error {
+  margin-top: 8px;
+  font-size: 13px; color: var(--red-soft);
+  min-height: 20px;
+  display: none;
+}
+.field-error.show { display: block; }
+
+/* ── Plan cards ─────────────────────────────────────────────────────── */
+.plan-grid {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-bottom: 24px;
+}
+
+.plan-card {
+  border: 1.5px solid var(--border-hi);
+  border-radius: 11px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+}
+.plan-card:hover { border-color: rgba(196,130,106,0.4); }
+.plan-card.selected {
+  border-color: var(--terra);
+  background: var(--terra-dim);
+}
+
+.plan-badge {
+  position: absolute; top: -9px; left: 16px;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--terra);
+  border-radius: 4px; padding: 2px 7px;
+}
+
+.plan-name { font-size: 14px; font-weight: 650; color: var(--cream); margin-bottom: 2px; }
+.plan-desc { font-size: 12px; color: var(--muted); }
+.plan-price { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; white-space: nowrap; }
+.plan-price span { font-size: 11px; font-weight: 400; color: var(--muted); }
+
+/* ── Google / finish step ───────────────────────────────────────────── */
+.google-icon-wrap {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: rgba(139,173,126,0.12);
+  border: 1px solid rgba(139,173,126,0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--sage);
+  margin: 0 auto 20px;
+}
+
+.signup-summary {
+  background: rgba(242,237,230,0.03);
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  padding: 13px 16px;
+  margin-bottom: 22px;
+}
+.signup-summary p {
+  font-size: 13px; color: var(--muted); line-height: 1.6;
+}
+.signup-summary strong { color: var(--cream); font-weight: 600; }
+
+.terms-notice {
+  font-size: 11px; color: rgba(242,237,230,0.3);
+  text-align: center; margin-top: 14px;
+}
+.terms-notice a { color: rgba(196,130,106,0.65); }
+.terms-notice a:hover { color: var(--terra); }
+
+/* ── Actions ────────────────────────────────────────────────────────── */
+.step-actions {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 9px; margin-top: 8px;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: var(--terra); color: #fff;
+  border: none; border-radius: 8px;
+  padding: 11px 22px;
+  font-size: 14px; font-weight: 620;
+  cursor: pointer; font-family: inherit;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover:not(:disabled) { opacity: 0.85; }
+.btn-primary:disabled { opacity: 0.32; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border-hi); border-radius: 8px;
+  padding: 11px 18px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-ghost:hover { color: var(--cream); border-color: rgba(242,237,230,0.3); }
+
+.btn-google {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #fff; color: #3c4043;
+  border: 1px solid #dadce0; border-radius: 9px;
+  padding: 12px 20px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: box-shadow 0.15s;
+}
+.btn-google:hover:not(:disabled) { box-shadow: 0 2px 12px rgba(0,0,0,0.35); }
+.btn-google:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.su-hidden { display: none !important; }
+
+.auth-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 18px 0; color: var(--muted); font-size: 12px;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-hi);
+}
+
+.btn-block { width: 100%; margin-top: 4px; }
+
+@media (max-width: 520px) {
+  .wizard { padding: 28px 20px 32px; border-radius: 0; border-left: none; border-right: none; }
+  .su-nav { padding: 0 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="su-nav">
+  <a href="/" class="su-logo">
+    <div class="su-logo-mark">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="5.5" stroke="#C4826A" stroke-width="1.3"/>
+        <circle cx="8" cy="8" r="1.4" fill="#C4826A"/>
+        <line x1="8" y1="2.5" x2="8" y2="4.6" stroke="#C4826A" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="8" y1="11.4" x2="8" y2="13.5" stroke="#C4826A" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="2.5" y1="8" x2="4.6" y2="8" stroke="#C4826A" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="11.4" y1="8" x2="13.5" y2="8" stroke="#C4826A" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </div>
+    Map of Knowledge
+  </a>
+  <button type="button" class="su-login-link" id="nav-login-link">Log in</button>
+</nav>
+
+<main class="su-main">
+  <div class="wizard" id="signup-wizard">
+    <div class="step-dots" id="step-dots"></div>
+
+    <!-- ── Step 1: Name + birth year ────────────────────────────────── -->
+    <div class="step active" id="step-details">
+      <h2>Your details</h2>
+      <p class="step-hint">These help us personalize your learning — birth year shapes examples and vocabulary to fit you.</p>
+      <input class="su-input" id="name-input" type="text"
+             placeholder="First and last name" autocomplete="name" spellcheck="false">
+      <input class="su-input" id="year-input" type="number" min="1920" max="2020"
+             placeholder="Year of birth" inputmode="numeric">
+      <div class="field-error" id="details-error"></div>
+      <div class="step-actions">
+        <button class="btn-primary" id="details-next" disabled>Next</button>
+      </div>
+    </div>
+
+    <!-- ── Step 2: Interests / values ───────────────────────────────── -->
+    <div class="step" id="step-interests">
+      <h2>Your interests and values</h2>
+      <p class="step-hint">All of Map of Knowledge's learning content — examples, explanations, practice — is personalized to you. These answers help us tailor it.</p>
+
+      <div class="tag-field">
+        <div class="tag-field-label">
+          <span>Core interests</span>
+          <span class="tag-count" id="interests-count">0 / 2</span>
+        </div>
+        <div class="tag-input-wrap" id="interests-tag-wrap">
+          <input class="tag-input" id="interests-input" type="text"
+                 placeholder="e.g. football, music, video games…" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="tag-field-hint">Press Enter or comma after each one — at least two needed</div>
+      </div>
+
+      <div class="tag-field">
+        <div class="tag-field-label">
+          <span>Values</span>
+          <span class="tag-count" id="values-count">0 / 1</span>
+        </div>
+        <div class="tag-input-wrap" id="values-tag-wrap">
+          <input class="tag-input" id="values-input" type="text"
+                 placeholder="e.g. honesty, friendship, curiosity…" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="tag-field-hint">Press Enter or comma after each one</div>
+      </div>
+
+      <div class="field-error" id="interests-error"></div>
+
+      <div class="step-actions">
+        <button class="btn-ghost" id="interests-back">← Back</button>
+        <button class="btn-primary" id="interests-next" disabled>Next</button>
+      </div>
+    </div>
+
+    <!-- ── Step 3: Plan ─────────────────────────────────────────────── -->
+    <div class="step" id="step-plan">
+      <h2>Choose your account type</h2>
+      <p class="step-hint">Payments aren't connected yet — every account starts free, no matter which you pick here.</p>
+      <div class="plan-grid">
+        <div class="plan-card selected" data-plan="free">
+          <div>
+            <div class="plan-name">Free</div>
+            <div class="plan-desc">The full map, always free.</div>
+          </div>
+          <div class="plan-price">€0<span> / forever</span></div>
+        </div>
+        <div class="plan-card" data-plan="learner">
+          <div class="plan-badge">Most popular</div>
+          <div>
+            <div class="plan-name">Learner</div>
+            <div class="plan-desc">Adaptive tutor, full Passport, progress tracking.</div>
+          </div>
+          <div class="plan-price">€9<span> / month</span></div>
+        </div>
+        <div class="plan-card" data-plan="scholar">
+          <div>
+            <div class="plan-name">Scholar</div>
+            <div class="plan-desc">Everything in Learner, plus analytics &amp; export.</div>
+          </div>
+          <div class="plan-price">€19<span> / month</span></div>
+        </div>
+      </div>
+      <div class="step-actions">
+        <button class="btn-ghost" id="plan-back">← Back</button>
+        <button class="btn-primary" id="plan-next">Next</button>
+      </div>
+    </div>
+
+    <!-- ── Step 4: Finish (Google or email/password) ────────────────── -->
+    <div class="step" id="step-google">
+      <div class="google-icon-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h2>Last step</h2>
+      <p class="step-hint">Connect your Google account to finish, or create an account with an email and password.</p>
+      <div class="signup-summary" id="signup-summary"></div>
+      <button class="btn-google" id="google-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.09-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div class="auth-divider"><span>or</span></div>
+
+      <input class="su-input" id="signup-email-input" type="email"
+             placeholder="Email address" autocomplete="email" spellcheck="false">
+      <input class="su-input" id="signup-password-input" type="password"
+             placeholder="Password (at least 8 characters)" autocomplete="new-password">
+      <div class="field-error" id="password-signup-error"></div>
+      <button class="btn-primary btn-block" id="password-signup-btn">Create account with email</button>
+
+      <div class="step-actions" style="justify-content:flex-start; margin-top:14px;">
+        <button class="btn-ghost" id="google-back">← Back</button>
+      </div>
+
+      <p class="terms-notice">
+        By continuing you agree to our <a href="#">Terms of Service</a> and
+        <a href="#">Privacy Policy</a>.
+      </p>
+    </div>
+
+  </div><!-- /wizard -->
+
+  <!-- ── Returning-user login ────────────────────────────────────────── -->
+  <div class="wizard su-hidden" id="login-panel">
+    <div class="google-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <h2>Welcome back</h2>
+    <p class="step-hint">Log in to your Map of Knowledge account.</p>
+
+    <a href="/auth/google" class="btn-google">
+      <svg width="18" height="18" viewBox="0 0 24 24">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.09-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+      Continue with Google
+    </a>
+
+    <div class="auth-divider"><span>or</span></div>
+
+    <input class="su-input" id="login-email-input" type="email"
+           placeholder="Email address" autocomplete="email" spellcheck="false">
+    <input class="su-input" id="login-password-input" type="password"
+           placeholder="Password" autocomplete="current-password">
+    <div class="field-error" id="login-error"></div>
+    <button class="btn-primary btn-block" id="login-btn">Log in</button>
+
+    <button type="button" class="su-login-link" id="back-to-signup-link" style="display:block;margin-top:16px;text-align:center;width:100%;">← Don't have an account? Start here</button>
+  </div>
+</main>
+
+<script>
+(function () {
+
+  // ── State ─────────────────────────────────────────────────────────────
+  var state = {
+    birthYear:   null,
+    displayName: null,
+    plan:        'free',
+  };
+
+  // ── Step machine — fixed order, no age-based branching ─────────────────
+  var activeSteps = ['details', 'interests', 'plan', 'google'];
+  var stepIdx = 0;
+
+  function goTo(id) {
+    document.querySelectorAll('.step').forEach(function (el) {
+      el.classList.remove('active');
+    });
+    document.getElementById('step-' + id).classList.add('active');
+    stepIdx = activeSteps.indexOf(id);
+    renderDots();
+    if (id === 'google') renderSummary();
+  }
+
+  function next() {
+    var nxt = activeSteps[stepIdx + 1];
+    if (nxt) goTo(nxt);
+  }
+
+  function back() {
+    var prev = activeSteps[stepIdx - 1];
+    if (prev) goTo(prev);
+  }
+
+  function renderDots() {
+    var el = document.getElementById('step-dots');
+    el.innerHTML = '';
+    activeSteps.forEach(function (id, i) {
+      var d = document.createElement('div');
+      d.className = 'sdot' +
+        (i < stepIdx ? ' done' : i === stepIdx ? ' current' : '');
+      el.appendChild(d);
+    });
+  }
+
+  renderDots();
+
+  // ── Redirect existing sessions away ───────────────────────────────────
+  fetch('/auth/me').then(function (r) { return r.json(); }).then(function (u) {
+    if (u && u.id) window.location.href = '/app/';
+  }).catch(function () {});
+
+  // Pre-select a plan if arriving from a specific pricing CTA (?plan=learner / ?plan=scholar)
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var plan = params.get('plan');
+    if (plan === 'learner' || plan === 'scholar') {
+      state.plan = plan;
+      document.querySelectorAll('[data-plan]').forEach(function (c) {
+        c.classList.toggle('selected', c.dataset.plan === plan);
+      });
+    }
+  }());
+
+  // ── Details step ──────────────────────────────────────────────────────
+  var nameInput    = document.getElementById('name-input');
+  var yearInput    = document.getElementById('year-input');
+  var detailsNext  = document.getElementById('details-next');
+  var detailsError = document.getElementById('details-error');
+
+  function validateDetailsStep() {
+    var nameOk = nameInput.value.trim().length >= 2;
+    var year   = parseInt(yearInput.value, 10);
+    var yearOk = Number.isInteger(year) && year >= 1920 && year <= new Date().getFullYear();
+    detailsNext.disabled = !(nameOk && yearOk);
+  }
+
+  nameInput.addEventListener('input', function () {
+    state.displayName = nameInput.value.trim() || null;
+    validateDetailsStep();
+  });
+  yearInput.addEventListener('input', function () {
+    detailsError.classList.remove('show');
+    var year = parseInt(yearInput.value, 10);
+    state.birthYear = Number.isInteger(year) ? year : null;
+    validateDetailsStep();
+  });
+
+  detailsNext.addEventListener('click', next);
+
+  // ── Interests / values step ──────────────────────────────────────────
+  // Tag-chip fields, not a single comma-separated text box — typing one word
+  // and stopping used to leave "Next" silently disabled with no obvious
+  // reason why. Chips make the "add more than one" requirement visible as
+  // you go, and the live counter next to each label shows exactly how many
+  // are still needed.
+  var interestsNext  = document.getElementById('interests-next');
+  var interestsError = document.getElementById('interests-error');
+
+  function makeTagField(inputId, wrapId, countId, need, max) {
+    var input = document.getElementById(inputId);
+    var wrap  = document.getElementById(wrapId);
+    var count = document.getElementById(countId);
+    var tags  = [];
+    var onChange = function () {};
+
+    function render() {
+      wrap.querySelectorAll('.tag-chip').forEach(function (el) { el.remove(); });
+      tags.forEach(function (val, i) {
+        var chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.textContent = val;
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.className = 'tag-chip-remove';
+        rm.setAttribute('aria-label', 'Remove');
+        rm.textContent = '×';
+        rm.addEventListener('click', function () {
+          tags.splice(i, 1);
+          render();
+          onChange();
+        });
+        chip.appendChild(rm);
+        wrap.insertBefore(chip, input);
+      });
+      count.textContent = Math.min(tags.length, need) + ' / ' + need;
+      count.classList.toggle('met', tags.length >= need);
+    }
+
+    function commit() {
+      var val = input.value.trim();
+      input.value = '';
+      if (val.length < 2 || tags.length >= max || tags.indexOf(val) !== -1) return false;
+      tags.push(val);
+      return true;
+    }
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        if (commit()) { render(); onChange(); }
+      } else if (e.key === 'Backspace' && !input.value && tags.length) {
+        tags.pop();
+        render();
+        onChange();
+      }
+    });
+    input.addEventListener('blur', function () {
+      if (commit()) { render(); onChange(); }
+    });
+
+    render();
+    return {
+      get: function () { return tags.slice(); },
+      onChange: function (fn) { onChange = fn; },
+    };
+  }
+
+  var interestsField = makeTagField('interests-input', 'interests-tag-wrap', 'interests-count', 2, 10);
+  var valuesField     = makeTagField('values-input', 'values-tag-wrap', 'values-count', 1, 10);
+
+  function buildInterests() { return interestsField.get(); }
+  function buildValues()    { return valuesField.get(); }
+
+  function validateInterestsStep() {
+    interestsNext.disabled = !(buildInterests().length >= 2 && buildValues().length >= 1);
+  }
+  interestsField.onChange(function () { interestsError.classList.remove('show'); validateInterestsStep(); });
+  valuesField.onChange(function () { interestsError.classList.remove('show'); validateInterestsStep(); });
+
+  document.getElementById('interests-back').addEventListener('click', back);
+  interestsNext.addEventListener('click', next);
+
+  // ── Plan step ─────────────────────────────────────────────────────────
+  document.querySelectorAll('[data-plan]').forEach(function (card) {
+    card.addEventListener('click', function () {
+      document.querySelectorAll('[data-plan]').forEach(function (c) {
+        c.classList.remove('selected');
+      });
+      card.classList.add('selected');
+      state.plan = card.dataset.plan;
+    });
+  });
+
+  document.getElementById('plan-back').addEventListener('click', back);
+  document.getElementById('plan-next').addEventListener('click', next);
+  document.getElementById('google-back').addEventListener('click', back);
+
+  // ── Google / finish step ────────────────────────────────────────────
+  var PLAN_LABEL = { free: 'Free', learner: 'Learner (€9/mo)', scholar: 'Scholar (€19/mo)' };
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function renderSummary() {
+    var el = document.getElementById('signup-summary');
+    var lines = [];
+    if (state.displayName) {
+      lines.push('<p>Name: <strong>' + escHtml(state.displayName) + '</strong></p>');
+    }
+    if (state.birthYear) {
+      lines.push('<p>Year of birth: <strong>' + state.birthYear + '</strong></p>');
+    }
+    lines.push('<p>Interests: <strong>' + escHtml(buildInterests().join(', ')) + '</strong></p>');
+    lines.push('<p>Values: <strong>' + escHtml(buildValues().join(', ')) + '</strong></p>');
+    lines.push('<p>Account: <strong>' + (PLAN_LABEL[state.plan] || 'Free') + ' — starts free, payments aren\'t connected yet</strong></p>');
+    el.innerHTML = lines.join('');
+  }
+
+  function buildSignupPayload() {
+    return {
+      birthYear:   state.birthYear,
+      displayName: state.displayName,
+      interests:   buildInterests(),
+      values:      buildValues(),
+    };
+  }
+
+  // Shows the flagged-content error back on the interests step, wherever the
+  // triggering submit happened from (Google button or password signup).
+  function showFlaggedContentError(flagged) {
+    goTo('interests');
+    interestsError.textContent = 'Please review these entries: '
+      + (flagged || []).join(', ') + '. Enter your actual interests and values.';
+    interestsError.classList.add('show');
+  }
+
+  document.getElementById('google-btn').addEventListener('click', function () {
+    var btn = document.getElementById('google-btn');
+    btn.disabled = true;
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<span>Connecting…</span>';
+
+    fetch('/auth/signup/prepare', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(buildSignupPayload()),
+    })
+    .then(function (r) {
+      if (r.ok) {
+        window.location.href = '/auth/google';
+        return;
+      }
+      btn.disabled = false;
+      btn.innerHTML = orig;
+      r.json().then(function (d) {
+        if (d && d.error === 'flagged_content') showFlaggedContentError(d.flagged);
+      }).catch(function () {});
+    })
+    .catch(function () {
+      btn.disabled = false;
+      btn.innerHTML = orig;
+    });
+  });
+
+  // ── Email + password signup ──────────────────────────────────────────
+  var signupEmailInput    = document.getElementById('signup-email-input');
+  var signupPasswordInput = document.getElementById('signup-password-input');
+  var passwordSignupBtn   = document.getElementById('password-signup-btn');
+  var passwordSignupError = document.getElementById('password-signup-error');
+
+  passwordSignupBtn.addEventListener('click', function () {
+    var email    = signupEmailInput.value.trim();
+    var password = signupPasswordInput.value;
+    passwordSignupError.classList.remove('show');
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      passwordSignupError.textContent = 'Enter a valid email address.';
+      passwordSignupError.classList.add('show');
+      return;
+    }
+    if (password.length < 8) {
+      passwordSignupError.textContent = 'Password must be at least 8 characters.';
+      passwordSignupError.classList.add('show');
+      return;
+    }
+
+    passwordSignupBtn.disabled = true;
+    var orig = passwordSignupBtn.textContent;
+    passwordSignupBtn.textContent = 'Creating account…';
+
+    var payload = buildSignupPayload();
+    payload.email = email;
+    payload.password = password;
+
+    fetch('/auth/signup/password', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        window.location.href = res.d.redirect || '/app/';
+        return;
+      }
+      passwordSignupBtn.disabled = false;
+      passwordSignupBtn.textContent = orig;
+      if (res.d && res.d.error === 'flagged_content') {
+        showFlaggedContentError(res.d.flagged);
+        return;
+      }
+      var messages = {
+        invalid_email: 'Enter a valid email address.',
+        weak_password: 'Password must be at least 8 characters.',
+        email_taken:   'That email is already in use. Try logging in instead.',
+      };
+      passwordSignupError.textContent = messages[res.d && res.d.error] || 'Could not create your account. Please try again.';
+      passwordSignupError.classList.add('show');
+    })
+    .catch(function () {
+      passwordSignupBtn.disabled = false;
+      passwordSignupBtn.textContent = orig;
+      passwordSignupError.textContent = 'Could not create your account. Please try again.';
+      passwordSignupError.classList.add('show');
+    });
+  });
+
+  // ── Returning-user login panel ───────────────────────────────────────
+  var signupWizardEl = document.getElementById('signup-wizard');
+  var loginPanelEl   = document.getElementById('login-panel');
+  var loginEmailInput    = document.getElementById('login-email-input');
+  var loginPasswordInput = document.getElementById('login-password-input');
+  var loginBtn           = document.getElementById('login-btn');
+  var loginError         = document.getElementById('login-error');
+
+  function showLoginPanel() {
+    signupWizardEl.classList.add('su-hidden');
+    loginPanelEl.classList.remove('su-hidden');
+  }
+  function showSignupWizard() {
+    loginPanelEl.classList.add('su-hidden');
+    signupWizardEl.classList.remove('su-hidden');
+    window.location.hash = '';
+  }
+
+  document.getElementById('nav-login-link').addEventListener('click', showLoginPanel);
+  document.getElementById('back-to-signup-link').addEventListener('click', showSignupWizard);
+  if (window.location.hash === '#login') showLoginPanel();
+
+  loginBtn.addEventListener('click', function () {
+    var email    = loginEmailInput.value.trim();
+    var password = loginPasswordInput.value;
+    loginError.classList.remove('show');
+
+    if (!email || !password) {
+      loginError.textContent = 'Enter your email and password.';
+      loginError.classList.add('show');
+      return;
+    }
+
+    loginBtn.disabled = true;
+    var orig = loginBtn.textContent;
+    loginBtn.textContent = 'Logging in…';
+
+    fetch('/auth/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email: email, password: password }),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        window.location.href = res.d.redirect || '/app/';
+        return;
+      }
+      loginBtn.disabled = false;
+      loginBtn.textContent = orig;
+      loginError.textContent = 'Incorrect email or password.';
+      loginError.classList.add('show');
+    })
+    .catch(function () {
+      loginBtn.disabled = false;
+      loginBtn.textContent = orig;
+      loginError.textContent = 'Login failed. Please try again.';
+      loginError.classList.add('show');
+    });
+  });
+
+}());
+</script>
+</body>
+</html>

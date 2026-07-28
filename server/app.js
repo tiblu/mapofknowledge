@@ -47,6 +47,9 @@ app.use('/api/admin', requireAuth, adminRouter);
 // Protected app (the D3 knowledge map)
 app.use('/app', requireAuth, express.static(path.join(__dirname, '../app')));
 
+// Signup page (explicit route so /signup works without .html extension)
+app.get('/signup', (req, res) => res.sendFile(path.join(__dirname, '../signup.html')));
+
 // Public landing page and other static assets at root
 app.use(express.static(path.join(__dirname, '..')));
 
