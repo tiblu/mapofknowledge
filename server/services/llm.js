@@ -1,7 +1,11 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const db        = require('../db');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// maxRetries: the SDK's built-in retry (network errors, 408/409/429/5xx) covers
+// every non-streaming call here. It does NOT cover a stream that dies mid-flight
+// (see _streamText below for that case) — a stream can't be safely resumed once
+// partial output has already been consumed.
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 3 });
 
 function _logUsage(userId, callType, usage, model) {
   if (!userId || !usage) return;
@@ -555,19 +559,38 @@ Return JSON with:
 
 // ── Text streaming (SDK 0.39.x: create({stream:true}) → Promise<Stream>) ───────
 // Calls onChunk for each text token; resolves when the stream ends.
+//
+// client's maxRetries doesn't cover this: once a stream has delivered partial
+// output, the SDK won't (and can't safely) resume it after a connection drop.
+// A "Premature close" here recurs regularly (zone.ee ↔ Anthropic connection
+// flakiness — seen across many days in pm2 logs), so we retry silently,
+// server-side, from scratch, but only while nothing has reached the caller's
+// onChunk yet. Once real output has been emitted, the caller (learning.js) has
+// its own from-scratch retry/backoff for a mid-stream drop — just propagate.
 async function _streamText(config, userId, callType, onChunk) {
-  const stream = await client.messages.create(Object.assign({}, config, { stream: true }));
-  let inputTokens = 0, outputTokens = 0;
-  for await (const event of stream) {
-    if (event.type === 'content_block_delta' && event.delta && event.delta.type === 'text_delta') {
-      onChunk(event.delta.text);
-    } else if (event.type === 'message_start' && event.message && event.message.usage) {
-      inputTokens = event.message.usage.input_tokens || 0;
-    } else if (event.type === 'message_delta' && event.usage) {
-      outputTokens = event.usage.output_tokens || 0;
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let emittedAny = false;
+    try {
+      const stream = await client.messages.create(Object.assign({}, config, { stream: true }));
+      let inputTokens = 0, outputTokens = 0;
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta && event.delta.type === 'text_delta') {
+          emittedAny = true;
+          onChunk(event.delta.text);
+        } else if (event.type === 'message_start' && event.message && event.message.usage) {
+          inputTokens = event.message.usage.input_tokens || 0;
+        } else if (event.type === 'message_delta' && event.usage) {
+          outputTokens = event.usage.output_tokens || 0;
+        }
+      }
+      _logUsage(userId, callType, { input_tokens: inputTokens, output_tokens: outputTokens }, config.model);
+      return;
+    } catch (err) {
+      if (emittedAny || attempt === MAX_ATTEMPTS) throw err;
+      console.error(`[stream] attempt ${attempt}/${MAX_ATTEMPTS} failed before any output (${err.message}) — retrying silently`);
     }
   }
-  _logUsage(userId, callType, { input_tokens: inputTokens, output_tokens: outputTokens }, config.model);
 }
 
 function streamExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, profile, userId, onChunk) {
