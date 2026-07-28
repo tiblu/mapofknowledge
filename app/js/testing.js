@@ -36,7 +36,7 @@
 
   /* ─── API helpers ─────────────────────────────────────────────── */
   // Streams raw JSON tokens, accumulates, parses on [DONE].
-  function _apiStream(url, body) {
+  function _apiStream(url, body, onStatus) {
     return fetch(url, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,6 +66,7 @@
               var obj = JSON.parse(data);
               if (obj.error) throw new Error('stream-error');
               if (obj.t) fullText += obj.t;
+              else if (obj.status && onStatus) onStatus(obj.status);
             } catch (e) {
               if (e.message === 'stream-error') throw e;
             }
@@ -78,18 +79,26 @@
   }
 
   function apiQuestion(questionNum, history) {
-    return _apiStream('/api/test/question', { nodeId: _node.id, questionNum: questionNum, history: history });
+    return fetch('/api/test/question', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ nodeId: _node.id, questionNum: questionNum, history: history }),
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
   }
 
-  function apiEvaluate(questionNum, question, options, userAnswer, history) {
+  function apiEvaluate(questionNum, question, options, userAnswer, history, correctIndex) {
     return _apiStream('/api/test/evaluate', {
-      nodeId:      _node.id,
-      questionNum: questionNum,
-      question:    question,
-      options:     options || null,
-      userAnswer:  userAnswer,
-      history:     history,
-    });
+      nodeId:       _node.id,
+      questionNum:  questionNum,
+      question:     question,
+      options:      options || null,
+      userAnswer:   userAnswer,
+      history:      history,
+      correctIndex: typeof correctIndex === 'number' ? correctIndex : undefined,
+    }, _setLoadingStatus);
   }
 
   /* ─── Entry / exit ────────────────────────────────────────────── */
@@ -98,6 +107,12 @@
   window.openTestingMode = function (node, crumb) {
     _searchWrap = document.querySelector('.topbar-search-wrap');
     if (_searchWrap) _searchWrap.style.display = 'none';
+    // Localise Q-chip labels: K1–K4 in Estonian, Q1–Q4 elsewhere.
+    var qPrefix = window._uiLocale === 'et' ? 'K' : 'Q';
+    [1, 2, 3, 4].forEach(function (n) {
+      var chip = document.getElementById('tm-chip-q' + n);
+      if (chip) chip.textContent = qPrefix + n;
+    });
     _node  = node;
     _crumb = crumb || '';
 
@@ -252,12 +267,13 @@
         _autoRetryCount = 0;
         _removeLoadingBlock();
         if (q.type === 'mcq' && Array.isArray(q.options) && q.options.length === 4 && typeof q.correctIndex === 'number') {
+          var correctOptionText = q.options[q.correctIndex];
           var opts = q.options.slice();
           for (var i = opts.length - 1; i > 0; i--) {
             var j = Math.floor(Math.random() * (i + 1));
             var tmp = opts[i]; opts[i] = opts[j]; opts[j] = tmp;
           }
-          q = { question: q.question, type: q.type, options: opts };
+          q = { question: q.question, type: q.type, options: opts, correctIndex: opts.indexOf(correctOptionText) };
         }
         _currentQuestion = q;
         _appendQuestionBlock(q);
@@ -281,7 +297,8 @@
   }
 
   function _appendQuestionBlock(q) {
-    _appendPhaseDivider('Q' + _questionNum + ' — ' + _tierName(_questionNum));
+    var qPrefix = window._uiLocale === 'et' ? 'K' : 'Q';
+    _appendPhaseDivider(qPrefix + _questionNum + ' — ' + _tierName(_questionNum));
 
     var text = q.question || '';
     if (q.type === 'mcq' && q.options && q.options.length) {
@@ -313,16 +330,20 @@
     var q = _currentQuestion || {};
     var capturedQ = q, capturedAns = ans;
     function doEvaluate() {
-      apiEvaluate(_questionNum, capturedQ.question || '', capturedQ.options || null, capturedAns, _history)
+      apiEvaluate(_questionNum, capturedQ.question || '', capturedQ.options || null, capturedAns, _history,
+        capturedQ.type === 'mcq' ? capturedQ.correctIndex : undefined)
         .then(function (result) {
           _autoRetryCount = 0;
           _removeLoadingBlock();
 
-          _history.push({
+          var _hItem = {
             question: capturedQ.question || '',
             answer:   capturedAns,
             correct:  result.correct || false,
-          });
+          };
+          if (result.partial)                   _hItem.partial = true;
+          if (typeof result.score === 'number') _hItem.score   = result.score;
+          _history.push(_hItem);
 
           var icon     = result.correct ? '✓' : (result.partial ? '~' : '✗');
           var subClass = result.correct ? 'feedback-correct' : (result.partial ? 'feedback-partial' : 'feedback-incorrect');
@@ -480,9 +501,18 @@
     var d = document.createElement('div');
     d.id        = 'tn-loading-block';
     d.className = 'block block-loading';
-    d.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>';
+    d.innerHTML = '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>' +
+                  '<span class="loading-status"></span>';
     s.appendChild(d);
     _scrollStream();
+  }
+
+  // Updates the text next to the loading dots while a non-English second pass runs.
+  function _setLoadingStatus(key) {
+    var el = document.getElementById('tn-loading-block');
+    if (!el) return;
+    var span = el.querySelector('.loading-status');
+    if (span) span.textContent = t('status.' + key);
   }
 
   function _removeLoadingBlock() {

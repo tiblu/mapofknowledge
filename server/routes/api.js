@@ -435,8 +435,12 @@ async function _runStream(streamFn, res, onDone) {
   const keepalive = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) {} }, 3000);
   let full = '';
   const write = (chunk) => { full += chunk; try { res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n'); } catch (_) {} };
+  // writeStatus sends an out-of-band status frame — it never touches `full`, so it
+  // can't pollute the accumulated text that onDone persists. streamFn closures that
+  // don't take a second param silently ignore the extra arg.
+  const writeStatus = (key) => { try { res.write('data: ' + JSON.stringify({ status: key }) + '\n\n'); } catch (_) {} };
   try {
-    await streamFn(write);
+    await streamFn(write, writeStatus);
     if (onDone) await onDone(full);
   } catch (err) {
     console.error('[stream]', err.message);
@@ -468,8 +472,10 @@ async function _fakeStreamText(text, write, res) {
 // second-pass edit → fake-stream the corrected text through the SSE pipe.
 // generateFn is a zero-arg async function returning the raw generated text.
 function _editedStreamFn(generateFn, locale, uid, res) {
-  return async (write) => {
+  return async (write, writeStatus) => {
+    if (writeStatus) writeStatus('generating_text');
     const raw = await generateFn();
+    if (writeStatus) writeStatus('checking_language');
     const { text } = await llm.editTranslatedText({ text: raw }, locale, uid);
     await _fakeStreamText(text, write, res);
   };
@@ -1390,10 +1396,20 @@ router.post('/test/question', async (req, res) => {
     if (level < 4) return res.status(400).json({ error: 'Test only available for L4 and L5 nodes' });
     const breadcrumb = await getNodeBreadcrumb(db_id);
     const locale = await getUserLocale(req.user?.id);
+    // Age-based wording simplification — opt-in only. Unknown age or 18+
+    // leaves the prompt completely unchanged (age stays null/undefined).
+    const profile = await getUserProfile(req.user?.id);
+    const age = profile?.birth_year ? new Date().getFullYear() - profile.birth_year : null;
     if (wantStream) {
-      return _runStream((cb) => llm.streamTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, cb), res);
+      return _runStream((cb) => llm.streamTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, cb, age), res);
     }
-    const result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id);
+    let result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, age);
+    if (locale !== 'en') {
+      const editFields = { question: result.question };
+      if (result.type === 'mcq' && Array.isArray(result.options)) editFields.options = result.options;
+      const edited = await llm.editTranslatedText(editFields, locale, req.user?.id);
+      result = { ...result, ...edited };
+    }
     res.json(result);
   } catch (err) {
     console.error('[api/test/question]', err.message);
@@ -1401,9 +1417,37 @@ router.post('/test/question', async (req, res) => {
   }
 });
 
+// ── Persist a Q4 test-completion result (score, event log, notification, gamification) ──
+async function _saveTestResult(passportId, userId, nodeId, label, evaluation) {
+  if (evaluation.finalScore === undefined) return;
+  await db.execute(
+    `INSERT INTO user_node_knowledge
+       (passport_id, node_external_id, percentage, source, updated_at)
+     VALUES (?, ?, ?, 'tested', NOW())
+     ON DUPLICATE KEY UPDATE
+       percentage = VALUES(percentage), source = 'tested', updated_at = NOW()`,
+    [passportId, nodeId, evaluation.finalScore]
+  );
+  updateAncestorKnowledge(passportId, nodeId).catch(() => {});
+  await db.execute(
+    `INSERT INTO passport_events
+       (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
+     VALUES (?, CURDATE(), ?, 'Map of Knowledge · KaiQ Platform', ?, ?, 'assessment', 0)`,
+    [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
+  );
+  notify(userId, 'test_result', `Test result: ${label}`,
+    `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`, nodeId);
+  // ── Gamification ───────────────────────────────────────────────────────────
+  const score      = evaluation.finalScore;
+  const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
+  const reason      = score === 100 ? 'test_perfect' : 'test_complete';
+  game.awardLumens(passportId, userId, lumensBase, reason, nodeId).catch(() => {});
+  game.checkAchievements(passportId, userId, 'test_complete', { score }).catch(() => {});
+}
+
 // ── 4-tier diagnostic: evaluate answer ───────────────────────────────────────
 router.post('/test/evaluate', async (req, res) => {
-  const { nodeId, questionNum, question, options, userAnswer, history = [], stream: wantStream = false } = req.body;
+  const { nodeId, questionNum, question, options, userAnswer, correctIndex, history = [], stream: wantStream = false } = req.body;
   const passportId = req.user?.passport_id;
 
   try {
@@ -1416,90 +1460,50 @@ router.post('/test/evaluate', async (req, res) => {
     const locale = await getUserLocale(req.user?.id);
 
     if (wantStream) {
-      res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('X-Accel-Buffering', 'no');
-      res.flushHeaders();
-      let fullText = '';
-      const write = (chunk) => {
-        fullText += chunk;
-        res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n');
-      };
-      try {
-        await llm.streamTestEvaluate(label, breadcrumb, questionNum, question, options, userAnswer, history, locale, req.user?.id, write);
-      } catch (err) {
-        console.error('[stream/test/evaluate]', err.message);
-        res.write('data: ' + JSON.stringify({ error: true }) + '\n\n');
+      let streamFn;
+      if (locale !== 'en') {
+        streamFn = async (write, writeStatus) => {
+          writeStatus('generating_text');
+          const evaluation = await llm.evaluateTestAnswer(
+            label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id
+          );
+          writeStatus('checking_language');
+          const editFields = { feedback: evaluation.feedback };
+          if (questionNum === 4 && evaluation.scoreBreakdown) editFields.scoreBreakdown = evaluation.scoreBreakdown;
+          const edited = await llm.editTranslatedText(editFields, locale, req.user?.id);
+          await _fakeStreamText(JSON.stringify({ ...evaluation, ...edited }), write, res);
+        };
+      } else {
+        streamFn = (write) => llm.streamTestEvaluate(
+          label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, write
+        );
       }
-      res.write('data: [DONE]\n\n');
-      res.end();
-
-      // Q4 post-processing after response is sent
-      if (questionNum === 4 && passportId) {
+      const onDone = async (fullText) => {
+        if (questionNum !== 4 || !passportId) return;
         try {
           const cleaned = fullText.trim()
             .replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
           const evaluation = JSON.parse(cleaned);
-          if (evaluation.finalScore !== undefined) {
-            await db.execute(
-              `INSERT INTO user_node_knowledge
-                 (passport_id, node_external_id, percentage, source, updated_at)
-               VALUES (?, ?, ?, 'tested', NOW())
-               ON DUPLICATE KEY UPDATE
-                 percentage = VALUES(percentage), source = 'tested', updated_at = NOW()`,
-              [passportId, nodeId, evaluation.finalScore]
-            );
-            updateAncestorKnowledge(passportId, nodeId).catch(() => {});
-            await db.execute(
-              `INSERT INTO passport_events
-                 (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-               VALUES (?, CURDATE(), ?, 'Map of Knowledge · KaiQ Platform', ?, ?, 'assessment', 0)`,
-              [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
-            );
-            notify(req.user?.id, 'test_result', `Test result: ${label}`,
-              `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`, nodeId);
-            // ── Gamification ─────────────────────────────────────────────────
-            const score = evaluation.finalScore;
-            const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
-            const reason     = score === 100 ? 'test_perfect' : 'test_complete';
-            game.awardLumens(passportId, req.user?.id, lumensBase, reason, nodeId).catch(() => {});
-            game.checkAchievements(passportId, req.user?.id, 'test_complete', { score }).catch(() => {});
-          }
+          await _saveTestResult(passportId, req.user?.id, nodeId, label, evaluation);
         } catch (e) {
           console.error('[api/test/evaluate] Q4 post-stream error', e.message);
         }
-      }
-      return;
+      };
+      return _runStream(streamFn, res, onDone);
     }
 
-    const evaluation = await llm.evaluateTestAnswer(
-      label, breadcrumb, questionNum, question, options, userAnswer, history, locale, req.user?.id
+    let evaluation = await llm.evaluateTestAnswer(
+      label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id
     );
+    if (locale !== 'en') {
+      const editFields = { feedback: evaluation.feedback };
+      if (questionNum === 4 && evaluation.scoreBreakdown) editFields.scoreBreakdown = evaluation.scoreBreakdown;
+      const edited = await llm.editTranslatedText(editFields, locale, req.user?.id);
+      evaluation = { ...evaluation, ...edited };
+    }
 
-    if (questionNum === 4 && evaluation.finalScore !== undefined && passportId) {
-      await db.execute(
-        `INSERT INTO user_node_knowledge
-           (passport_id, node_external_id, percentage, source, updated_at)
-         VALUES (?, ?, ?, 'tested', NOW())
-         ON DUPLICATE KEY UPDATE
-           percentage = VALUES(percentage), source = 'tested', updated_at = NOW()`,
-        [passportId, nodeId, evaluation.finalScore]
-      );
-      updateAncestorKnowledge(passportId, nodeId).catch(() => {});
-      await db.execute(
-        `INSERT INTO passport_events
-           (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
-         VALUES (?, CURDATE(), ?, 'Map of Knowledge · KaiQ Platform', ?, ?, 'assessment', 0)`,
-        [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
-      );
-      notify(req.user?.id, 'test_result', `Test result: ${label}`,
-        `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`, nodeId);
-      // ── Gamification ───────────────────────────────────────────────────────
-      const score      = evaluation.finalScore;
-      const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
-      const reason     = score === 100 ? 'test_perfect' : 'test_complete';
-      game.awardLumens(passportId, req.user?.id, lumensBase, reason, nodeId).catch(() => {});
-      game.checkAchievements(passportId, req.user?.id, 'test_complete', { score }).catch(() => {});
+    if (questionNum === 4 && passportId) {
+      await _saveTestResult(passportId, req.user?.id, nodeId, label, evaluation);
     }
 
     res.json(evaluation);

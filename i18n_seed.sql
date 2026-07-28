@@ -346,6 +346,11 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Settings reorganization (2026-07-28): Font size -> Appearance, new Attention
 -- Management section (Café ambience + Focus timer), Guided tour row removed
 -- (replayable from Help page's "Take the tour" card instead)
-('settings.attention_management', 'en', 'Attention Management')
+('settings.attention_management', 'en', 'Attention Management'),
+
+-- Testing mode parity (2026-07-29, ported from KnobitMap): loading-status text
+-- shown next to the loading dots during the locale-edit second pass.
+('status.generating_text',      'en', 'Preparing text.'),
+('status.checking_language',    'en', 'Checking translation.')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

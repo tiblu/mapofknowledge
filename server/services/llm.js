@@ -583,7 +583,82 @@ Question: "${question}"${profileBlock(profile)}${langText(locale)}`,
 // ── 4-tier knowledge test ─────────────────────────────────────────────────────
 // questionNum: 1-4  history: [{question, answer, correct}]
 // Returns: { question, type: 'open'|'mcq', options?: string[] }
-async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId) {
+
+// Builds the Q4 (final) evaluation prompt. Shared by streaming and non-streaming paths.
+function _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale) {
+  const isMcq = Array.isArray(options) && typeof correctIndex === 'number';
+  const q4Block = isMcq
+    ? (() => {
+        const mcqBlock = _mcqEvalBlock(userAnswer, options, correctIndex);
+        return `Q4 is MCQ.\n${mcqBlock}\n\nQ4 scoring: Correct = 25 pts, Incorrect = 0 pts (same as Q1–Q3 — do NOT apply the graduated open-question rubric).`;
+      })()
+    : `For Q4, reason through the answer before scoring:
+
+  Step 1 — What does the answer correctly demonstrate? Credit understanding shown through reasoning, examples, or application — even if the formal concept is not explicitly named.
+  Step 2 — What is missing or imprecise?
+  Step 3 — Assign Q4 a score (0–25):
+    • 23–25: complete — all dimensions the question asked for are addressed
+    • 15–22: strong — main concept correct, one dimension missing or unnamed but its logic is present in the reasoning
+    •  8–14: partial — core is right but significant aspects are missing
+    •  1–7:  surface level only
+    •  0:    incorrect or no meaningful engagement
+
+Key principle: demonstrating correct reasoning by example counts nearly as much as naming the concept. Naming a concept without showing you understand it counts for little.`;
+
+  return `Topic: "${nodeLabel}" (${breadcrumb})
+
+Full Q&A:
+${historyText}
+
+Only evaluate Q4 yourself — Q1–Q3 Verdicts are ground truth.
+${q4Block}
+
+Score each question out of 25.
+Q1–Q3: use the Verdict line as ground truth — do not re-evaluate.
+  • Verdict "Correct" → 25 pts.
+  • Verdict "Incorrect" → 0 pts.
+  • Verdict "Partial (score: N/25)" → use N pts exactly.
+finalScore = Q1 score + Q2 score + Q3 score + Q4 score (total 0–100).
+
+Return JSON:
+- "correct": boolean — true only if Q4 score is 25
+- "partial": boolean — true if Q4 score is 1–24
+- "feedback": 2-3 sentences on the Q4 answer — acknowledge what was right, specify what was missing
+- "finalScore": integer 0–100
+- "scoreBreakdown": 2-4 sentences on overall performance — what the learner demonstrated, what they missed${langJson(locale)}`;
+}
+
+// Builds an unambiguous MCQ context block for the evaluator prompt.
+// Returns null when options/correctIndex are absent (open question path).
+function _mcqEvalBlock(userAnswer, options, correctIndex) {
+  if (!Array.isArray(options) || !options.length || typeof correctIndex !== 'number') return null;
+  const ans = (userAnswer || '').trim().toUpperCase();
+  const selectedIdx = (ans.length === 1 && ans >= 'A' && ans <= 'D')
+    ? ans.charCodeAt(0) - 65
+    : (parseInt(ans, 10) - 1);
+  const isCorrect = selectedIdx === correctIndex;
+  const letter = (i) => String.fromCharCode(65 + i);
+  const selectedText = (selectedIdx >= 0 && selectedIdx < options.length) ? options[selectedIdx] : userAnswer;
+  return [
+    'Options:',
+    options.map((o, i) => `${letter(i)}. ${o}`).join('\n'),
+    '',
+    `Learner selected: ${selectedIdx >= 0 ? letter(selectedIdx) : ans}. ${selectedText}`,
+    `Correct answer:   ${letter(correctIndex)}. ${options[correctIndex]}`,
+    `Verdict: ${isCorrect ? 'CORRECT' : 'INCORRECT'}`,
+  ].join('\n');
+}
+
+// Test question wording — age-based, opt-in only. Default (age unknown or 18+)
+// is completely unchanged: this returns '' and the prompt is byte-for-byte
+// identical to before. Only wording changes for a known under-18 learner —
+// same question, same difficulty, same structure, simpler language.
+function _simplifyWordingNote(age) {
+  if (!age || age >= 18) return '';
+  return '\n\nIMPORTANT: This learner is young. Use simple wording — short sentences, everyday vocabulary, no unnecessarily complex phrasing. Ask the exact same thing, at the exact same difficulty and depth — only the wording should be simpler.';
+}
+
+async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, age = null) {
   const tiers = [
     'Factual (Remember): one question on core terminology or a foundational definition.',
     'Conceptual (Understand): one question asking the learner to explain a mechanism or relationship. No calculations.',
@@ -605,7 +680,7 @@ async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history,
 
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 400,
+    max_tokens: 800,
     system: [{
       type: 'text',
       text: `You are a knowledge diagnostic examiner. You generate exactly one question per tier of a 4-tier framework.
@@ -626,7 +701,7 @@ ${adaptNote}
 ${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}
 
 Generate question ${questionNum}. Choose open or MCQ based on what best tests this tier.
-For MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}`,
+For MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}${_simplifyWordingNote(age)}`,
     }],
   });
 
@@ -636,20 +711,22 @@ For MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON on
 
 // Evaluate one answer and return feedback.
 // If questionNum === 4, also return final mastery score with breakdown.
-async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, options, userAnswer, history, locale, userId) {
+async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, userId) {
   const isLast = questionNum === 4;
   const allQA = [...history, { question, answer: userAnswer }];
   const historyText = allQA.map((h, i) => {
     const isCurrentQ = i === allQA.length - 1;
-    const verdict = !isCurrentQ && h.correct !== undefined
-      ? `\nVerdict: ${h.correct ? 'Correct' : 'Incorrect'}`
+    const _vLabel = h.correct ? 'Correct' : (h.partial ? 'Partial' : 'Incorrect');
+    const _vScore = typeof h.score === 'number' ? ` (score: ${h.score}/25)` : '';
+    const verdict = (!isCurrentQ && h.correct !== undefined)
+      ? `\nVerdict: ${_vLabel}${_vScore}`
       : '';
     return `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}${verdict}`;
   }).join('\n\n');
 
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: isLast ? 600 : 300,
+    max_tokens: isLast ? 900 : 300,
     system: [{
       type: 'text',
       text: `You are a knowledge diagnostic evaluator. Return ONLY valid JSON. No text outside the JSON object.`,
@@ -658,28 +735,13 @@ async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, 
     messages: [{
       role: 'user',
       content: isLast
-        ? `Topic: "${nodeLabel}" (${breadcrumb})
-
-Full Q&A:
-${historyText}
-
-The Verdict field for Q1–Q3 is the ground truth from real-time evaluation — do not re-evaluate those answers. Only evaluate Q4 yourself.
-
-Return JSON with:
-- "correct": boolean — true only if the Q4 answer is fully and precisely correct. For open questions, do not penalize for omitting valid points beyond what was asked; judge against the question's stated criteria, not against an ideal exhaustive answer.
-- "partial": boolean (true if Q4 shows real understanding but is incomplete or imprecise; always false for MCQ)
-- "feedback": 1-2 sentence feedback on the Q4 answer — always include this, even if the answer is wrong
-- "finalScore": integer 0-100 computed from all four verdicts (Q1–Q3 ground truth + your Q4 evaluation)
-- "scoreBreakdown": string (2-4 sentences explaining the score — what they got right, what they missed)${langJson(locale)}`
-        : `Topic: "${nodeLabel}"
-Question: "${question}"
-${options ? `Options: ${options.map((o, i) => `${i + 1}. ${o}`).join(' | ')}` : ''}
-Answer: "${userAnswer}"
-
-Return JSON with:
-- "correct": boolean — true only if fully and precisely correct. For open questions, do not penalize for omitting valid points beyond what was asked; judge against the question's stated criteria, not against an ideal exhaustive answer.
-- "partial": boolean — true if the answer shows real understanding but is incomplete or imprecise (only for open questions; always false for MCQ)
-- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`,
+        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale)
+        : (() => {
+            const mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
+            return mcq
+              ? `Topic: "${nodeLabel}"\nQuestion: "${question}"\n\n${mcq}\n\nReturn JSON with:\n- "correct": boolean (use the Verdict above — do not re-evaluate)\n- "partial": false (MCQ is always fully correct or incorrect)\n- "feedback": 1-2 sentences — if correct, confirm and briefly explain why; if incorrect, explain what the right answer means${langJson(locale)}`
+              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true if the answer reflects a good grasp and understanding of the issue\n- "partial": boolean — true if partially correct or noticeably incomplete\n- "score": integer 0–25 (25 = full understanding; 15–24 = good grasp with minor gaps; 8–14 = partial; 1–7 = surface only; 0 = incorrect)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`;
+          })(),
     }],
   });
 
@@ -764,7 +826,7 @@ function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, 
   }, userId, 'ask', onChunk);
 }
 
-function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, onChunk) {
+function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, onChunk, age = null) {
   const tiers = [
     'Factual (Remember): one question on core terminology or a foundational definition.',
     'Conceptual (Understand): one question asking the learner to explain a mechanism or relationship. No calculations.',
@@ -781,7 +843,7 @@ function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale,
   }).join('\n\n');
   return _streamText({
     model: SONNET,
-    max_tokens: 400,
+    max_tokens: 800,
     system: [{
       type: 'text',
       text: `You are a knowledge diagnostic examiner. You generate exactly one question per tier of a 4-tier framework.\nReturn ONLY valid JSON with these fields:\n- "question": the question text (string)\n- "type": "open" or "mcq"\n- "options": array of 4 strings if type is "mcq", omit if "open"\n- "correctIndex": integer 0–3 indicating which option is correct, if type is "mcq"; omit if "open"\nFor MCQ: all four options must be similar in length and specificity. Distractors must be precise and plausible — not vague, not obviously wrong. A test-taker who doesn't know the topic must not be able to identify the correct answer by its style, length, or level of detail.\nDo not add any explanation outside the JSON.`,
@@ -789,24 +851,26 @@ function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale,
     }],
     messages: [{
       role: 'user',
-      content: `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}`,
+      content: `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}${_simplifyWordingNote(age)}`,
     }],
   }, userId, 'test_question', onChunk);
 }
 
-function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, options, userAnswer, history, locale, userId, onChunk) {
+function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, userId, onChunk) {
   const isLast = questionNum === 4;
   const allQA = [...history, { question, answer: userAnswer }];
   const historyText = allQA.map(function (h, i) {
     const isCurrentQ = i === allQA.length - 1;
-    const verdict = !isCurrentQ && h.correct !== undefined
-      ? `\nVerdict: ${h.correct ? 'Correct' : 'Incorrect'}`
+    const _vLabel = h.correct ? 'Correct' : (h.partial ? 'Partial' : 'Incorrect');
+    const _vScore = typeof h.score === 'number' ? ` (score: ${h.score}/25)` : '';
+    const verdict = (!isCurrentQ && h.correct !== undefined)
+      ? `\nVerdict: ${_vLabel}${_vScore}`
       : '';
     return `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}${verdict}`;
   }).join('\n\n');
   return _streamText({
     model: SONNET,
-    max_tokens: isLast ? 600 : 300,
+    max_tokens: isLast ? 900 : 300,
     system: [{
       type: 'text',
       text: `You are a knowledge diagnostic evaluator. Return ONLY valid JSON. No text outside the JSON object.`,
@@ -815,8 +879,13 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
     messages: [{
       role: 'user',
       content: isLast
-        ? `Topic: "${nodeLabel}" (${breadcrumb})\n\nFull Q&A:\n${historyText}\n\nThe Verdict field for Q1–Q3 is the ground truth from real-time evaluation — do not re-evaluate those answers. Only evaluate Q4 yourself.\n\nReturn JSON with:\n- "correct": boolean — true only if the Q4 answer is fully and precisely correct. For open questions, do not penalize for omitting valid points beyond what was asked; judge against the question's stated criteria, not against an ideal exhaustive answer.\n- "partial": boolean (true if Q4 shows real understanding but is incomplete or imprecise; always false for MCQ)\n- "feedback": 1-2 sentence feedback on the Q4 answer — always include this, even if the answer is wrong\n- "finalScore": integer 0-100 computed from all four verdicts (Q1–Q3 ground truth + your Q4 evaluation)\n- "scoreBreakdown": string (2-4 sentences explaining the score — what they got right, what they missed)${langJson(locale)}`
-        : `Topic: "${nodeLabel}"\nQuestion: "${question}"\n${options ? `Options: ${options.map(function (o, i) { return `${i + 1}. ${o}`; }).join(' | ')}` : ''}\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true only if fully and precisely correct. For open questions, do not penalize for omitting valid points beyond what was asked; judge against the question's stated criteria, not against an ideal exhaustive answer.\n- "partial": boolean — true if the answer shows real understanding but is incomplete or imprecise (only for open questions; always false for MCQ)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`,
+        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale)
+        : (function () {
+            var mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
+            return mcq
+              ? `Topic: "${nodeLabel}"\nQuestion: "${question}"\n\n${mcq}\n\nReturn JSON with:\n- "correct": boolean (use the Verdict above — do not re-evaluate)\n- "partial": false (MCQ is always fully correct or incorrect)\n- "feedback": 1-2 sentences — if correct, confirm and briefly explain why; if incorrect, explain what the right answer means${langJson(locale)}`
+              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true if the answer reflects a good grasp and understanding of the issue\n- "partial": boolean — true if partially correct or noticeably incomplete\n- "score": integer 0–25 (25 = full understanding; 15–24 = good grasp with minor gaps; 8–14 = partial; 1–7 = surface only; 0 = incorrect)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`;
+          })(),
     }],
   }, userId, 'test_evaluate', onChunk);
 }
