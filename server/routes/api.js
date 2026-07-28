@@ -5,6 +5,7 @@ const llm     = require('../services/llm');
 const game    = require('../services/game');
 const { notify } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
+const { renderPassportText } = require('../services/passportText');
 
 // ── User locale helper ───────────────────────────────────────────────────────
 async function getUserLocale(userId) {
@@ -42,6 +43,113 @@ async function getUserProfile(userId) {
       values:    tags.filter(t => t.type === 'value').map(t => t.text),
     };
   } catch { return null; }
+}
+
+// ── Full Learner Passport helper — shared by GET /profile and Anne's chat context ──
+async function _fetchFullPassport(passportId) {
+  const [[passport]] = await db.execute(
+    'SELECT * FROM learner_passports WHERE id = ?', [passportId]
+  );
+
+  const [credentials] = await db.execute(
+    `SELECT * FROM passport_credentials WHERE passport_id = ? ORDER BY awarded_date DESC, id DESC`,
+    [passportId]
+  );
+
+  const [competence] = await db.execute(
+    `SELECT * FROM passport_competence WHERE passport_id = ? ORDER BY type, sort_order`,
+    [passportId]
+  );
+
+  // L4/L5 knowledge nodes with full breadcrumb
+  const [mapKnowledgeRaw] = await db.execute(
+    `SELECT n.label, n.level, u.percentage, u.source,
+            p1.label AS p1, p2.label AS p2, p3.label AS p3, p4.label AS p4
+     FROM user_node_knowledge u
+     JOIN nodes n ON n.external_id = u.node_external_id
+     LEFT JOIN nodes p1 ON p1.id = n.parent_id
+     LEFT JOIN nodes p2 ON p2.id = p1.parent_id
+     LEFT JOIN nodes p3 ON p3.id = p2.parent_id
+     LEFT JOIN nodes p4 ON p4.id = p3.parent_id
+     WHERE u.passport_id = ? AND n.level IN (4,5) AND u.percentage > 0
+     ORDER BY u.percentage DESC, n.level DESC
+     LIMIT 200`,
+    [passportId]
+  );
+  const mapKnowledge = mapKnowledgeRaw.map(r => ({
+    label:      r.label,
+    level:      r.level,
+    percentage: r.percentage,
+    source:     r.source,
+    breadcrumb: [r.p4, r.p3, r.p2, r.p1].filter(Boolean).join(' › '),
+  }));
+
+  const [events] = await db.execute(
+    `SELECT * FROM passport_events WHERE passport_id = ? ORDER BY event_date DESC, id DESC`,
+    [passportId]
+  );
+
+  const [tags] = await db.execute(
+    'SELECT * FROM passport_tags WHERE passport_id = ? ORDER BY sort_order',
+    [passportId]
+  );
+
+  const [relationships] = await db.execute(
+    `SELECT * FROM passport_relationships WHERE passport_id = ? ORDER BY type, sort_order, id`,
+    [passportId]
+  );
+
+  const [reflections] = await db.execute(
+    `SELECT r.id, r.text, r.created_at,
+            e.id AS event_id, e.title AS event_title, e.event_date
+     FROM passport_reflections r
+     LEFT JOIN passport_events e ON r.event_id = e.id
+     WHERE r.passport_id = ?
+     ORDER BY r.created_at DESC`,
+    [passportId]
+  );
+
+  const [learningStyle] = await db.execute(
+    'SELECT * FROM passport_learning_style WHERE passport_id = ?',
+    [passportId]
+  );
+
+  const [goals] = await db.execute(
+    `SELECT * FROM passport_goals WHERE passport_id = ?
+     ORDER BY status ASC, created_at DESC`,
+    [passportId]
+  );
+
+  const [aspirations] = await db.execute(
+    'SELECT * FROM passport_aspirations WHERE passport_id = ? ORDER BY sort_order',
+    [passportId]
+  );
+
+  const [objectives] = await db.execute(
+    'SELECT * FROM passport_objectives WHERE passport_id = ? ORDER BY sort_order',
+    [passportId]
+  );
+
+  const [plans] = await db.execute(
+    'SELECT * FROM passport_plans WHERE passport_id = ? ORDER BY sort_order',
+    [passportId]
+  );
+
+  return {
+    passport,
+    credentials,
+    competence,
+    mapKnowledge,
+    events,
+    tags,
+    relationships,
+    reflections,
+    learningStyle: learningStyle[0] || null,
+    goals,
+    aspirations,
+    objectives,
+    plans,
+  };
 }
 
 // ── In-memory map cache per locale (10k+ nodes — cache after first DB load) ───
@@ -882,112 +990,69 @@ router.get('/profile', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
 
   try {
-    const [[passport]] = await db.execute(
-      'SELECT * FROM learner_passports WHERE id = ?', [passportId]
-    );
-
-    const [credentials] = await db.execute(
-      `SELECT * FROM passport_credentials WHERE passport_id = ? ORDER BY awarded_date DESC, id DESC`,
-      [passportId]
-    );
-
-    const [competence] = await db.execute(
-      `SELECT * FROM passport_competence WHERE passport_id = ? ORDER BY type, sort_order`,
-      [passportId]
-    );
-
-    // L4/L5 knowledge nodes with full breadcrumb
-    const [mapKnowledgeRaw] = await db.execute(
-      `SELECT n.label, n.level, u.percentage, u.source,
-              p1.label AS p1, p2.label AS p2, p3.label AS p3, p4.label AS p4
-       FROM user_node_knowledge u
-       JOIN nodes n ON n.external_id = u.node_external_id
-       LEFT JOIN nodes p1 ON p1.id = n.parent_id
-       LEFT JOIN nodes p2 ON p2.id = p1.parent_id
-       LEFT JOIN nodes p3 ON p3.id = p2.parent_id
-       LEFT JOIN nodes p4 ON p4.id = p3.parent_id
-       WHERE u.passport_id = ? AND n.level IN (4,5) AND u.percentage > 0
-       ORDER BY u.percentage DESC, n.level DESC
-       LIMIT 200`,
-      [passportId]
-    );
-    const mapKnowledge = mapKnowledgeRaw.map(r => ({
-      label:      r.label,
-      level:      r.level,
-      percentage: r.percentage,
-      source:     r.source,
-      breadcrumb: [r.p4, r.p3, r.p2, r.p1].filter(Boolean).join(' › '),
-    }));
-
-    const [events] = await db.execute(
-      `SELECT * FROM passport_events WHERE passport_id = ? ORDER BY event_date DESC, id DESC`,
-      [passportId]
-    );
-
-    const [tags] = await db.execute(
-      'SELECT * FROM passport_tags WHERE passport_id = ? ORDER BY sort_order',
-      [passportId]
-    );
-
-    const [relationships] = await db.execute(
-      `SELECT * FROM passport_relationships WHERE passport_id = ? ORDER BY type, sort_order, id`,
-      [passportId]
-    );
-
-    const [reflections] = await db.execute(
-      `SELECT r.id, r.text, r.created_at,
-              e.id AS event_id, e.title AS event_title, e.event_date
-       FROM passport_reflections r
-       LEFT JOIN passport_events e ON r.event_id = e.id
-       WHERE r.passport_id = ?
-       ORDER BY r.created_at DESC`,
-      [passportId]
-    );
-
-    const [learningStyle] = await db.execute(
-      'SELECT * FROM passport_learning_style WHERE passport_id = ?',
-      [passportId]
-    );
-
-    const [goals] = await db.execute(
-      `SELECT * FROM passport_goals WHERE passport_id = ?
-       ORDER BY status ASC, created_at DESC`,
-      [passportId]
-    );
-
-    const [aspirations] = await db.execute(
-      'SELECT * FROM passport_aspirations WHERE passport_id = ? ORDER BY sort_order',
-      [passportId]
-    );
-
-    const [objectives] = await db.execute(
-      'SELECT * FROM passport_objectives WHERE passport_id = ? ORDER BY sort_order',
-      [passportId]
-    );
-
-    const [plans] = await db.execute(
-      'SELECT * FROM passport_plans WHERE passport_id = ? ORDER BY sort_order',
-      [passportId]
-    );
-
-    res.json({
-      passport,
-      credentials,
-      competence,
-      mapKnowledge,
-      events,
-      tags,
-      relationships,
-      reflections,
-      learningStyle: learningStyle[0] || null,
-      goals,
-      aspirations,
-      objectives,
-      plans,
-    });
+    const data = await _fetchFullPassport(passportId);
+    res.json(data);
   } catch (err) {
     console.error('[api/profile]', err.message);
     res.status(500).json({ error: 'Failed to load profile' });
+  }
+});
+
+// ── Anne — mentor chat widget ────────────────────────────────────────────────
+router.get('/anne/messages', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.status(400).json({ error: 'No passport' });
+  try {
+    const [rows] = await db.execute(
+      `SELECT id, role, content, created_at FROM anne_messages
+       WHERE passport_id = ? ORDER BY id DESC LIMIT 50`,
+      [passportId]
+    );
+    res.json(rows.reverse());
+  } catch (err) {
+    console.error('[api/anne/messages]', err.message);
+    res.status(500).json({ error: 'Failed to load messages' });
+  }
+});
+
+router.post('/anne/message', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  const uid = req.user?.id;
+  if (!passportId) return res.status(400).json({ error: 'No passport' });
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'message required' });
+
+  try {
+    const locale = await getUserLocale(uid);
+
+    const [historyRows] = await db.execute(
+      `SELECT role, content FROM anne_messages WHERE passport_id = ? ORDER BY id DESC LIMIT 20`,
+      [passportId]
+    );
+    const history = historyRows.reverse();
+
+    await db.execute(
+      'INSERT INTO anne_messages (passport_id, role, content, locale) VALUES (?, "user", ?, ?)',
+      [passportId, message, locale]
+    );
+
+    const passportData = await _fetchFullPassport(passportId);
+    const passportText = renderPassportText(passportData);
+
+    let streamFn;
+    if (locale !== 'en') {
+      streamFn = _editedStreamFn(() => llm.generateAnneReply(passportText, history, message, locale, uid), locale, uid, res);
+    } else {
+      streamFn = (write) => llm.streamAnneReply(passportText, history, message, locale, uid, write);
+    }
+    const onDone = (full) => db.execute(
+      'INSERT INTO anne_messages (passport_id, role, content, locale) VALUES (?, "assistant", ?, ?)',
+      [passportId, full, locale]
+    );
+    return _runStream(streamFn, res, onDone);
+  } catch (err) {
+    console.error('[api/anne/message]', err.message);
+    res.status(500).json({ error: 'Failed to send message' });
   }
 });
 

@@ -159,6 +159,8 @@
     showLmView('lm-path');
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.add('active');
+    // Anne stays visible in learning mode (her own z-index already sits
+    // above #learning-mode) — only the product tour hides her now.
 
     // Show one-time fullscreen tip
     if (!localStorage.getItem('lm_fs_tip_shown')) {
@@ -176,6 +178,7 @@
     _stopFocusTimer();
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.remove('active');
+    if (window.Anne) window.Anne.setVisible(true);
     // Restore search box — always, whether hidden by learning or test mode
     var sw = _searchWrap || document.querySelector('.topbar-search-wrap');
     if (sw) sw.style.display = '';

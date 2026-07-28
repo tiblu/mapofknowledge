@@ -369,6 +369,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('placeholder.cm_search',        'en', 'Search for a topic…'),
 ('msg.add_one_node',             'en', 'Please add at least one node.'),
 ('msg.upload_file_first',        'en', 'Please upload a JSON or CSV file first.'),
-('btn.remove',                   'en', 'Remove')
+('btn.remove',                   'en', 'Remove'),
+
+-- Anne mentor chat widget (2026-07-29, ported from KnobitMap).
+('anne.input_placeholder',       'en', 'Ask Anne...'),
+('anne.error',                   'en', 'Something went wrong — please try again.')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

@@ -236,15 +236,27 @@
     }).catch(function () {});
   }
 
+  /* ─── Anne visibility ──────────────────────────────────────── */
+  // Anne stays hidden for the whole tour — otherwise her avatar sits there
+  // fully visible and clickable underneath every other step's "highlight".
+  function _hideAnne() {
+    if (window.Anne && window.Anne.setVisible) window.Anne.setVisible(false);
+  }
+  function _restoreAnne() {
+    if (window.Anne && window.Anne.setVisible) window.Anne.setVisible(true);
+  }
+
   /* ─── Public API ───────────────────────────────────────────── */
   window.Tour = {
     start: function () {
       if (!_overlay) _createDOM();
+      _hideAnne();
       _show(0);
     },
     restart: function () {
       _markDone(false);
       if (!_overlay) _createDOM();
+      _hideAnne();
       _show(0);
     },
     next: function () {
@@ -253,6 +265,7 @@
         _show(_step + 1);
       } else {
         _hide();
+        _restoreAnne();
         _markDone(true);
       }
     },
@@ -262,6 +275,7 @@
     skip: function () {
       _leave(_step);
       _hide();
+      _restoreAnne();
       _markDone(true);
     },
   };

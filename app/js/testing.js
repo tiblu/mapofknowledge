@@ -129,11 +129,13 @@
     showTmView('tm-path');
     var overlay = document.getElementById('testing-mode');
     if (overlay) overlay.classList.add('active');
+    // Anne stays visible in testing mode — only the product tour hides her now.
   };
 
   window.closeTestingMode = function () {
     var overlay = document.getElementById('testing-mode');
     if (overlay) overlay.classList.remove('active');
+    if (window.Anne) window.Anne.setVisible(true);
     var sw = _searchWrap || document.querySelector('.topbar-search-wrap');
     if (sw) sw.style.display = '';
     _searchWrap       = null;

@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/font-scale.css">
 <link rel="stylesheet" href="css/help.css">
+<link rel="stylesheet" href="css/anne.css">
 <script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}window._loadedSettings=s;}).catch(function(){});</script>
 <script src="js/strings.js"></script>
 </head>
@@ -155,8 +156,27 @@
 
 </main>
 
+<!-- ════════════════════════════════════════
+     ANNE — MENTOR CHAT WIDGET
+     ════════════════════════════════════════ -->
+<div id="anne-widget">
+  <button id="anne-avatar" style="background-image:url(images/anne.png)" aria-label="Anne"></button>
+  <div id="anne-panel">
+    <div class="anne-panel-header">
+      <span class="anne-panel-title">Anne</span>
+      <button id="anne-minimize" aria-label="Minimize">▾</button>
+    </div>
+    <div class="anne-messages" id="anne-messages"></div>
+    <div class="anne-input-row">
+      <input id="anne-input" type="text" data-i18n-placeholder="anne.input_placeholder" placeholder="Ask Anne...">
+      <button id="anne-send" aria-label="Send">➤</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/topbar-notif.js"></script>
 <script src="js/nav-menu.js"></script>
+<script src="js/anne.js"></script>
 <script>
   /* ── Burger dropdown ── */
   document.getElementById('nav-menu').addEventListener('click', function (e) {
@@ -168,8 +188,8 @@
   });
 
   /* ── Option cards ── */
-  // Anne mentor widget doesn't exist in Map of Knowledge yet — this safely
-  // no-ops until it does, same guard KnobitMap itself would use.
+  // Anne now has her own instance on this page (not just relayed from the
+  // map's parent frame) — open her panel directly.
   document.getElementById('opt-anne').addEventListener('click', function () {
     if (window.Anne) window.Anne.open();
   });
