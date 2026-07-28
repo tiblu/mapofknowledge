@@ -35,7 +35,14 @@
   var _lastDemoBody    = '';   // previous example's body, sent so the next example doesn't repeat it
 
   var _PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
+  // Fallback for knobits generated before target_bytes existed, and an
+  // absolute safety ceiling regardless of what the server sends.
   var MAX_EXPLAIN_BYTES = 6;
+  var ABSOLUTE_MAX_EXPLAIN_BYTES = 12;
+  // Per-knobit target, predicted by the LLM alongside the knobit's title
+  // (see generateKnobits in llm.js) — how many bytes THIS knobit genuinely
+  // needs, not a one-size-fits-all count. Set in startKnobit.
+  var _targetBytes = MAX_EXPLAIN_BYTES;
 
   var _knobitStarted  = false;
   var _streamButtonEl = null;
@@ -482,6 +489,9 @@
     _knobitStarted  = true;
     _streamButtonEl = null;
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
+    _targetBytes = (Number.isInteger(k.target_bytes) && k.target_bytes > 0)
+      ? Math.min(ABSOLUTE_MAX_EXPLAIN_BYTES, k.target_bytes)
+      : MAX_EXPLAIN_BYTES;
 
     _streamBlocks   = [];
     _priorChoices   = [];
@@ -604,7 +614,7 @@
 
     if (opt === 'ok') {
       _byteIdx++;
-      if (_byteIdx >= MAX_EXPLAIN_BYTES) {
+      if (_byteIdx >= _targetBytes) {
         _enterDemonstrate();
         return;
       }
@@ -872,7 +882,7 @@
     if (block.type === 'byte') {
       var progress = document.createElement('div');
       progress.className = 'kn-byte-progress';
-      progress.textContent = (_byteIdx + 1) + ' / ' + MAX_EXPLAIN_BYTES;
+      progress.textContent = (_byteIdx + 1) + ' / ' + _targetBytes;
       s.appendChild(progress);
     }
 

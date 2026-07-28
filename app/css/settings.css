@@ -43,6 +43,21 @@ body {
 
 .settings-row-text { flex: 1; }
 .settings-row-controls { display: contents; }
+.settings-row-toggle-col { flex-shrink: 0; }
+
+/* When the focus-timer row has its minutes field visible, split the row
+   50% label/desc, 25% minutes, 25% toggle. Collapsed ("off") state is
+   untouched — .settings-row-text falls back to flex:1 and the toggle
+   column just wraps snugly around the button, same as any other row. */
+#focus-timer-row.ft-expanded > .settings-row-text  { flex: 0 0 50%; }
+#focus-timer-row.ft-expanded > .settings-row-controls {
+  display: flex; flex: 0 0 25%;
+  align-items: center; justify-content: center;
+}
+#focus-timer-row.ft-expanded > .settings-row-toggle-col {
+  flex: 0 0 25%;
+  display: flex; justify-content: flex-end;
+}
 .settings-row-label {
   font-size: 13px; font-weight: 600; color: var(--c1);
   margin-bottom: 3px;

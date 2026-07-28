@@ -79,7 +79,7 @@
       </button>
     </div>
 
-    <div class="settings-row">
+    <div class="settings-row" id="focus-timer-row">
       <div class="settings-row-text">
         <div class="settings-row-label" data-i18n="settings.focus_timer">Focus timer</div>
         <div class="settings-row-desc" data-i18n="settings.focus_timer_desc">Reminds you to take a short break after a set number of focused learning minutes.</div>
@@ -87,9 +87,11 @@
       <div class="settings-row-controls" id="focus-timer-minutes-row">
         <input type="number" class="sf-input st-number-input" id="focus-timer-minutes-input" min="5" max="90" step="5" value="20">
       </div>
-      <button class="st-toggle on" id="focus-timer-toggle" aria-label="Toggle focus timer">
-        <div class="st-toggle-thumb"></div>
-      </button>
+      <div class="settings-row-toggle-col">
+        <button class="st-toggle on" id="focus-timer-toggle" aria-label="Toggle focus timer">
+          <div class="st-toggle-thumb"></div>
+        </button>
+      </div>
     </div>
 
     <div class="settings-row">
@@ -540,6 +542,7 @@
 
   /* ── Focus timer toggle + minutes ── */
   const focusToggle       = document.getElementById('focus-timer-toggle');
+  const focusRow          = document.getElementById('focus-timer-row');
   const focusMinutesRow   = document.getElementById('focus-timer-minutes-row');
   const focusMinutesInput = document.getElementById('focus-timer-minutes-input');
 
@@ -547,7 +550,9 @@
     if (!settings) return;
     focusToggle.classList.toggle('on', settings.focus_timer !== 'off');
     if (settings.focus_timer_minutes) focusMinutesInput.value = settings.focus_timer_minutes;
-    focusMinutesRow.style.display = focusToggle.classList.contains('on') ? '' : 'none';
+    const isOn = focusToggle.classList.contains('on');
+    focusMinutesRow.style.display = isOn ? '' : 'none';
+    focusRow.classList.toggle('ft-expanded', isOn);
   }
 
   if (window._loadedSettings) {
@@ -561,6 +566,7 @@
   focusToggle.addEventListener('click', function () {
     const isOn = this.classList.toggle('on');
     focusMinutesRow.style.display = isOn ? '' : 'none';
+    focusRow.classList.toggle('ft-expanded', isOn);
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -182,7 +182,7 @@ No headings, no bullet points — just the 2 sentences.${langText(locale)}`,
 async function generateKnobits(nodeLabel, domain, breadcrumb, userId) {
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 600,
+    max_tokens: 900,
     system: [{
       type: 'text',
       text: `You are a curriculum designer for the Map of Knowledge platform.
@@ -200,12 +200,21 @@ Breadcrumb: ${breadcrumb}
 Return a JSON array. Each object has exactly:
 - "sequence": integer starting at 1
 - "title": string (short knobit name, 3–8 words)
+- "byteCount": integer — see below
 
-Typically 5–12 knobits, progressing from foundational to nuanced.`,
+Base the knobit count entirely on this topic's actual conceptual complexity — there is no target number to hit. A narrow or simple topic (a single technique, fact, or short procedure — e.g. "how to fold a paper airplane") may genuinely need only 2–4 knobits. A dense, multi-faceted topic may need up to 10–12. Most fall in between.
+
+Do not pad the sequence. Never split one idea into multiple knobits just to lengthen the list, and never invent a step that isn't conceptually distinct from its neighbors — if two things are really one idea, they're one knobit.
+
+For "byteCount": each knobit is taught as a sequence of "bytes," roughly 300 characters of explanation each. Predict how many bytes THIS SPECIFIC knobit genuinely needs to be taught properly — not a target to hit, an honest estimate of its real depth. Hard bounds: never below 3, never above 12. A narrow, shallow idea (e.g. "properties of a line" in geometry) might genuinely need only 4–5. A dense, layered idea (e.g. "black hole event horizon") might genuinely need 10–12. Judge each knobit independently — they don't all need the same count.`,
     }],
   });
   _logUsage(userId, 'knobits', msg.usage, SONNET);
-  return parseJSON(msg.content[0].text.trim());
+  const knobits = parseJSON(msg.content[0].text.trim());
+  return knobits.map(k => ({
+    ...k,
+    byteCount: Number.isInteger(k.byteCount) ? Math.min(12, Math.max(3, k.byteCount)) : 6,
+  }));
 }
 
 // ── Knobit title translation ──────────────────────────────────────────────────
