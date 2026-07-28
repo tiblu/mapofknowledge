@@ -301,6 +301,37 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.ignore',                  'en', 'Ignore'),
 ('settings.focus_timer',        'en', 'Focus timer'),
 ('settings.focus_timer_desc',   'en', 'Reminds you to take a short break after a set number of focused learning minutes.'),
-('settings.focus_timer_minutes','en', 'Minutes before a break')
+('settings.focus_timer_minutes','en', 'Minutes before a break'),
+
+-- Help page (added 2026-07-28, ported from KnobitMap; node-level guidance and
+-- goals text rewritten to match MoK's actual sidebar/goals behavior, not
+-- KnobitMap's learning-tree/node-goal/teacher-parent-linking system)
+('nav.help',                    'en', 'Help'),
+('help.page_title',             'en', 'How can we help?'),
+('help.page_sub',               'en', 'Pick whichever fits how you like to get up to speed.'),
+('help.opt_anne_title',         'en', 'Ask Anne'),
+('help.opt_anne_desc',          'en', 'She knows the app, your own learning, and the subjects — and answers right away.'),
+('help.opt_tour_title',         'en', 'Take the tour'),
+('help.opt_tour_desc',          'en', 'A short guided walkthrough of the app, right on the map.'),
+('help.opt_doc_title',          'en', 'Read the guide'),
+('help.opt_doc_desc',           'en', 'A written, step-by-step overview you can skim at your own pace.'),
+('help.opt_video_title',        'en', 'Watch the video'),
+('help.opt_video_desc',         'en', 'A short video walkthrough.'),
+('help.soon',                   'en', 'Coming soon'),
+('help.map_title',              'en', 'The map'),
+('help.map_body',               'en', 'You\'ll see an interactive knowledge map with five levels — from broad domains (L1) down to individual concepts (L5). Drag and zoom the map, search for concepts in the top search box, and use the filters (e.g. grade band, subject) and layers on the left to make the map clearer.'),
+('help.node_title',             'en', 'Clicking a concept'),
+('help.node_body',              'en', 'Clicking a concept opens a side panel. Which buttons you see depends on its level:'),
+('help.node_l123',              'en', 'L1–L3 (broad domains and mid-level topics): no learning actions yet — explore into subtopics until you reach an individual concept.'),
+('help.node_l4',                'en', 'L4: the "I know this" toggle lets you self-report that you already know a topic. "Learn this" and "Test me" are still grayed out — those need an individual concept (L5).'),
+('help.node_l5',                'en', 'L5 (individual concept): "Learn this" opens the lesson, "Test me" starts a diagnostic test, and "I know this" is also available here.'),
+('help.lesson_title',           'en', 'The lesson'),
+('help.lesson_body',            'en', 'Every lesson has four parts: explanation, example, practice, and meaning (why it matters). At any point you can say "too simple" or "too complex," ask for a different explanation, or ask questions directly inside the lesson via the ask bar.'),
+('help.test_title',             'en', 'Testing'),
+('help.test_body',              'en', 'On an individual concept (L5), the "Test me" button starts a 4-question adaptive diagnostic test that adjusts to your answers and gives you a read on how well you know the topic.'),
+('help.goals_title',            'en', 'Goals and your Learner Passport'),
+('help.goals_body',             'en', 'Your progress, achievements, and goals are all on your Learner Passport — open it from the menu (☰ icon, top right) under "Account." Goals are your own free-text notes on what you\'re working toward — add one with "+ Add goal" on your Passport, and mark it complete whenever you like.'),
+('help.notif_settings_title',   'en', 'Notifications and settings'),
+('help.notif_settings_body',    'en', 'The same menu has Notifications (reminders and achievements) and Settings (font size, colour palette, map animation, focus timer, café ambience, screen saver).')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

@@ -40,6 +40,11 @@
       + '<path d="M5.5 7.5h7M10 5l2.5 2.5L10 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>'
       + '<path d="M8 3H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>'
       + '</svg>',
+    help: '<svg width="15" height="15" viewBox="0 0 15 15" fill="none">'
+      + '<circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.2"/>'
+      + '<path d="M5.7 5.8a1.8 1.8 0 1 1 2.5 1.7c-.5.3-.7.6-.7 1.1v.3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>'
+      + '<circle cx="7.5" cy="10.8" r="0.6" fill="currentColor"/>'
+      + '</svg>',
   };
 
   var current = (window.location.pathname.split('/').pop() || 'index.html');
@@ -96,6 +101,7 @@
   dropdown.appendChild(notifItem);
   dropdown.appendChild(divider());
   dropdown.appendChild(settingsBtn);
+  dropdown.appendChild(makeItem({ page: 'help.html', i18nKey: 'nav.help', fallback: 'Help', iconHtml: ICONS.help }));
   dropdown.appendChild(divider());
   dropdown.appendChild(makeLogout());
 
