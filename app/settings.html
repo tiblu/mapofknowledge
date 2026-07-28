@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/font-scale.css">
 <link rel="stylesheet" href="css/settings.css">
-<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}window._loadedSettings=s;}).catch(function(){});</script>
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}window._loadedSettings=s;if(window._onSettingsLoaded)window._onSettingsLoaded(s);}).catch(function(){});</script>
 <script src="js/strings.js"></script>
 </head>
 <body>
@@ -519,16 +519,23 @@
   /* ── Ambient sound toggle ── */
   const ambientToggle = document.getElementById('ambient-toggle');
 
-  // Default: on (absent key = on)
-  if (window._loadedSettings && window._loadedSettings.ambient_sound === 'off') {
-    ambientToggle.classList.remove('on');
-  } else if (!window._loadedSettings) {
-    // Settings haven't loaded yet — defer check
-    document.addEventListener('DOMContentLoaded', function () {
-      if (window._loadedSettings && window._loadedSettings.ambient_sound === 'off') {
-        ambientToggle.classList.remove('on');
-      }
-    });
+  function _applyAmbientToUI(settings) {
+    if (!settings) return;
+    // Default: on (absent key = on)
+    ambientToggle.classList.toggle('on', settings.ambient_sound !== 'off');
+  }
+
+  // See the focus-timer block below for why this hooks window._onSettingsLoaded
+  // instead of DOMContentLoaded — chained so both this and the focus-timer
+  // listener run regardless of which one attaches first.
+  if (window._loadedSettings) {
+    _applyAmbientToUI(window._loadedSettings);
+  } else {
+    const _prevOnSettingsLoaded1 = window._onSettingsLoaded;
+    window._onSettingsLoaded = function (s) {
+      if (_prevOnSettingsLoaded1) _prevOnSettingsLoaded1(s);
+      _applyAmbientToUI(s);
+    };
   }
 
   ambientToggle.addEventListener('click', function () {
@@ -555,12 +562,22 @@
     focusRow.classList.toggle('ft-expanded', isOn);
   }
 
+  // The bootstrap fetch at the top of <head> almost always resolves AFTER
+  // this script has already run (network round-trip vs. local parsing), so
+  // a DOMContentLoaded-based "wait for it" check is a race that usually
+  // loses, leaving the row stuck on its hardcoded HTML default no matter
+  // what's actually saved. window._onSettingsLoaded is called directly from
+  // that fetch's .then(), so it always fires exactly once the real values
+  // are known, however this script happened to be timed. Chained onto
+  // whatever the ambient-toggle block above already attached.
   if (window._loadedSettings) {
     _applyFocusTimerToUI(window._loadedSettings);
   } else {
-    document.addEventListener('DOMContentLoaded', function () {
-      _applyFocusTimerToUI(window._loadedSettings);
-    });
+    const _prevOnSettingsLoaded2 = window._onSettingsLoaded;
+    window._onSettingsLoaded = function (s) {
+      if (_prevOnSettingsLoaded2) _prevOnSettingsLoaded2(s);
+      _applyFocusTimerToUI(s);
+    };
   }
 
   focusToggle.addEventListener('click', function () {
