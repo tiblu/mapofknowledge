@@ -867,6 +867,15 @@
     if (!s) return null;
     _streamBlocks.push(block);
 
+    // "3 / 6" progress — _byteIdx is 0-based and already reflects this
+    // specific byte at every call site.
+    if (block.type === 'byte') {
+      var progress = document.createElement('div');
+      progress.className = 'kn-byte-progress';
+      progress.textContent = (_byteIdx + 1) + ' / ' + MAX_EXPLAIN_BYTES;
+      s.appendChild(progress);
+    }
+
     var el       = document.createElement('div');
     el.className = 'block block-' + block.type;
 
