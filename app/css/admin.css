@@ -196,7 +196,6 @@ body { overflow-y: auto; }
 }
 .badge-super_admin { background: rgba(255,180,50,.18); color: #ffb432; }
 .badge-admin       { background: rgba(100,180,255,.18); color: #64b4ff; }
-.badge-teacher     { background: rgba(100,220,160,.18); color: #64dca0; }
 .badge-learner     { background: rgba(91,200,216,.18);  color: #5bc8d8; }
 .badge-subscriber  { background: rgba(100,220,160,.18); color: #64dca0; }
 .badge-free        { background: rgba(120,130,145,.15); color: #889aaa; }

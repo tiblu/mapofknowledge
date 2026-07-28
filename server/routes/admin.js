@@ -127,7 +127,7 @@ router.get('/users', async (req, res) => {
 router.post('/users', async (req, res) => {
   const { email, role } = req.body;
   if (!email) return res.status(400).json({ error: 'email required' });
-  const validRoles = ['learner', 'teacher', 'admin'];
+  const validRoles = ['learner', 'admin'];
   const safeRole = validRoles.includes(role) ? role : 'learner';
   try {
     const [pr] = await db.execute(
@@ -151,7 +151,7 @@ router.patch('/users/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (id === 1) return res.status(403).json({ error: 'Cannot modify root super_admin' });
   const { email, role, subscription_status } = req.body;
-  const validRoles = ['learner', 'teacher', 'admin', 'super_admin'];
+  const validRoles = ['learner', 'admin', 'super_admin'];
   const validTiers = ['free', 'subscriber', 'cancelled'];
   const sets = [];
   const vals = [];

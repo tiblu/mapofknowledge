@@ -88,7 +88,6 @@
       <input type="email" id="add-email" placeholder="email@example.com" autocomplete="off">
       <select id="add-role">
         <option value="learner">Learner</option>
-        <option value="teacher">Teacher</option>
         <option value="admin">Admin</option>
       </select>
       <button class="admin-btn" id="add-btn" onclick="addUser()">Add user</button>
@@ -125,7 +124,6 @@
               <select class="col-filter" id="filter-role" onclick="event.stopPropagation()">
                 <option value="">All</option>
                 <option value="learner">learner</option>
-                <option value="teacher">teacher</option>
                 <option value="admin">admin</option>
                 <option value="super_admin">super_admin</option>
               </select>
@@ -272,7 +270,7 @@
     var tbody = document.getElementById('users-tbody');
     tbody.innerHTML = '';
 
-    var roles = ['learner','teacher','admin','super_admin'];
+    var roles = ['learner','admin','super_admin'];
     var tiers = ['free','subscriber','cancelled'];
 
     visible.forEach(function (u) {
