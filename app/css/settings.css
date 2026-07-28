@@ -46,24 +46,29 @@ body {
 .settings-row-toggle-col { flex-shrink: 0; }
 
 /* When the focus-timer row has its minutes field visible, split the row
-   50% label/desc, 25% minutes, 25% toggle. Collapsed ("off") state is
-   untouched — .settings-row-text falls back to flex:1 and the toggle
-   column just wraps snugly around the button, same as any other row.
+   55% label/desc, 20% minutes, 25% toggle (moved 5% from minutes to text
+   vs. the original 50/25/25 — that reclaims the space freed by nudging
+   the minutes column right, instead of leaving it as dead space, and
+   gives the explanatory text more room at the same time). Collapsed
+   ("off") state is untouched — .settings-row-text falls back to flex:1
+   and the toggle column just wraps snugly around the button, same as
+   any other row.
    The row's own `gap: 16px` sits between each of these 3 items (32px
    total) — flex-basis percentages alone would sum to 100% and ignore
    that gap entirely, forcing the row 32px wider than its box (flex:0 0 X%
    disables shrinking, so it can't compensate) and pushing the toggle
    out past the right edge. calc() subtracts each item's share of that
    32px so the percentages plus the real gaps add back up to 100%. */
-#focus-timer-row.ft-expanded > .settings-row-text  { flex: 0 0 calc(50% - 16px); }
+#focus-timer-row.ft-expanded > .settings-row-text  { flex: 0 0 calc(55% - 17.6px); }
 #focus-timer-row.ft-expanded > .settings-row-controls {
-  display: flex; flex: 0 0 calc(25% - 8px);
+  display: flex; flex: 0 0 calc(20% - 6.4px);
   align-items: center; justify-content: center;
 }
 /* Scoped to this one input (not the shared .st-number-input class) —
-   nudged right 5% and narrowed 10% within its column. */
+   narrowed 10% vs. .st-number-input's base 72px, nudged right within
+   its (now narrower) column. */
 #focus-timer-minutes-input {
-  width: 65px; /* 10% narrower than .st-number-input's base 72px */
+  width: 65px;
   margin-left: 5%;
 }
 #focus-timer-row.ft-expanded > .settings-row-toggle-col {
