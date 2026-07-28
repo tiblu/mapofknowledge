@@ -38,43 +38,7 @@
         <span id="topbar-notif-dot"></span>
       </button>
 
-      <div id="nav-dropdown" class="nav-dropdown">
-        <button class="nav-dropdown-item" onclick="window.location='profile.html'">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-            <circle cx="7.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
-            <path d="M2 13c0-2.8 2.5-4.5 5.5-4.5s5.5 1.7 5.5 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-          <span data-i18n="nav.account">Account</span>
-        </button>
-        <button class="nav-dropdown-item active-page">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-            <rect x="1.5" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
-            <path d="M5 3V2M10 3V2M1.5 6.5h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-          <span data-i18n="nav.admin">Admin</span>
-        </button>
-        <button class="nav-dropdown-item" onclick="window.location='notifications.html'">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-            <path d="M7.5 1.5a4 4 0 0 0-4 4v2.5L2.5 9.5h10l-1-1.5V5.5a4 4 0 0 0-4-4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
-            <path d="M6 11.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.2"/>
-          </svg>
-          <span data-i18n="nav.notifications">Notifications</span>
-          <span id="nav-notif-badge"></span>
-        </button>
-        <div class="nav-dropdown-divider"></div>
-        <button class="nav-dropdown-item" onclick="window.location='settings.html'">
-          <img src="images/icon-settings.svg" width="15" height="15" alt="">
-          <span data-i18n="nav.settings">Settings</span>
-        </button>
-        <div class="nav-dropdown-divider"></div>
-        <button class="nav-dropdown-item" onclick="window.top.location='/auth/logout'">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-            <path d="M5.5 7.5h7M10 5l2.5 2.5L10 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M8 3H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-          </svg>
-          <span data-i18n="nav.log_out">Log out</span>
-        </button>
-      </div>
+      <div id="nav-dropdown" class="nav-dropdown"></div>
     </div>
   </div>
 
@@ -163,6 +127,7 @@
 </main>
 
 <script src="js/topbar-notif.js"></script>
+<script src="js/nav-menu.js"></script>
 <script>
 (function () {
   'use strict';
