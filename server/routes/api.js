@@ -1279,40 +1279,6 @@ router.post('/test/evaluate', async (req, res) => {
   }
 });
 
-// ── Admin: token usage per user ───────────────────────────────────────────────
-router.get('/admin/token-usage', async (req, res) => {
-  if (!req.user || !['admin', 'super_admin'].includes(req.user.role)) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
-  try {
-    const [totals] = await db.execute(`
-      SELECT u.id, u.email, u.role,
-             SUM(t.input_tokens)  AS input_tokens,
-             SUM(t.output_tokens) AS output_tokens,
-             SUM(t.input_tokens + t.output_tokens) AS total_tokens,
-             COUNT(*)             AS call_count,
-             MAX(t.created_at)    AS last_call
-      FROM token_usage t
-      JOIN users u ON t.user_id = u.id
-      GROUP BY u.id
-      ORDER BY total_tokens DESC
-    `);
-    const [byType] = await db.execute(`
-      SELECT u.email, t.call_type,
-             SUM(t.input_tokens + t.output_tokens) AS tokens,
-             COUNT(*) AS calls
-      FROM token_usage t
-      JOIN users u ON t.user_id = u.id
-      GROUP BY u.id, t.call_type
-      ORDER BY u.email, tokens DESC
-    `);
-    res.json({ totals, byType });
-  } catch (err) {
-    console.error('[api/admin/token-usage]', err.message);
-    res.status(500).json({ error: 'Failed to fetch token usage' });
-  }
-});
-
 // ── Game state ───────────────────────────────────────────────────────────────
 router.get('/game/state', async (req, res) => {
   const passportId = req.user?.passport_id;

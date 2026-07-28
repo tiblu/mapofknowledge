@@ -8,6 +8,7 @@ const path     = require('path');
 const authRouter     = require('./routes/auth');   // also registers passport strategy
 const apiRouter      = require('./routes/api');
 const subsetsRouter  = require('./routes/subsets');
+const adminRouter    = require('./routes/admin');
 const requireAuth = require('./middleware/requireAuth');
 
 const app = express();
@@ -41,6 +42,7 @@ app.use('/auth', authRouter);
 // Protected API
 app.use('/api', requireAuth, apiRouter);
 app.use('/api/subsets', requireAuth, subsetsRouter);
+app.use('/api/admin', requireAuth, adminRouter);
 
 // Protected app (the D3 knowledge map)
 app.use('/app', requireAuth, express.static(path.join(__dirname, '../app')));

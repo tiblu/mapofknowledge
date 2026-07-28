@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Map of Knowledge</title>
+<link rel="stylesheet" href="css/palette.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/font-scale.css">
+<link rel="stylesheet" href="css/admin.css">
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);}).catch(function(){});</script>
+<script src="js/strings.js"></script>
+</head>
+<body>
+
+<header id="top-bar">
+
+  <a class="topbar-logo" href="index.html">
+    <div class="topbar-logo-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="5.5" stroke="white" stroke-width="1.3"/>
+        <circle cx="8" cy="8" r="1.4" fill="white"/>
+        <line x1="8" y1="2.5" x2="8" y2="4.6" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="8" y1="11.4" x2="8" y2="13.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="2.5" y1="8" x2="4.6" y2="8" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="11.4" y1="8" x2="13.5" y2="8" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="topbar-logo-text">Map of Knowledge</span>
+  </a>
+
+  <div class="topbar-right">
+    <div class="topbar-burger-wrap">
+      <button class="topbar-icon-btn topbar-burger" id="nav-menu" title="Menu">
+        <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+          <path d="M1 1h14M1 7h14M1 13h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span id="topbar-notif-dot"></span>
+      </button>
+
+      <div id="nav-dropdown" class="nav-dropdown">
+        <button class="nav-dropdown-item" onclick="window.location='profile.html'">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <circle cx="7.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M2 13c0-2.8 2.5-4.5 5.5-4.5s5.5 1.7 5.5 4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <span data-i18n="nav.account">Account</span>
+        </button>
+        <button class="nav-dropdown-item active-page">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <rect x="1.5" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M5 3V2M10 3V2M1.5 6.5h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <span data-i18n="nav.admin">Admin</span>
+        </button>
+        <button class="nav-dropdown-item" onclick="window.location='notifications.html'">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <path d="M7.5 1.5a4 4 0 0 0-4 4v2.5L2.5 9.5h10l-1-1.5V5.5a4 4 0 0 0-4-4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+            <path d="M6 11.5a1.5 1.5 0 0 0 3 0" stroke="currentColor" stroke-width="1.2"/>
+          </svg>
+          <span data-i18n="nav.notifications">Notifications</span>
+          <span id="nav-notif-badge"></span>
+        </button>
+        <div class="nav-dropdown-divider"></div>
+        <button class="nav-dropdown-item" onclick="window.location='settings.html'">
+          <img src="images/icon-settings.svg" width="15" height="15" alt="">
+          <span data-i18n="nav.settings">Settings</span>
+        </button>
+        <div class="nav-dropdown-divider"></div>
+        <button class="nav-dropdown-item" onclick="window.top.location='/auth/logout'">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+            <path d="M5.5 7.5h7M10 5l2.5 2.5L10 10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8 3H3a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          <span data-i18n="nav.log_out">Log out</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</header>
+
+<main class="admin-wrap">
+
+  <div class="admin-section">
+    <h2>Add user</h2>
+    <div class="admin-add-form">
+      <input type="email" id="add-email" placeholder="email@example.com" autocomplete="off">
+      <select id="add-role">
+        <option value="learner">Learner</option>
+        <option value="teacher">Teacher</option>
+        <option value="admin">Admin</option>
+      </select>
+      <button class="admin-btn" id="add-btn" onclick="addUser()">Add user</button>
+      <span class="admin-msg" id="add-msg"></span>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <h2>Users</h2>
+    <div class="admin-period-bar">
+      <label>Cost period:
+        <select id="period-select">
+          <option value="all">All time</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="month">This month</option>
+          <option value="custom">Custom range…</option>
+        </select>
+      </label>
+      <span id="custom-range-wrap" style="display:none">
+        <input type="date" id="period-from"> to <input type="date" id="period-to">
+        <button class="admin-btn" id="period-apply">Apply</button>
+      </span>
+    </div>
+    <div id="users-status" style="color:var(--text-muted,#8899aa);font-size:13px;margin-bottom:12px;">Loading…</div>
+    <div class="admin-table-wrap" id="table-wrap" style="display:none">
+      <table class="admin-table" id="users-table">
+        <thead>
+          <tr>
+            <th data-sort="id" class="sortable">ID</th>
+            <th data-sort="email" class="sortable">Email</th>
+            <th>Name</th>
+            <th data-sort="role" class="sortable">Role
+              <select class="col-filter" id="filter-role" onclick="event.stopPropagation()">
+                <option value="">All</option>
+                <option value="learner">learner</option>
+                <option value="teacher">teacher</option>
+                <option value="admin">admin</option>
+                <option value="super_admin">super_admin</option>
+              </select>
+            </th>
+            <th data-sort="subscription_status" class="sortable">Tier
+              <select class="col-filter" id="filter-tier" onclick="event.stopPropagation()">
+                <option value="">All</option>
+                <option value="free">free</option>
+                <option value="subscriber">subscriber</option>
+                <option value="cancelled">cancelled</option>
+              </select>
+            </th>
+            <th data-sort="knobits_done" class="sortable" title="Knobits completed">Knobits</th>
+            <th title="Token activity last 7 days">Activity (7d)</th>
+            <th data-sort="estimated_cost" class="sortable" title="Estimated cost for the selected period: $3/M input + $15/M output (Sonnet rate — a rough estimate, cheaper Haiku calls are also billed at this rate here)" id="cost-col-header">Cost ($) — all time</th>
+            <th data-sort="created_at" class="sortable">Joined</th>
+            <th data-sort="last_login" class="sortable">Last login</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+        <tfoot>
+          <tr id="totals-row">
+            <td></td>
+            <td class="td-total-label">Total</td>
+            <td></td><td></td><td></td>
+            <td class="td-num" id="total-knobits"></td>
+            <td></td>
+            <td class="td-num" id="total-cost"></td>
+            <td></td><td></td><td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/topbar-notif.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── burger menu ──────────────────────────────────────────────────────────── */
+  var burger = document.getElementById('nav-menu');
+  var drop   = document.getElementById('nav-dropdown');
+  if (burger && drop) {
+    burger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      drop.classList.toggle('open');
+    });
+    document.addEventListener('click', function () { drop.classList.remove('open'); });
+  }
+
+  /* ── helpers ──────────────────────────────────────────────────────────────── */
+  function fmtDate(s) {
+    if (!s) return '—';
+    var d = new Date(s);
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  }
+  function pad(n) { return n < 10 ? '0'+n : ''+n; }
+  function fmtNum(n) { return n ? Number(n).toLocaleString() : '0'; }
+
+  function sparkline(data) {
+    var W = 84, H = 24, MAX = 100000;
+    var hasData = data.some(function(v) { return v > 0; });
+    if (!hasData) return '<span class="spark-empty">—</span>';
+    var n = data.length;
+    var pts = data.map(function(v, i) {
+      var x = Math.round(i * W / (n - 1));
+      var y = Math.round(H - Math.min(v, MAX) / MAX * (H - 2) - 1);
+      return x + ',' + y;
+    });
+    var fillPath = 'M' + pts.join('L') + 'L' + W + ',' + H + 'L0,' + H + 'Z';
+    var linePath = 'M' + pts.join('L');
+    return '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H
+      + '" class="spark-svg">'
+      + '<path d="' + fillPath + '" class="spark-fill"/>'
+      + '<path d="' + linePath + '" class="spark-line"/>'
+      + '</svg>';
+  }
+
+  /* ── save an individual field ─────────────────────────────────────────────── */
+  function saveField(id, field, value, row) {
+    var body = {};
+    body[field] = value;
+    row.classList.add('saving');
+    fetch('/api/admin/users/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        row.classList.remove('saving');
+        if (j.error) { alert('Error: ' + j.error); loadUsers(); }
+      })
+      .catch(function () { row.classList.remove('saving'); });
+  }
+
+  /* ── sort / filter state ─────────────────────────────────────────────────── */
+  var _users    = [];
+  var _sortCol  = 'id';
+  var _sortDir  = 'asc';
+  var _filterRole = '';
+  var _filterTier = '';
+
+  function applyFiltersAndSort(users) {
+    var out = users.filter(function(u) {
+      if (_filterRole && u.role !== _filterRole) return false;
+      if (_filterTier && u.subscription_status !== _filterTier) return false;
+      return true;
+    });
+    out.sort(function(a, b) {
+      var av = a[_sortCol], bv = b[_sortCol];
+      if (av == null) av = '';
+      if (bv == null) bv = '';
+      var cmp = (typeof av === 'number' && typeof bv === 'number')
+        ? av - bv
+        : String(av).localeCompare(String(bv));
+      return _sortDir === 'asc' ? cmp : -cmp;
+    });
+    return out;
+  }
+
+  function updateSortUI() {
+    document.querySelectorAll('th[data-sort]').forEach(function(th) {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.dataset.sort === _sortCol) th.classList.add('sort-' + _sortDir);
+    });
+  }
+
+  function updateTotals(visible) {
+    var knobits = visible.reduce(function(s, u) { return s + (Number(u.knobits_done) || 0); }, 0);
+    var cost    = visible.reduce(function(s, u) { return s + (Number(u.estimated_cost) || 0); }, 0);
+    document.getElementById('total-knobits').textContent = fmtNum(knobits);
+    document.getElementById('total-cost').textContent    = cost ? '$' + cost.toFixed(4) : '—';
+  }
+
+  /* ── build rows ───────────────────────────────────────────────────────────── */
+  function renderTable(users) {
+    if (users !== undefined) _users = users;
+    var visible = applyFiltersAndSort(_users);
+    var tbody = document.getElementById('users-tbody');
+    tbody.innerHTML = '';
+
+    var roles = ['learner','teacher','admin','super_admin'];
+    var tiers = ['free','subscriber','cancelled'];
+
+    visible.forEach(function (u) {
+      var tr = document.createElement('tr');
+      tr.dataset.id = u.id;
+
+      var emailInput = '<input class="admin-cell-edit" value="'
+        + escHtml(u.email||'') + '" data-field="email"'
+        + (u.id === 1 ? ' disabled' : '')
+        + ' style="min-width:160px">';
+
+      var roleSelect = '<select class="admin-cell-edit admin-cell-edit-select" data-field="role"'
+        + (u.id === 1 ? ' disabled' : '') + '>'
+        + roles.map(function(r){ return '<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+r+'</option>'; }).join('')
+        + '</select>';
+
+      var tierSelect = '<select class="admin-cell-edit admin-cell-edit-select" data-field="subscription_status"'
+        + (u.id === 1 ? ' disabled' : '') + '>'
+        + tiers.map(function(t){ return '<option value="'+t+'"'+(u.subscription_status===t?' selected':'')+'>'+t+'</option>'; }).join('')
+        + '</select>';
+
+      var delBtn = u.id === 1
+        ? ''
+        : '<button class="admin-del-btn" title="Delete user" onclick="deleteUser('+u.id+',this)">✕</button>';
+
+      tr.innerHTML =
+        '<td class="td-num">'+u.id+'</td>'
+        + '<td>'+emailInput+'</td>'
+        + '<td style="color:var(--text-muted,#8899aa)">'+(u.display_name||'—')+'</td>'
+        + '<td>'+roleSelect+'</td>'
+        + '<td>'+tierSelect+'</td>'
+        + '<td class="td-num">'+fmtNum(u.knobits_done)+'</td>'
+        + '<td class="td-spark">'+sparkline(u.activity7d || Array(7).fill(0))+'</td>'
+        + '<td class="td-num">'+(u.estimated_cost ? '$'+Number(u.estimated_cost).toFixed(4) : '—')+'</td>'
+        + '<td class="td-date">'+fmtDate(u.created_at)+'</td>'
+        + '<td class="td-date">'+fmtDate(u.last_login)+'</td>'
+        + '<td>'+delBtn+'</td>';
+
+      tr.querySelectorAll('input.admin-cell-edit').forEach(function (inp) {
+        inp.addEventListener('change', function () {
+          saveField(u.id, inp.dataset.field, inp.value, tr);
+        });
+      });
+      tr.querySelectorAll('select.admin-cell-edit').forEach(function (sel) {
+        sel.addEventListener('change', function () {
+          saveField(u.id, sel.dataset.field, sel.value, tr);
+        });
+      });
+
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('table-wrap').style.display = '';
+    document.getElementById('users-status').textContent = visible.length + ' of ' + _users.length + ' users';
+    updateTotals(visible);
+    updateSortUI();
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  /* ── cost period ──────────────────────────────────────────────────────────── */
+  var periodSelect    = document.getElementById('period-select');
+  var customRangeWrap = document.getElementById('custom-range-wrap');
+  var periodFromInput  = document.getElementById('period-from');
+  var periodToInput    = document.getElementById('period-to');
+
+  function periodQuery() {
+    var period = periodSelect.value;
+    if (period === 'custom') {
+      var params = 'period=custom';
+      if (periodFromInput.value) params += '&from=' + periodFromInput.value;
+      if (periodToInput.value)   params += '&to=' + periodToInput.value;
+      return params;
+    }
+    return 'period=' + period;
+  }
+
+  var PERIOD_LABELS = { all: 'all time', '7d': 'last 7 days', '30d': 'last 30 days', month: 'this month' };
+  function updateCostHeader() {
+    var period = periodSelect.value;
+    var label = period === 'custom'
+      ? (periodFromInput.value ? (periodFromInput.value + ' to ' + (periodToInput.value || 'now')) : 'custom range')
+      : PERIOD_LABELS[period];
+    document.getElementById('cost-col-header').textContent = 'Cost ($) — ' + label;
+  }
+
+  periodSelect.addEventListener('change', function () {
+    customRangeWrap.style.display = periodSelect.value === 'custom' ? '' : 'none';
+    if (periodSelect.value !== 'custom') { updateCostHeader(); loadUsers(); }
+  });
+  document.getElementById('period-apply').addEventListener('click', function () {
+    if (periodFromInput.value) { updateCostHeader(); loadUsers(); }
+  });
+
+  /* ── load ─────────────────────────────────────────────────────────────────── */
+  function loadUsers() {
+    document.getElementById('users-status').textContent = 'Loading…';
+    fetch('/api/admin/users?' + periodQuery())
+      .then(function (r) {
+        if (r.status === 403) { document.getElementById('users-status').textContent = 'Access denied.'; throw new Error('403'); }
+        return r.json();
+      })
+      .then(renderTable)
+      .catch(function (e) {
+        if (e.message !== '403')
+          document.getElementById('users-status').textContent = 'Failed to load users.';
+      });
+  }
+
+  /* ── add user ─────────────────────────────────────────────────────────────── */
+  window.addUser = function () {
+    var email = document.getElementById('add-email').value.trim();
+    var role  = document.getElementById('add-role').value;
+    var msg   = document.getElementById('add-msg');
+    msg.className = 'admin-msg';
+    msg.textContent = '';
+    if (!email) { msg.className = 'admin-msg err'; msg.textContent = 'Email is required.'; return; }
+    document.getElementById('add-btn').disabled = true;
+    fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, role: role }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        document.getElementById('add-btn').disabled = false;
+        if (j.error) {
+          msg.className = 'admin-msg err';
+          msg.textContent = j.error;
+        } else {
+          msg.className = 'admin-msg ok';
+          msg.textContent = 'User #'+j.id+' created (passport #'+j.passport_id+')';
+          document.getElementById('add-email').value = '';
+          loadUsers();
+        }
+      })
+      .catch(function () {
+        document.getElementById('add-btn').disabled = false;
+        msg.className = 'admin-msg err';
+        msg.textContent = 'Request failed.';
+      });
+  };
+
+  /* ── delete user ──────────────────────────────────────────────────────────── */
+  window.deleteUser = function (id, btn) {
+    var row = btn.closest('tr');
+    var email = row.querySelector('input').value;
+    if (!confirm('Delete user #'+id+' ('+email+')?\n\nThis cannot be undone.')) return;
+    fetch('/api/admin/users/'+id, { method: 'DELETE' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.error) { alert('Error: '+j.error); return; }
+        loadUsers();
+      })
+      .catch(function () { alert('Request failed.'); });
+  };
+
+  /* ── allow Enter on email input ───────────────────────────────────────────── */
+  document.getElementById('add-email').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') window.addUser();
+  });
+
+  /* ── sort headers ─────────────────────────────────────────────────────────── */
+  document.querySelectorAll('th[data-sort]').forEach(function(th) {
+    th.addEventListener('click', function(e) {
+      if (e.target.tagName === 'SELECT' || e.target.closest('select')) return;
+      var col = th.dataset.sort;
+      if (_sortCol === col) {
+        _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        _sortCol = col;
+        _sortDir = 'asc';
+      }
+      renderTable();
+    });
+  });
+
+  /* ── column filters ───────────────────────────────────────────────────────── */
+  document.getElementById('filter-role').addEventListener('change', function() {
+    _filterRole = this.value;
+    renderTable();
+  });
+  document.getElementById('filter-tier').addEventListener('change', function() {
+    _filterTier = this.value;
+    renderTable();
+  });
+
+  loadUsers();
+}());
+</script>
+</body>
+</html>

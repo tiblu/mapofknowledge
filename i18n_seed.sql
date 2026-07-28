@@ -61,6 +61,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 
 -- Navigation
 ('nav.account',             'en', 'Account'),
+('nav.admin',               'en', 'Admin'),
 ('nav.notifications',       'en', 'Notifications'),
 ('nav.settings',            'en', 'Settings'),
 ('nav.log_out',             'en', 'Log out'),
