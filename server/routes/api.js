@@ -522,6 +522,14 @@ async function _getPriorPracticeQuestions(passportId, knobitId) {
   return questions;
 }
 
+// The 'ask' request phase isn't itself a valid knobit_interactions.phase ENUM
+// value — an ask-bar question is asked *during* one of the four real phases,
+// so it's persisted under that phase instead. `action` carries which one.
+const _KNOBIT_PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
+function _askDbPhase(action) {
+  return _KNOBIT_PHASES.includes(action) ? action : 'explain';
+}
+
 // ── Persist a knobit lesson block for mid-lesson resume/grounding ───────────
 async function _saveInteraction(passportId, knobitId, phase, blockType, blockIndex, choiceMade, answerText, content) {
   if (!passportId) return;
@@ -595,6 +603,11 @@ router.post('/learn/interact', async (req, res) => {
         } else {
           streamFn = (cb) => llm.streamAnswerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid, cb);
         }
+        onDone = async (full) => {
+          const dbPhase = _askDbPhase(action);
+          await _saveInteraction(passportId, knobitId, dbPhase, 'user', 0, null, null, question);
+          await _saveInteraction(passportId, knobitId, dbPhase, 'note', 0, null, null, full);
+        };
       }
       if (streamFn) return _runStream(streamFn, res, onDone);
     }
@@ -610,6 +623,13 @@ router.post('/learn/interact', async (req, res) => {
       } else if (action === 'visual') {
         const validUrls = Array.isArray(seenUrls) ? seenUrls.filter(u => typeof u === 'string').slice(0, 20) : [];
         result = await llm.generateExplainByteVisual(nodeLabel, title, original, locale, uid, validUrls);
+        if (result.visual) {
+          if (locale !== 'en' && result.visual.caption) {
+            const edited = await llm.editTranslatedText({ caption: result.visual.caption }, locale, uid);
+            result.visual = { ...result.visual, caption: edited.caption };
+          }
+          await _saveInteraction(passportId, knobitId, 'explain', 'visual', byteIndex, null, null, JSON.stringify(result.visual));
+        }
       } else {
         let text = await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid);
         if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
@@ -660,6 +680,9 @@ router.post('/learn/interact', async (req, res) => {
       let text = await llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid);
       if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
       result = { text };
+      const dbPhase = _askDbPhase(action);
+      await _saveInteraction(passportId, knobitId, dbPhase, 'user', 0, null, null, question);
+      await _saveInteraction(passportId, knobitId, dbPhase, 'note', 0, null, null, result.text);
     } else {
       return res.status(400).json({ error: `Unknown phase: ${phase}` });
     }

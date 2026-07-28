@@ -558,6 +558,18 @@
       if (row.block_type === 'byte') {
         _byteIdx = row.block_index;
         _appendBlock({ type: 'byte', content: row.content });
+      } else if (row.block_type === 'visual') {
+        var v = JSON.parse(row.content || '{}');
+        var vHtml = '';
+        if (v.type === 'image' && v.url) {
+          vHtml = '<img class="lm-visual-img" src="' + _escHtml(v.url) + '" alt="' + _escHtml(v.caption || '') + '" loading="lazy" onerror="this.closest(\'.block-visual\').style.display=\'none\'">' +
+                  (v.caption ? '<div class="lm-visual-caption">' + _escHtml(v.caption) + '</div>' : '');
+        } else if (v.type === 'video' && v.url) {
+          vHtml = '<a class="lm-visual-video" href="' + _escHtml(v.url) + '" target="_blank" rel="noopener">' +
+                  '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.5" stroke="currentColor" stroke-width="1.1"/><path d="M5.5 4.5l5 2.5-5 2.5V4.5z" fill="currentColor"/></svg>' +
+                  _escHtml(v.caption || 'Watch video') + '</a>';
+        }
+        if (vHtml) { _appendBlock({ type: 'visual', rawHtml: vHtml }); _seenVisualUrls.push(v.url); }
       } else if (row.block_type === 'example') {
         var ex = JSON.parse(row.content || '{}');
         var html = '<strong>Example ' + (row.block_index + 1) + '</strong><br>' +
@@ -586,9 +598,14 @@
         if (_practiceInputEl) { _practiceInputEl.value = row.answer_text || ''; _practiceInputEl.disabled = true; }
       } else if (row.block_type === 'meaning') {
         _appendBlock({ type: 'meaning', content: row.content });
+      } else if (row.block_type === 'user' || row.block_type === 'note') {
+        _appendBlock({ type: row.block_type, content: row.content });
       }
 
-      lastBlockType = row.block_type;
+      // A visual is a decorative addition to the current byte, and an ask-bar
+      // question/answer is a side conversation — neither is a phase
+      // advancement, so don't let them override which button row to restore.
+      if (row.block_type !== 'visual' && row.block_type !== 'user' && row.block_type !== 'note') lastBlockType = row.block_type;
     });
 
     if (lastBlockType === 'byte') {

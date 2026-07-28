@@ -1,4 +1,4 @@
-const { Document, Packer, Paragraph, TextRun, HeadingLevel } = require('docx');
+const { Document, Packer, Paragraph, TextRun, HeadingLevel, ExternalHyperlink } = require('docx');
 
 // Mirrors the client's phase.step_N + phase.* i18n pairs (app/js/learning.js /
 // i18n_seed.sql) so the downloaded document uses the same wording the learner saw.
@@ -14,6 +14,8 @@ const LABELS = {
   what_i_did:  { en: 'What I did:',  et: 'Mida ma tegin:' },
   problem:     { en: 'Problem',      et: 'Ülesanne' },
   your_answer: { en: 'Your answer:', et: 'Sinu vastus:' },
+  watch_video: { en: 'Watch video',  et: 'Vaata videot' },
+  you_asked:   { en: 'You asked:',   et: 'Sa küsisid:' },
 };
 
 function _tr(map, locale) {
@@ -61,9 +63,6 @@ function _textToParagraphs(text) {
 }
 
 // rows: knobit_interactions rows for one (passport_id, knobit_id), ordered by id.
-// Only 'byte', 'example', 'practice', 'feedback', 'meaning' block types are
-// ever present in this project (no ask-bar/'visual' persistence here — those
-// branches from KnobitMap's version were dropped since the rows never occur).
 // Returns a Buffer (the .docx file contents).
 async function buildKnobitDocx(rows, nodeLabel, knobitTitle, locale) {
   var children = [
@@ -82,6 +81,18 @@ async function buildKnobitDocx(rows, nodeLabel, knobitTitle, locale) {
 
     if (row.block_type === 'byte' || row.block_type === 'meaning') {
       children = children.concat(_textToParagraphs(row.content));
+    } else if (row.block_type === 'visual') {
+      var v = _safeParse(row.content);
+      if (v.url) {
+        var linkText = v.caption || (v.type === 'video' ? _tr(LABELS.watch_video, locale) : v.url);
+        var prefix = v.type === 'video' ? '🎬 ' : '🖼 ';
+        children.push(new Paragraph({
+          children: [
+            new TextRun(prefix),
+            new ExternalHyperlink({ children: [new TextRun({ text: linkText, style: 'Hyperlink' })], link: v.url }),
+          ],
+        }));
+      }
     } else if (row.block_type === 'example') {
       var ex = _safeParse(row.content);
       children.push(new Paragraph({
@@ -109,6 +120,15 @@ async function buildKnobitDocx(rows, nodeLabel, knobitTitle, locale) {
         }));
       }
       children.push(new Paragraph({ text: (grade.correct ? '✓ ' : '✗ ') + (grade.feedback || '') }));
+    } else if (row.block_type === 'user') {
+      children.push(new Paragraph({
+        children: [
+          new TextRun({ text: _tr(LABELS.you_asked, locale) + ' ', bold: true, italics: true }),
+          new TextRun({ text: row.content || '', italics: true }),
+        ],
+      }));
+    } else if (row.block_type === 'note') {
+      children = children.concat(_textToParagraphs(row.content));
     }
   });
 
