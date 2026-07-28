@@ -48,14 +48,20 @@ body {
 /* When the focus-timer row has its minutes field visible, split the row
    50% label/desc, 25% minutes, 25% toggle. Collapsed ("off") state is
    untouched — .settings-row-text falls back to flex:1 and the toggle
-   column just wraps snugly around the button, same as any other row. */
-#focus-timer-row.ft-expanded > .settings-row-text  { flex: 0 0 50%; }
+   column just wraps snugly around the button, same as any other row.
+   The row's own `gap: 16px` sits between each of these 3 items (32px
+   total) — flex-basis percentages alone would sum to 100% and ignore
+   that gap entirely, forcing the row 32px wider than its box (flex:0 0 X%
+   disables shrinking, so it can't compensate) and pushing the toggle
+   out past the right edge. calc() subtracts each item's share of that
+   32px so the percentages plus the real gaps add back up to 100%. */
+#focus-timer-row.ft-expanded > .settings-row-text  { flex: 0 0 calc(50% - 16px); }
 #focus-timer-row.ft-expanded > .settings-row-controls {
-  display: flex; flex: 0 0 25%;
+  display: flex; flex: 0 0 calc(25% - 8px);
   align-items: center; justify-content: center;
 }
 #focus-timer-row.ft-expanded > .settings-row-toggle-col {
-  flex: 0 0 25%;
+  flex: 0 0 calc(25% - 8px);
   display: flex; justify-content: flex-end;
 }
 .settings-row-label {
