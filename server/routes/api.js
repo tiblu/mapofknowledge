@@ -4,6 +4,7 @@ const db      = require('../db');
 const llm     = require('../services/llm');
 const game    = require('../services/game');
 const { notify } = require('../services/notifications');
+const { buildKnobitDocx } = require('../services/knobitDocx');
 
 // ── User locale helper ───────────────────────────────────────────────────────
 async function getUserLocale(userId) {
@@ -405,7 +406,19 @@ router.post('/nodes/:id/learn', async (req, res) => {
       knobits = knobits.map(k => ({ ...k, done: doneSet.has(k.id) }));
     }
 
-    res.json({ knobits });
+    // Attach a resumable mid-lesson session for the current (first unfinished) knobit, if any
+    let resumeSession = null;
+    const currentKnobit = knobits.find(k => !k.done);
+    if (passportId && currentKnobit) {
+      const [interactionRows] = await db.execute(
+        `SELECT phase, block_type, block_index, choice_made, answer_text, content
+         FROM knobit_interactions WHERE passport_id = ? AND knobit_id = ? ORDER BY id`,
+        [passportId, currentKnobit.id]
+      );
+      if (interactionRows.length) resumeSession = { knobitId: currentKnobit.id, blocks: interactionRows };
+    }
+
+    res.json({ knobits, resumeSession });
   } catch (err) {
     console.error('[api/nodes/learn]', err.message);
     res.status(500).json({ error: 'Failed to prepare learning session' });
@@ -655,6 +668,51 @@ router.post('/learn/interact', async (req, res) => {
   } catch (err) {
     console.error('[api/learn/interact]', err.message);
     res.status(500).json({ error: 'LLM interaction failed: ' + err.message });
+  }
+});
+
+// ── Download the in-progress knobit as a .docx (must be called before /complete,
+//    which deletes the knobit_interactions rows this reads) ──────────────────
+router.get('/learn/knobit/:id/download', async (req, res) => {
+  const knobitId   = req.params.id;
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.status(400).json({ error: 'No passport' });
+
+  try {
+    const locale = await getUserLocale(req.user?.id);
+
+    const [krows] = await db.execute(
+      `SELECT k.title AS knobitTitle,
+              COALESCE(trn.label, n.label) AS nodeLabel
+       FROM knobits k
+       JOIN nodes n ON k.node_id = n.id
+       LEFT JOIN node_translations trn ON trn.node_external_id = n.external_id AND trn.locale = ?
+       WHERE k.id = ?`,
+      [locale, knobitId]
+    );
+    if (!krows.length) return res.status(404).json({ error: 'Knobit not found' });
+    let { knobitTitle, nodeLabel } = krows[0];
+
+    if (locale !== 'en') {
+      const translated = await llm.translateKnobitTitles([{ title: knobitTitle }], locale, req.user?.id);
+      if (translated[0]?.title) knobitTitle = translated[0].title;
+    }
+
+    const [rows] = await db.execute(
+      `SELECT phase, block_type, block_index, choice_made, answer_text, content
+       FROM knobit_interactions WHERE passport_id = ? AND knobit_id = ? ORDER BY id`,
+      [passportId, knobitId]
+    );
+
+    const buffer = await buildKnobitDocx(rows, nodeLabel, knobitTitle, locale);
+    const safeName = (knobitTitle || 'knobit').replace(/[<>:"/\\|?*\x00-\x1F]/g, '').trim().replace(/\s+/g, '_') || 'knobit';
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', `attachment; filename="knobit.docx"; filename*=UTF-8''${encodeURIComponent(safeName)}.docx`);
+    res.send(buffer);
+  } catch (err) {
+    console.error('[api/learn/knobit/download]', err.message);
+    res.status(500).json({ error: 'Failed to build download' });
   }
 });
 

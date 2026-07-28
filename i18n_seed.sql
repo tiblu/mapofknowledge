@@ -332,6 +332,12 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('help.goals_title',            'en', 'Goals and your Learner Passport'),
 ('help.goals_body',             'en', 'Your progress, achievements, and goals are all on your Learner Passport — open it from the menu (☰ icon, top right) under "Account." Goals are your own free-text notes on what you\'re working toward — add one with "+ Add goal" on your Passport, and mark it complete whenever you like.'),
 ('help.notif_settings_title',   'en', 'Notifications and settings'),
-('help.notif_settings_body',    'en', 'The same menu has Notifications (reminders and achievements) and Settings (font size, colour palette, map animation, focus timer, café ambience, screen saver).')
+('help.notif_settings_body',    'en', 'The same menu has Notifications (reminders and achievements) and Settings (font size, colour palette, map animation, focus timer, café ambience, screen saver).'),
+
+-- Knobit DOCX export + mid-knobit resume (added 2026-07-28, ported from KnobitMap)
+('msg.quit_knobit_text',        'en', 'You''ll learn best by staying focused and finishing in one sitting.'),
+('msg.download_offer_title',    'en', 'Download this knobit?'),
+('msg.download_offer_text',     'en', 'You can download this knobit now. After you continue, its content is cleared.'),
+('btn.download',                'en', 'Download')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

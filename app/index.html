@@ -610,7 +610,7 @@
 <div id="quit-knobit-modal" style="display:none">
   <div class="quit-modal-box">
     <div class="quit-modal-title" data-i18n="msg.quit_knobit_title">Leave this knobit?</div>
-    <div class="quit-modal-text" data-i18n="msg.quit_knobit_text">An uncompleted knobit cannot be continued — it must be restarted from the beginning if you quit now.</div>
+    <div class="quit-modal-text" data-i18n="msg.quit_knobit_text">You'll learn best by staying focused and finishing in one sitting.</div>
     <div class="quit-modal-btns">
       <button class="quit-modal-cancel" id="quit-modal-cancel" data-i18n="btn.keep_learning">Keep learning</button>
       <button class="quit-modal-confirm" id="quit-modal-confirm" data-i18n="btn.yes_quit">Yes, quit</button>
@@ -628,6 +628,19 @@
     <div class="lm-break-countdown" id="focus-break-countdown">10:00</div>
     <div class="quit-modal-btns">
       <button class="quit-modal-confirm" id="focus-break-ignore" data-i18n="btn.ignore">Ignore</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shown once, right after the meaning phase is confirmed, before the knobit
+     is marked complete and its interaction data is cleared server-side. -->
+<div id="knobit-download-modal" style="display:none">
+  <div class="quit-modal-box">
+    <div class="quit-modal-title" data-i18n="msg.download_offer_title">Download this knobit?</div>
+    <div class="quit-modal-text" data-i18n="msg.download_offer_text">You can download this knobit now. After you continue, its content is cleared.</div>
+    <div class="quit-modal-btns">
+      <button class="quit-modal-cancel" id="knobit-download-btn" data-i18n="btn.download">Download</button>
+      <button class="quit-modal-confirm" id="knobit-download-continue" data-i18n="label.continue">Continue</button>
     </div>
   </div>
 </div>

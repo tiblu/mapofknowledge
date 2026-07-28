@@ -47,6 +47,8 @@
   var _knobitStarted  = false;
   var _streamButtonEl = null;
   var _quitCallback   = null;
+  var _resumeSession  = null;   // { knobitId, blocks: [...] } from server, or null
+  var _practiceInputEl = null;  // current practice-answer textarea (each round creates a new one, same id)
 
   // URLs of visuals already shown in the current knobit — sent to server to avoid duplicates
   var _seenVisualUrls = [];
@@ -131,7 +133,7 @@
   /* ─── Entry / exit ────────────────────────────────────────────── */
   var _searchWrap = null;
 
-  window.openLearningMode = function (node, crumb, knobits) {
+  window.openLearningMode = function (node, crumb, knobits, resumeSession) {
     // Hide search box — meaningless in learning view
     _searchWrap = document.querySelector('.topbar-search-wrap');
     if (_searchWrap) _searchWrap.style.display = 'none';
@@ -141,6 +143,7 @@
     KNOBIT_TOTAL       = KNOBITS.length;
     KNOBIT_DONE_COUNT  = KNOBITS.filter(function(k) { return k.done; }).length;
     CURRENT_KNOBIT_IDX = KNOBIT_DONE_COUNT < KNOBIT_TOTAL ? KNOBIT_DONE_COUNT : 0;
+    _resumeSession     = resumeSession || null;
 
     // Accent colours from node — set on #learning-mode so CSS palette default wins before a node is chosen
     var hex   = (node && node.color) ? node.color : '#C4826A';
@@ -477,6 +480,12 @@
 
       if (current) {
         item.addEventListener('click', window.startKnobit);
+        if (_resumeSession && _resumeSession.knobitId === k.id && _resumeSession.blocks && _resumeSession.blocks.length) {
+          var resumeBadge = document.createElement('div');
+          resumeBadge.className = 'lm-knobit-resume-badge';
+          resumeBadge.textContent = t('label.continue');
+          item.appendChild(resumeBadge);
+        }
       }
       listEl.appendChild(item);
     });
@@ -493,28 +502,110 @@
       ? Math.min(ABSOLUTE_MAX_EXPLAIN_BYTES, k.target_bytes)
       : MAX_EXPLAIN_BYTES;
 
+    var stream = document.getElementById('kn-stream');
+    if (stream) stream.innerHTML = '';
+    var navLabel = document.getElementById('lm-knobit-nav-label');
+    if (navLabel) navLabel.textContent = k.title || '';
+
+    showLmView('lm-knobit');
+    _continueOrStartFocusTimer();
+
+    if (_resumeSession && _resumeSession.knobitId === k.id && _resumeSession.blocks && _resumeSession.blocks.length) {
+      _resumeFromSession(_resumeSession);
+      _starting = false;
+      return;
+    }
+
     _streamBlocks   = [];
     _priorChoices   = [];
     _byteIdx        = 0;
     _demoIdx        = 0;
     _practiceIdx    = 0;
     _pendingPractice = null;
-    _lastDemoBody    = '';
     _seenVisualUrls  = [];
-
-    var stream = document.getElementById('kn-stream');
-    if (stream) stream.innerHTML = '';
-    var navLabel = document.getElementById('lm-knobit-nav-label');
-    if (navLabel) navLabel.textContent = k.title || '';
+    _practiceInputEl = null;
+    _lastDemoBody    = '';
 
     _setPhase('explain');
-    showLmView('lm-knobit');
-
     _setButtonRow('');
     _appendPhaseDivider(t('phase.step_1'));
-    _continueOrStartFocusTimer();
     _fetchInitialExplain();
   };
+
+  // Reconstruct the DOM from stored knobit_interactions rows — no LLM calls.
+  function _resumeFromSession(session) {
+    _streamBlocks   = [];
+    _priorChoices   = [];
+    _byteIdx        = 0;
+    _demoIdx        = 0;
+    _practiceIdx    = 0;
+    _pendingPractice = null;
+    _seenVisualUrls  = [];
+    _practiceInputEl = null;
+    _lastDemoBody    = '';
+
+    var lastPhase = null;
+    var lastBlockType = null;
+    var blocks = session.blocks;
+
+    blocks.forEach(function (row) {
+      if (row.phase !== lastPhase) {
+        _appendPhaseDivider(t('phase.step_' + (_PHASES.indexOf(row.phase) + 1)));
+        _setPhase(row.phase);
+        lastPhase = row.phase;
+      }
+
+      if (row.block_type === 'byte') {
+        _byteIdx = row.block_index;
+        _appendBlock({ type: 'byte', content: row.content });
+      } else if (row.block_type === 'example') {
+        var ex = JSON.parse(row.content || '{}');
+        var html = '<strong>Example ' + (row.block_index + 1) + '</strong><br>' +
+                   _escHtml(ex.body || '') +
+                   (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">What I did: ' + _escHtml(ex.whatIDid) + '</em>' : '');
+        _appendBlock({ type: 'example', rawHtml: html });
+        _demoIdx = row.block_index;
+        _lastDemoBody = ex.body || '';
+      } else if (row.block_type === 'practice') {
+        var prob = JSON.parse(row.content || '{}');
+        _pendingPractice = prob;
+        _practiceIdx = row.block_index;
+        var wrapper = _appendBlock({ type: 'practice', content: 'Problem ' + (row.block_index + 1) + ': ' + (prob.question || '') });
+        if (wrapper) {
+          var inp         = document.createElement('textarea');
+          inp.id          = 'kn-practice-input';
+          inp.className   = 'kn-answer-input';
+          inp.placeholder = t('placeholder.your_answer');
+          inp.rows        = 2;
+          wrapper.appendChild(inp);
+          _practiceInputEl = inp;
+        }
+      } else if (row.block_type === 'feedback') {
+        var grade = JSON.parse(row.content || '{}');
+        _appendBlock({ type: 'feedback', content: (grade.correct ? '✓ ' : '✗ ') + (grade.feedback || '') });
+        if (_practiceInputEl) { _practiceInputEl.value = row.answer_text || ''; _practiceInputEl.disabled = true; }
+      } else if (row.block_type === 'meaning') {
+        _appendBlock({ type: 'meaning', content: row.content });
+      }
+
+      lastBlockType = row.block_type;
+    });
+
+    if (lastBlockType === 'byte') {
+      _setButtonRow('explain-options');
+    } else if (lastBlockType === 'example') {
+      _setButtonRow(_demoIdx === 0 ? 'demo-1' : _demoIdx === 1 ? 'demo-2' : 'demo-3');
+    } else if (lastBlockType === 'practice') {
+      _setButtonRow('practice-submit');
+    } else if (lastBlockType === 'feedback') {
+      _setButtonRow('practice-next');
+    } else if (lastBlockType === 'meaning') {
+      _setButtonRow('meaning-options');
+    }
+
+    _knobitStarted = true;
+    _resumeSession = null;
+  }
 
   function _fetchInitialExplain() {
     _retryFn = _fetchInitialExplain;
@@ -780,7 +871,7 @@
     if (opt === 'ok') {
       _lockButtons();
       _setButtonRow('');
-      _completeKnobit();
+      _showDownloadOffer();
       return;
     }
     _lockButtons();
@@ -799,6 +890,49 @@
       }).catch(_onApiError);
     };
     _retryFn();
+  };
+
+  /* ─── Download offer (shown once, right after meaning is confirmed,
+         before the knobit is marked complete and its interaction data
+         is cleared server-side). The .docx itself is built server-side
+         from knobit_interactions — see server/services/knobitDocx.js —
+         since that's the same canonical data source the resume feature
+         uses, and it must be read before /complete deletes it. ──────── */
+  function _showDownloadOffer() {
+    var modal = document.getElementById('knobit-download-modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  window._downloadKnobitTranscript = function () {
+    var btn = document.getElementById('knobit-download-btn');
+    var k = KNOBITS[CURRENT_KNOBIT_IDX];
+    if (!k) return;
+    if (btn) btn.disabled = true;
+
+    fetch('/api/learn/knobit/' + k.id + '/download')
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        var disposition = r.headers.get('Content-Disposition') || '';
+        var match = disposition.match(/filename\*=UTF-8''([^;]+)/);
+        var filename = match ? decodeURIComponent(match[1]) : 'knobit.docx';
+        return r.blob().then(function (blob) { return { blob: blob, filename: filename }; });
+      })
+      .then(function (result) {
+        var url = URL.createObjectURL(result.blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = result.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      })
+      .catch(function () {
+        // Non-critical — the learner can still continue without a download.
+      })
+      .finally(function () {
+        if (btn) btn.disabled = false;
+      });
   };
 
   /* ─── Knobit completion ───────────────────────────────────────── */
@@ -1106,6 +1240,18 @@
     var breakIgnore = document.getElementById('focus-break-ignore');
     if (breakIgnore) breakIgnore.addEventListener('click', function () {
       _startFocusTimer(); // resets and restarts the focus cycle
+    });
+
+    var downloadBtn = document.getElementById('knobit-download-btn');
+    if (downloadBtn) downloadBtn.addEventListener('click', function () {
+      window._downloadKnobitTranscript();
+    });
+
+    var downloadContinue = document.getElementById('knobit-download-continue');
+    if (downloadContinue) downloadContinue.addEventListener('click', function () {
+      var modal = document.getElementById('knobit-download-modal');
+      if (modal) modal.style.display = 'none';
+      _completeKnobit();
     });
 
     window.addEventListener('beforeunload', function (e) {

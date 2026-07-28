@@ -528,11 +528,11 @@ function init(data, emergentData) {
         try {
           const r = await fetch(`/api/nodes/${d.id}/learn`, { method: 'POST' });
           if (!r.ok) throw new Error('HTTP ' + r.status);
-          const { knobits } = await r.json();
+          const { knobits, resumeSession } = await r.json();
           if (!Array.isArray(knobits) || !knobits.length) throw new Error('No knobits returned');
           restore();
           closeSidebar();
-          window.Learn.open(d, crumb, knobits);
+          window.Learn.open(d, crumb, knobits, resumeSession);
         } catch (err) {
           restore();
           if (learnErrorEl && learnErrorText) {
@@ -1477,9 +1477,9 @@ function init(data, emergentData) {
           }());
           fetch(`/api/nodes/${nodeId}/learn`, { method: 'POST' })
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-            .then(({ knobits }) => {
+            .then(({ knobits, resumeSession }) => {
               if (!Array.isArray(knobits) || !knobits.length) throw new Error('No knobits returned');
-              window.Learn.open(node, crumb, knobits);
+              window.Learn.open(node, crumb, knobits, resumeSession);
             })
             .catch(() => { alert(t('msg.connection_error')); });
         });
