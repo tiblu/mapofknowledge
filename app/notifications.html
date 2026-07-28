@@ -96,6 +96,7 @@
     test_result: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="3.5" y="2.5" width="11" height="13" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M6 7h6M6 10h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
     goal_complete: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M6 9l2 2 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     knowledge_marked: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2.5a4.5 4.5 0 0 1 2.8 8V13a.5.5 0 0 1-.5.5H6.7a.5.5 0 0 1-.5-.5v-2.5A4.5 4.5 0 0 1 9 2.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M6.5 15.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>',
+    continue_learning: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M7.5 6.5l4 2.5-4 2.5v-5z" fill="currentColor"/></svg>',
     admin: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.2"/><path d="M9 6v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="13" r="0.8" fill="currentColor"/></svg>',
     badge: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2l2 5h5l-4 3 1.5 5L9 12l-4.5 3L6 10 2 7h5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
     streak: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M10 2s-5 4-2 8c1 1.5 2 1 2 1s-1-2 1-3c0 0 3 2 3 4s-1.5 3-4 3c-3 0-6-2-6-5.5C4 5.5 10 2 10 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
@@ -146,7 +147,9 @@
       }
       var icon = ICONS[n.type] || ICONS.admin;
       var readClass = n.is_read ? ' read' : '';
-      html += '<div class="notif-card' + readClass + '" data-id="' + n.id + '">'
+      var linkClass = n.node_external_id ? ' linkable' : '';
+      html += '<div class="notif-card' + readClass + linkClass + '" data-id="' + n.id + '"'
+        + (n.node_external_id ? ' data-node-id="' + esc(n.node_external_id) + '"' : '') + '>'
         + (!n.is_read ? '<div class="notif-unread-dot"></div>' : '')
         + '<div class="notif-icon ' + (n.icon_color || 'terra') + '">' + icon + '</div>'
         + '<div class="notif-body">'
@@ -163,6 +166,19 @@
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         markOne(parseInt(btn.dataset.id));
+      });
+    });
+
+    list.querySelectorAll('.notif-card.linkable').forEach(function(card) {
+      card.addEventListener('click', function() {
+        var nodeId = card.dataset.nodeId;
+        markOne(parseInt(card.dataset.id));
+        if (window.parent !== window && window.parent.closeOverlay) {
+          window.parent.closeOverlay();
+          if (window.parent.MapView && window.parent.MapView.navigateToNode) {
+            window.parent.MapView.navigateToNode(nodeId);
+          }
+        }
       });
     });
   }

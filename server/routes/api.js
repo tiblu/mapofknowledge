@@ -331,7 +331,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
       ).catch(() => {});
       if (pct >= 100) {
         notify(req.user?.id, 'knowledge_marked', `Marked as known: ${label}`,
-          `Added to your Learner Passport knowledge map.`);
+          `Added to your Learner Passport knowledge map.`, id);
       }
     }
 
@@ -788,10 +788,10 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       // Per-knobit notification
       if (totalEver === 1) {
         notify(userId, 'knobit_complete', 'First knobit mastered!',
-          `You completed your very first learning step: "${knobitTitle}". An exciting journey begins!`);
+          `You completed your very first learning step: "${knobitTitle}". An exciting journey begins!`, nodeExtId);
       } else {
         notify(userId, 'knobit_complete', `Knobit complete: ${knobitTitle}`,
-          `Topic: ${nodeLabel}`);
+          `Topic: ${nodeLabel}`, nodeExtId);
       }
 
       await db.execute(
@@ -831,9 +831,9 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
             [passportId, `Completed: ${nodeLabel}`, nodeExtId]
           );
           notify(userId, 'unit_complete', `${nodeLabel} — fully mastered!`,
-            `You've completed every learning step for this topic.`);
+            `You've completed every learning step for this topic.`, nodeExtId);
           notify(userId, 'credential', `New credential: ${credTitle}`,
-            `A platform credential has been added to your Learner Passport.`);
+            `A platform credential has been added to your Learner Passport.`, nodeExtId);
         }
       }
 
@@ -1238,7 +1238,7 @@ router.get('/notifications', async (req, res) => {
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
   try {
     const [rows] = await db.execute(
-      `SELECT id, type, title, body, icon_color, is_read, created_at
+      `SELECT id, type, title, body, icon_color, node_external_id, is_read, created_at
        FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`,
       [userId]
     );
@@ -1457,7 +1457,7 @@ router.post('/test/evaluate', async (req, res) => {
               [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
             );
             notify(req.user?.id, 'test_result', `Test result: ${label}`,
-              `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+              `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`, nodeId);
             // ── Gamification ─────────────────────────────────────────────────
             const score = evaluation.finalScore;
             const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
@@ -1493,7 +1493,7 @@ router.post('/test/evaluate', async (req, res) => {
         [passportId, `Knowledge test: ${label}`, `Score: ${evaluation.finalScore}%`, nodeId]
       );
       notify(req.user?.id, 'test_result', `Test result: ${label}`,
-        `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`);
+        `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`, nodeId);
       // ── Gamification ───────────────────────────────────────────────────────
       const score      = evaluation.finalScore;
       const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;

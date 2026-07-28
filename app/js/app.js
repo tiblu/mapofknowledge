@@ -1433,6 +1433,9 @@ function init(data, emergentData) {
     }
     zoomAndOpen();
   }
+  // Exposed for other overlay pages (e.g. notifications.html's clickable
+  // node-linked cards) to jump straight to a node after closeOverlay().
+  window.MapView.navigateToNode = navigateToNode;
 
   // ── Deep-link navigation (?node=external_id) ──────────────────────────────
   (function () {
