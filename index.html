@@ -540,6 +540,19 @@ a { color: inherit; text-decoration: none; }
 .reveal-delay-2 { transition-delay: 0.2s; }
 .reveal-delay-3 { transition-delay: 0.3s; }
 
+.verify-toast {
+  position: fixed; left: 50%; bottom: 28px; z-index: 200;
+  transform: translate(-50%, 12px);
+  background: var(--glass); color: var(--cream);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 13px 20px; font-size: 13.5px; font-weight: 500;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+  opacity: 0; transition: opacity 0.25s, transform 0.25s;
+  max-width: calc(100vw - 32px);
+}
+.verify-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.verify-toast.ok { border-color: rgba(139,173,126,0.4); color: var(--sage); }
+
 </style>
 </head>
 <body>
@@ -873,6 +886,34 @@ a { color: inherit; text-decoration: none; }
   </div>
 </footer>
 
+
+<script>
+/* ── Auto-redirect logged-in users ─────────────────────────────────────── */
+var verifyStatus = new URLSearchParams(window.location.search).get('verify');
+
+fetch('/auth/me').then(function(r) { return r.json(); }).then(function(u) {
+  if (u && u.id) {
+    window.location.href = verifyStatus ? ('/app/?verify=' + verifyStatus) : '/app/';
+    return;
+  }
+  if (verifyStatus) showVerifyToast(verifyStatus);
+}).catch(function() {});
+
+function showVerifyToast(status) {
+  var messages = {
+    ok:      'Email address verified!',
+    expired: 'Verification link expired. Log in and request a new one from your account.',
+    invalid: 'Verification link is not valid.',
+    error:   'Verification failed. Please try again later.',
+  };
+  var el = document.createElement('div');
+  el.className = 'verify-toast' + (status === 'ok' ? ' ok' : '');
+  el.textContent = messages[status] || messages.error;
+  document.body.appendChild(el);
+  setTimeout(function() { el.classList.add('show'); }, 30);
+  setTimeout(function() { el.remove(); }, 6000);
+}
+</script>
 
 <script>
 /* ── Hero canvas — animated knowledge graph ──────────────────────────── */

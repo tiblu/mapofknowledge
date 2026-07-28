@@ -351,6 +351,14 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Testing mode parity (2026-07-29, ported from KnobitMap): loading-status text
 -- shown next to the loading dots during the locale-edit second pass.
 ('status.generating_text',      'en', 'Preparing text.'),
-('status.checking_language',    'en', 'Checking translation.')
+('status.checking_language',    'en', 'Checking translation.'),
+
+-- Verify-email banner (2026-07-29, ported from KnobitMap): reminder banner +
+-- resend button for email+password accounts whose email isn't verified yet.
+('verify.reminder',              'en', 'Please verify your email address to secure your account.'),
+('verify.confirmed',             'en', 'Email address verified!'),
+('btn.resend_verification',      'en', 'Resend link'),
+('msg.sending',                  'en', 'Sending...'),
+('msg.sent',                     'en', 'Sent!')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
