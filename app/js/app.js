@@ -84,6 +84,9 @@ Promise.all([
   fetch('/api/map').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }),
   fetch('/api/settings').then(r => r.json()).catch(() => ({})),
 ]).then(([{ base, emergent }, settings]) => {
+  // Also expose on window — learning.js (loaded on this same page) reads
+  // ambient-sound/focus-timer settings via window._loadedSettings.
+  window._loadedSettings = settings;
   simPreset = SIM_PRESETS[settings.map_animation] || SIM_PRESETS.moderate;
   // Apply font scale
   const fs = settings.font_size;

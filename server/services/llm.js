@@ -31,18 +31,23 @@ const SONNET = 'claude-sonnet-4-6';
 
 const LANG_NAMES = { et: 'Estonian (Eesti keel)' };
 
-const VIZ_INSTRUCTIONS = `Decide whether a visual would enhance understanding of this explanation.
-Visualize when the concept involves spatial relationships, physical mechanisms, staged processes,
-geometric or structural patterns, or anything where "what does this look like?" is a natural question.
-Skip for abstract philosophical concepts, purely definitional content, or cases where images add nothing.
+const VIZ_INSTRUCTIONS = `Decide whether a visual would genuinely help a learner understand this explanation better.
 
-If a visual is warranted:
+Show a visual ONLY when the concept has clear visual form: physical objects, organisms, geographic features,
+spatial relationships, mechanical diagrams, step-by-step processes with distinct stages, or mathematical
+structures where seeing the shape is the insight. Ask: would a good textbook include a figure here?
+
+Skip a visual when: the content is primarily about definitions, relationships between ideas, history,
+social phenomena, logic, abstract principles, or any case where a picture adds atmosphere but not understanding.
+If in doubt, skip — a missing visual is fine; an irrelevant one is distracting.
+
+If a visual IS warranted:
 1. Search Wikimedia Commons for a relevant image. Return the Commons file page URL in the format
    https://commons.wikimedia.org/wiki/File:EXACT_FILENAME — never construct upload.wikimedia.org URLs yourself.
    Hard rule: reject any image with a visible copyright notice, watermark, company logo, or © mark.
-   Default to one image; add a second only if it carries distinct instructional value the first doesn't.
-2. If no clean Wikimedia image found: search YouTube for a short instructional video. Return the full YouTube URL.
-3. If nothing found: set visual to null.`;
+   Only use YouTube if the concept specifically requires motion or animation to understand (e.g. a physical
+   process, a technique, a demonstration) — not just because no Wikimedia image was found.
+2. If nothing genuinely useful exists: set visual to null.`;
 
 // Finds and parses the first complete {...} JSON object in a string,
 // ignoring any surrounding prose or reasoning text Claude may output.
@@ -213,6 +218,43 @@ ${JSON.stringify(knobits.map(k => k.title))}`,
   return knobits.map((k, i) => ({ ...k, title: (Array.isArray(translated) && translated[i]) || k.title }));
 }
 
+// ── Second-pass language editor ───────────────────────────────────────────────
+// Locale-neutral: only locales with a configured prompt below get edited; every
+// other locale (including 'en') is a no-op. Only 'et' is configured today.
+const EDITOR_PROMPTS = {
+  et: `Sa oled eesti keele keeletoimetaja õppematerjalide jaoks. Ma annan Sulle tekstilõike, mis on loodud õppija jaoks. Palun lähtu põhimõttest, et muudad või parandad ainult juhul, kui on õigekirja- või grammatikaviga. Kui otseselt viga ei ole, siis ainult stilistilisel põhjusel korrigeerima ei hakka. Selline minimalistlik, nii vähe kui võimalik lähenemine. Kui on valida erinevate sisuliselt korrektsete terminite vahel (nt matemaatikas või mujal), tuleks eelistada termineid, mis on Eestis haridussüsteemis kasutusel.
+
+Sulle antakse JSON-objekt tekstiväljadega. Tagasta JSON täpselt samade võtmetega, väärtusteks parandatud tekst (või muutmata tekst, kui midagi parandada ei olnud). Säilita täpselt samad väljade tüübid mis sisendis (string jääb stringiks, massiiv jääb massiiviks, säilita massiivi pikkus). Ära lisa mingit muud teksti peale JSON-i.`,
+};
+
+async function editTranslatedText(fields, locale, userId) {
+  const prompt = EDITOR_PROMPTS[locale];
+  if (!prompt) return fields; // no editor configured for this locale — no-op, including 'en'
+  try {
+    const msg = await client.messages.create({
+      model: SONNET,
+      max_tokens: 1000,
+      system: [{ type: 'text', text: prompt, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: `Input JSON:\n${JSON.stringify(fields)}` }],
+    });
+    _logUsage(userId, 'edit_translated', msg.usage, SONNET);
+    const corrected = parseJSON(msg.content[0].text);
+    const result = {};
+    for (const key of Object.keys(fields)) {
+      const orig = fields[key];
+      const fixed = corrected[key];
+      const typeOk = Array.isArray(orig)
+        ? (Array.isArray(fixed) && fixed.length === orig.length)
+        : typeof fixed === 'string';
+      result[key] = typeOk ? fixed : orig; // per-field fallback, not all-or-nothing
+    }
+    return result;
+  } catch (err) {
+    console.error('[editTranslatedText]', err.message);
+    return fields; // fail open — never block content delivery
+  }
+}
+
 // ── Explain phase — text only (fast, no web search) ──────────────────────────
 async function generateExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, profile, userId) {
   let prompt;
@@ -220,17 +262,17 @@ async function generateExplainByteText(nodeLabel, knobitTitle, byteIndex, previo
     prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".
 
 Write the OPENING explanation (byte 1). Introduce the core concept clearly and simply.
-2–4 sentences. Plain prose — no headings, no bullet points. Plain text only, no HTML tags. Use \\n for line breaks.${profileBlock(profile)}${langText(locale)}`;
+2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   } else {
     prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".
 
-Previous explanation the learner understood:
+Everything explained so far, which the learner has already read and understood (may be several paragraphs — this is the full explanation up to this point, not just the last bit):
 """
 ${previousContent}
 """
 
-Write the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase what was already explained.
-2–4 sentences. Plain prose — no headings, no bullet points. Plain text only, no HTML tags. Use \\n for line breaks.${profileBlock(profile)}${langText(locale)}`;
+Write the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase anything already covered above.
+2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   }
 
   const msg = await client.messages.create({
@@ -245,14 +287,17 @@ Write the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level 
 
 // ── Explain phase — visual only (deferred, uses web search) ──────────────────
 // Returns { visual: { type, url, caption } | null }
-async function generateExplainByteVisual(nodeLabel, knobitTitle, byteText, locale, userId) {
+async function generateExplainByteVisual(nodeLabel, knobitTitle, byteText, locale, userId, seenUrls = []) {
+  const seenBlock = seenUrls.length
+    ? `\nAlready shown in this session — do NOT reuse these URLs:\n${seenUrls.map(u => '- ' + u).join('\n')}\n`
+    : '';
   const prompt = `A learner studying "${knobitTitle}" (part of "${nodeLabel}") just read this explanation:
 """
 ${byteText}
 """
-
+${seenBlock}
 ${VIZ_INSTRUCTIONS}
-
+${langJson(locale)}
 Output ONLY a single JSON object — no markdown fences, no reasoning, no commentary outside the JSON:
 {"visual":{"type":"image","url":"...","caption":"..."}|{"type":"video","url":"...","caption":"..."}|null}`;
 
@@ -297,19 +342,21 @@ use a concrete real-world analogy, and build up slowly.
 Do NOT reuse the same wording. A different angle entirely.`,
 
     simpler: `The learner found this too simplistic.
-Rewrite it with professional, expert-level language. Use precise terminology,
-a more formal framing, and the kind of depth an expert or researcher would appreciate.
-Same core concept — elevated register.`,
+Rewrite using more precise, formal, expert-level vocabulary and phrasing — elevate the WORDING only.
+STRICT rules: keep the SAME number of sentences as the original, do not add sentences.
+Do NOT introduce additional concepts, categories, sub-types, or examples beyond what the original already covered.
+Same core idea, same scope, same length — just phrased the way a domain expert would say it.`,
 
     complex: `The learner found this too complex.
-Rewrite it using simpler, everyday words. Replace jargon with plain equivalents,
-use a concrete metaphor or comparison from daily life, and keep sentences short.
-Same core concept — accessible register.`,
+Rewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.
+Maximum 3 sentences per paragraph. No jargon — replace every technical term with a plain everyday word.
+Use one concrete real-life example (something a child could picture).
+Same core concept — maximally accessible.`,
   }[mode] || 'Rewrite this explanation from a different angle.';
 
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 200,
+    max_tokens: 350,
     system: TUTOR_SYSTEM,
     messages: [{
       role: 'user',
@@ -322,7 +369,7 @@ ${originalByte}
 
 ${instructions}
 
-Write the replacement paragraph only — 2–4 sentences, no headings.${profileBlock(profile)}${langText(locale)}`,
+Write the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead. Plain text only — no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`,
     }],
   });
   _logUsage(userId, 'rephrase', msg.usage, SONNET);
@@ -330,15 +377,21 @@ Write the replacement paragraph only — 2–4 sentences, no headings.${profileB
 }
 
 // ── Demonstrate phase ─────────────────────────────────────────────────────────
-async function generateDemonstrate(nodeLabel, knobitTitle, exampleIndex, locale, profile, userId) {
+async function generateDemonstrate(nodeLabel, knobitTitle, exampleIndex, locale, profile, userId, previousExample) {
+  const priorBlock = previousExample
+    ? `\n\nPrevious example already shown to the learner:\n"""\n${previousExample}\n"""\n\nWrite a DIFFERENT example — a distinct scenario or context, not a variation or rewording of the same one.`
+    : '';
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 350,
+    // Non-English locales (e.g. Estonian's case endings/compound words) need more
+    // tokens to fit the same content — 350 was tuned for English and truncated
+    // ~1 in 4 Estonian responses mid-JSON.
+    max_tokens: locale === 'en' ? 350 : 600,
     system: TUTOR_SYSTEM,
     messages: [{
       role: 'user',
       content: `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"
-Worked example number: ${exampleIndex + 1}
+Worked example number: ${exampleIndex + 1}${priorBlock}
 
 Respond with valid JSON, two fields only:
 - "body": a step-by-step worked example (2–5 sentences)
@@ -352,8 +405,18 @@ No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(loca
 }
 
 // ── Practice phase ────────────────────────────────────────────────────────────
-async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, profile, userId) {
+// learnedContent: the actual explain/demonstrate text generated for this learner's
+// session (see api.js's _getLearnedContent, sourced from knobit_interactions) —
+// grounds the question in what was really taught instead of inventing fresh,
+// possibly contradictory or ungrounded trivia about the topic.
+async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, profile, userId, learnedContent, priorQuestions = []) {
   const difficulty = problemIndex === 0 ? 'straightforward' : problemIndex === 1 ? 'moderate' : 'challenging';
+  const contentBlock = learnedContent
+    ? `\n\nWhat the learner has actually studied so far in this knobit:\n"""\n${learnedContent}\n"""\n`
+    : '';
+  const priorBlock = priorQuestions.length
+    ? `\n\nPractice questions already asked earlier in this same knobit — the new question must test a genuinely different fact, aspect, or angle, not a reworded/renumbered version of one of these:\n${priorQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n`
+    : '';
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: 250,
@@ -362,9 +425,12 @@ async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, pr
       role: 'user',
       content: `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"
 Practice problem ${problemIndex + 1} — difficulty: ${difficulty}
+${contentBlock}${priorBlock}
+Base the question strictly on the content above — do not introduce facts, names, agencies, dates, or figures that are not stated there. If the content mentions a specific institution or example only illustratively, do not turn it into a "name the exact institution" quiz question — narrow factual/administrative details can change over time and are not the point being taught. Favor questions that test understanding, reasoning, or application (e.g. "what would you do if...", "why does X matter here", "what is the key difference between...") over recall of a specific name, statistic, or institution.
+Ask exactly ONE question. A short setup sentence for context is fine, but do NOT stack a second question onto it — no "and", no em dash, no semicolon joining two separate things being asked. There must be exactly one thing the learner needs to answer, with exactly one expected answer.
 
 Respond with valid JSON, two fields only:
-- "question": the problem statement (1–3 sentences)
+- "question": the problem statement — one short setup (optional) plus exactly one question (1–3 sentences total)
 - "expected": the correct answer (brief — a number, term, or short phrase)
 
 No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(locale)}`,
@@ -375,7 +441,10 @@ No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(loca
 }
 
 // ── Grade a practice answer ───────────────────────────────────────────────────
-async function gradePractice(nodeLabel, knobitTitle, question, expected, userAnswer, locale, userId) {
+async function gradePractice(nodeLabel, knobitTitle, question, expected, userAnswer, locale, userId, learnedContent) {
+  const contentBlock = learnedContent
+    ? `\n\nWhat the learner has actually studied so far in this knobit:\n"""\n${learnedContent}\n"""\n`
+    : '';
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: 200,
@@ -386,6 +455,8 @@ async function gradePractice(nodeLabel, knobitTitle, question, expected, userAns
 Question: "${question}"
 Expected: "${expected}"
 Learner's answer: "${userAnswer}"
+${contentBlock}
+Grade based on whether the learner's answer is consistent with the content above, not on an exact match against "Expected" — "Expected" was generated alongside the question and may itself be imprecise, incomplete, or outdated on a narrow factual detail (e.g. a specific institution name). If the learner's answer reflects genuine understanding of what was actually taught, mark it correct even if it doesn't match "Expected" word for word or names a different specific detail.
 
 Respond with valid JSON, two fields only:
 - "correct": boolean (true if the learner captures the essential idea)
@@ -402,14 +473,15 @@ No markdown fences. Just the JSON object.${langJson(locale)}`,
 async function generateMeaning(nodeLabel, knobitTitle, locale, userId) {
   const msg = await client.messages.create({
     model: SONNET,
-    max_tokens: 180,
+    max_tokens: 300,
     system: TUTOR_SYSTEM,
     messages: [{
       role: 'user',
       content: `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"
 
 Write 2–3 sentences on why this matters in the real world.
-Be concrete: name a profession, product, decision, or daily situation where it directly applies.
+Pick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.
+Keep each sentence short and single-clause — one idea per sentence. Do NOT chain clauses with "because"/"since"/"if...then"/semicolons/dashes into one long compound sentence.
 No "In conclusion" — just the insight.${langText(locale)}`,
     }],
   });
@@ -596,9 +668,9 @@ async function _streamText(config, userId, callType, onChunk) {
 function streamExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, profile, userId, onChunk) {
   let prompt;
   if (byteIndex === 0 || !previousContent) {
-    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nWrite the OPENING explanation (byte 1). Introduce the core concept clearly and simply.\n2–4 sentences. Plain prose — no headings, no bullet points. Plain text only, no HTML tags. Use \\n for line breaks.${profileBlock(profile)}${langText(locale)}`;
+    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nWrite the OPENING explanation (byte 1). Introduce the core concept clearly and simply.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   } else {
-    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nPrevious explanation the learner understood:\n"""\n${previousContent}\n"""\n\nWrite the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase what was already explained.\n2–4 sentences. Plain prose — no headings, no bullet points. Plain text only, no HTML tags. Use \\n for line breaks.${profileBlock(profile)}${langText(locale)}`;
+    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nEverything explained so far, which the learner has already read and understood (may be several paragraphs — this is the full explanation up to this point, not just the last bit):\n"""\n${previousContent}\n"""\n\nWrite the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase anything already covered above.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
   }
   return _streamText({ model: SONNET, max_tokens: 300, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'explain_text', onChunk);
 }
@@ -606,16 +678,16 @@ function streamExplainByteText(nodeLabel, knobitTitle, byteIndex, previousConten
 function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, profile, userId, onChunk) {
   const instructions = {
     rephrase: `The learner did not understand this explanation. Step back further.\nExplain the same concept from first principles — start from something even more basic,\nuse a concrete real-world analogy, and build up slowly.\nDo NOT reuse the same wording. A different angle entirely.`,
-    simpler:  `The learner found this too simplistic.\nRewrite it with professional, expert-level language. Use precise terminology,\na more formal framing, and the kind of depth an expert or researcher would appreciate.\nSame core concept — elevated register.`,
-    complex:  `The learner found this too complex.\nRewrite it using simpler, everyday words. Replace jargon with plain equivalents,\nuse a concrete metaphor or comparison from daily life, and keep sentences short.\nSame core concept — accessible register.`,
+    simpler:  `The learner found this too simplistic.\nRewrite using more precise, formal, expert-level vocabulary and phrasing — elevate the WORDING only.\nSTRICT rules: keep the SAME number of sentences as the original, do not add sentences.\nDo NOT introduce additional concepts, categories, sub-types, or examples beyond what the original already covered.\nSame core idea, same scope, same length — just phrased the way a domain expert would say it.`,
+    complex:  `The learner found this too complex.\nRewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.\nMaximum 3 sentences per paragraph. No jargon — replace every technical term with a plain everyday word.\nUse one concrete real-life example (something a child could picture).\nSame core concept — maximally accessible.`,
   }[mode] || 'Rewrite this explanation from a different angle.';
-  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement paragraph only — 2–4 sentences, no headings.${profileBlock(profile)}${langText(locale)}`;
-  return _streamText({ model: SONNET, max_tokens: 200, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'rephrase', onChunk);
+  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead. Plain text only — no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
+  return _streamText({ model: SONNET, max_tokens: 350, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'rephrase', onChunk);
 }
 
 function streamMeaning(nodeLabel, knobitTitle, locale, userId, onChunk) {
-  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nWrite 2–3 sentences on why this matters in the real world.\nBe concrete: name a profession, product, decision, or daily situation where it directly applies.\nNo "In conclusion" — just the insight.${langText(locale)}`;
-  return _streamText({ model: SONNET, max_tokens: 180, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'meaning', onChunk);
+  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nWrite 2–3 sentences on why this matters in the real world.\nPick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.\nKeep each sentence short and single-clause — one idea per sentence. Do NOT chain clauses with "because"/"since"/"if...then"/semicolons/dashes into one long compound sentence.\nNo "In conclusion" — just the insight.${langText(locale)}`;
+  return _streamText({ model: SONNET, max_tokens: 300, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'meaning', onChunk);
 }
 
 function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, locale, profile, userId, onChunk) {
@@ -695,6 +767,7 @@ module.exports = {
   generateOverview,
   generateKnobits,
   translateKnobitTitles,
+  editTranslatedText,
   generateExplainByteText,
   generateExplainByteVisual,
   generateRephrase,

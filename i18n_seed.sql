@@ -292,6 +292,15 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('th.matched_node',         'en', 'Matched node on map'),
 ('th.level',                'en', 'Level'),
 ('th.match',                'en', 'Match'),
-('th.action',               'en', 'Action')
+('th.action',               'en', 'Action'),
+
+-- Focus timer (learning mode)
+('lm.focus_timer_title',        'en', 'Focus timer'),
+('msg.focus_break_title',       'en', 'Time for a short break'),
+('msg.focus_break_text',        'en', 'Your brain now needs about 10 minutes to defocus — stretching or resting is best for maximum learning efficiency.'),
+('btn.ignore',                  'en', 'Ignore'),
+('settings.focus_timer',        'en', 'Focus timer'),
+('settings.focus_timer_desc',   'en', 'Reminds you to take a short break after a set number of focused learning minutes.'),
+('settings.focus_timer_minutes','en', 'Minutes before a break')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

@@ -32,6 +32,7 @@
   var _autoRetryCount   = 0;
   var _MAX_AUTO_RETRY   = 3;
   var _pendingPractice = null;
+  var _lastDemoBody    = '';   // previous example's body, sent so the next example doesn't repeat it
 
   var _PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
   var MAX_EXPLAIN_BYTES = 6;
@@ -39,6 +40,9 @@
   var _knobitStarted  = false;
   var _streamButtonEl = null;
   var _quitCallback   = null;
+
+  // URLs of visuals already shown in the current knobit — sent to server to avoid duplicates
+  var _seenVisualUrls = [];
 
   /* ─── API helper ──────────────────────────────────────────────── */
   function apiInteract(params) {
@@ -159,6 +163,7 @@
     _knobitStarted = false;
     if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
     _ambientStop();
+    _stopFocusTimer();
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.remove('active');
     // Restore search box — always, whether hidden by learning or test mode
@@ -282,6 +287,139 @@
     _updateAmbientBtn();
   };
 
+  /* ─── Focus timer ─────────────────────────────────────────────── */
+  var _focusInterval    = null;
+  var _breakInterval    = null;
+  var _focusSecondsLeft = 0;
+  var _breakSecondsLeft = 0;
+  var BREAK_SECONDS     = 600; // 10 minutes, fixed
+
+  function _focusTimerEnabled() {
+    // Default: on. Disabled only if user explicitly set 'off'.
+    return !(window._loadedSettings && window._loadedSettings.focus_timer === 'off');
+  }
+
+  function _focusTimerMinutes() {
+    var m = window._loadedSettings && parseInt(window._loadedSettings.focus_timer_minutes, 10);
+    return (m && m > 0) ? m : 20;
+  }
+
+  function _formatMMSS(totalSeconds) {
+    var s = Math.max(0, totalSeconds);
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  // Short two-tone chime, synthesized (no audio asset — Web Audio oscillators).
+  // Browsers create new AudioContexts in a "suspended" state unless one is
+  // created/resumed during a real user gesture; the chime otherwise fires
+  // silently since it's triggered by a setInterval, not a click. So the
+  // context is created once, eagerly, from _startFocusTimer() — which always
+  // runs inside the click-triggered startKnobit() call chain — and reused
+  // (and re-resumed, harmless if already running) here.
+  var _chimeCtx = null;
+  function _primeChimeContext() {
+    if (_chimeCtx) { _chimeCtx.resume().catch(function () {}); return; }
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) _chimeCtx = new Ctx();
+    } catch (e) { /* Web Audio unsupported */ }
+  }
+
+  function _playChime() {
+    if (!_chimeCtx) { _primeChimeContext(); }
+    if (!_chimeCtx) return;
+    try {
+      _chimeCtx.resume().catch(function () {});
+      [523.25, 659.25].forEach(function (freq, i) {
+        var osc  = _chimeCtx.createOscillator();
+        var gain = _chimeCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        var start = _chimeCtx.currentTime + i * 0.18;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.25, start + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
+        osc.connect(gain).connect(_chimeCtx.destination);
+        osc.start(start);
+        osc.stop(start + 0.55);
+      });
+    } catch (e) { /* Web Audio blocked — silently skip the chime */ }
+  }
+
+  function _startFocusTimer() {
+    clearInterval(_focusInterval);
+    clearInterval(_breakInterval);
+    var modal = document.getElementById('focus-break-modal');
+    if (modal) modal.style.display = 'none';
+    var el = document.getElementById('lm-focus-timer');
+    if (!_focusTimerEnabled()) { if (el) el.style.display = 'none'; return; }
+    _primeChimeContext(); // unlock audio now, while still inside the click gesture that led here
+    _focusSecondsLeft = _focusTimerMinutes() * 60;
+    if (el) el.style.display = '';
+    _updateFocusTimerDisplay();
+    _focusInterval = setInterval(function () {
+      _focusSecondsLeft--;
+      _updateFocusTimerDisplay();
+      if (_focusSecondsLeft <= 0) {
+        clearInterval(_focusInterval);
+        _showBreakDialog();
+      }
+    }, 1000);
+  }
+
+  // Called at the start of every knobit. Previously this always hard-reset
+  // the countdown to a fresh N minutes — so a learner moving quickly from
+  // knobit to knobit (each one finishing well under the limit) never
+  // actually reached zero and never got prompted to take a break, since the
+  // clock kept getting wound back before it could run out. Now it only
+  // starts a fresh cycle if one isn't already ticking; an in-progress
+  // countdown carries over across knobit boundaries untouched.
+  function _continueOrStartFocusTimer() {
+    if (_focusInterval) { _primeChimeContext(); return; }
+    _startFocusTimer();
+  }
+
+  function _stopFocusTimer() {
+    clearInterval(_focusInterval);
+    clearInterval(_breakInterval);
+    var el = document.getElementById('lm-focus-timer');
+    if (el) el.style.display = 'none';
+    var modal = document.getElementById('focus-break-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function _updateFocusTimerDisplay() {
+    var el = document.getElementById('lm-focus-timer-text');
+    if (el) el.textContent = _formatMMSS(_focusSecondsLeft);
+  }
+
+  function _showBreakDialog() {
+    var el = document.getElementById('lm-focus-timer');
+    if (el) el.style.display = 'none';
+    var modal = document.getElementById('focus-break-modal');
+    if (modal) modal.style.display = 'flex';
+    _breakSecondsLeft = BREAK_SECONDS;
+    _updateBreakTimerDisplay();
+    _breakInterval = setInterval(function () {
+      _breakSecondsLeft--;
+      _updateBreakTimerDisplay();
+      if (_breakSecondsLeft <= 0) {
+        clearInterval(_breakInterval);
+        _playChime();
+        var m = document.getElementById('focus-break-modal');
+        if (m) m.style.display = 'none';
+        _startFocusTimer();
+      }
+    }, 1000);
+  }
+
+  function _updateBreakTimerDisplay() {
+    var el = document.getElementById('focus-break-countdown');
+    if (el) el.textContent = _formatMMSS(_breakSecondsLeft);
+  }
+
   /* ─── View switching ──────────────────────────────────────────── */
   window.showLmView = function (id) {
     ['lm-path', 'lm-knobit', 'lm-complete'].forEach(function (v) {
@@ -351,6 +489,8 @@
     _demoIdx        = 0;
     _practiceIdx    = 0;
     _pendingPractice = null;
+    _lastDemoBody    = '';
+    _seenVisualUrls  = [];
 
     var stream = document.getElementById('kn-stream');
     if (stream) stream.innerHTML = '';
@@ -362,6 +502,7 @@
 
     _setButtonRow('');
     _appendPhaseDivider(t('phase.step_1'));
+    _continueOrStartFocusTimer();
     _fetchInitialExplain();
   };
 
@@ -469,7 +610,12 @@
       }
     }
 
-    var lastContent = _getLastContent(['byte']);
+    // Advancing to a genuinely new byte needs the FULL explanation so far, not
+    // just the single most recent byte — otherwise the model loses track of
+    // what's already been covered a few bytes in and starts repeating or
+    // contradicting itself. Rephrasing the current byte only needs that one
+    // byte's own text (it's rewriting it, not building on it).
+    var lastContent = opt === 'ok' ? _getAllContent(['byte']) : _getLastContent(['byte']);
     // action mapping: 'ok' → advance (undefined), 'no' → 'rephrase', 'simpler'/'complex' → pass through
     var action = opt === 'ok' ? undefined : (opt === 'no' ? 'rephrase' : opt);
     var wantVisual = (opt === 'ok');
@@ -502,7 +648,7 @@
   function _fetchDemo() {
     _retryFn = _fetchDemo;
     _showLoadingBlock();
-    apiInteract({ phase: 'demonstrate', byteIndex: _demoIdx })
+    apiInteract({ phase: 'demonstrate', byteIndex: _demoIdx, previousExample: _lastDemoBody })
       .then(function (d) {
         _retryFn = null;
         _removeLoadingBlock();
@@ -511,6 +657,7 @@
                    _escHtml(ex.body || '') +
                    (ex.whatIDid ? '<br><em class="lm-demo-what-i-did">What I did: ' + _escHtml(ex.whatIDid) + '</em>' : '');
         _appendBlock({ type: 'example', rawHtml: html });
+        _lastDemoBody = ex.body || '';
         var rowType = _demoIdx === 0 ? 'demo-1' : _demoIdx === 1 ? 'demo-2' : 'demo-3';
         _setButtonRow(rowType);
       }).catch(_onApiError);
@@ -758,7 +905,7 @@
     s.insertBefore(loaderEl, _streamButtonEl || null);
     _scrollStream();
 
-    apiInteract({ phase: 'explain', action: 'visual', original: byteText })
+    apiInteract({ phase: 'explain', action: 'visual', original: byteText, seenUrls: _seenVisualUrls.slice() })
       .then(function (d) {
         if (!loaderEl.parentNode) return;
         var v = d && d.visual;
@@ -777,6 +924,7 @@
           if (html) {
             loaderEl.className = 'block block-visual';
             loaderEl.innerHTML = html;
+            _seenVisualUrls.push(v.url);
           } else {
             loaderEl.parentNode.removeChild(loaderEl);
           }
@@ -821,6 +969,19 @@
       }
     }
     return '';
+  }
+
+  // Full accumulated content of every block of the given type(s), in order —
+  // used when advancing to a new byte so the model sees everything already
+  // explained (not just the last byte), and doesn't lose track or repeat itself.
+  function _getAllContent(types) {
+    var parts = [];
+    for (var i = 0; i < _streamBlocks.length; i++) {
+      if (!types || types.indexOf(_streamBlocks[i].type) !== -1) {
+        parts.push(_streamBlocks[i].content || '');
+      }
+    }
+    return parts.join('\n\n');
   }
 
   function _scrollStream() {
@@ -912,6 +1073,7 @@
       var modal = document.getElementById('quit-knobit-modal');
       if (modal) modal.style.display = 'none';
       _knobitStarted = false;
+      _stopFocusTimer();
       if (_quitCallback) { _quitCallback(); _quitCallback = null; }
     });
 
@@ -920,6 +1082,11 @@
       var modal = document.getElementById('quit-knobit-modal');
       if (modal) modal.style.display = 'none';
       _quitCallback = null;
+    });
+
+    var breakIgnore = document.getElementById('focus-break-ignore');
+    if (breakIgnore) breakIgnore.addEventListener('click', function () {
+      _startFocusTimer(); // resets and restarts the focus cycle
     });
 
     window.addEventListener('beforeunload', function (e) {

@@ -81,6 +81,23 @@
 
     <div class="settings-row">
       <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="settings.focus_timer">Focus timer</div>
+        <div class="settings-row-desc" data-i18n="settings.focus_timer_desc">Reminds you to take a short break after a set number of focused learning minutes.</div>
+      </div>
+      <button class="st-toggle on" id="focus-timer-toggle" aria-label="Toggle focus timer">
+        <div class="st-toggle-thumb"></div>
+      </button>
+    </div>
+
+    <div class="settings-row" id="focus-timer-minutes-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="settings.focus_timer_minutes">Minutes before a break</div>
+      </div>
+      <input type="number" class="sf-input st-number-input" id="focus-timer-minutes-input" min="5" max="90" step="5" value="20">
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
         <div class="settings-row-label" data-i18n="settings.font_size">Font size</div>
         <div class="settings-row-desc" data-i18n="settings.font_size_desc">Adjust text size across the app.</div>
       </div>
@@ -522,6 +539,46 @@
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key: 'ambient_sound', value: isOn ? 'on' : 'off' }),
+    });
+  });
+
+  /* ── Focus timer toggle + minutes ── */
+  const focusToggle       = document.getElementById('focus-timer-toggle');
+  const focusMinutesRow   = document.getElementById('focus-timer-minutes-row');
+  const focusMinutesInput = document.getElementById('focus-timer-minutes-input');
+
+  function _applyFocusTimerToUI(settings) {
+    if (!settings) return;
+    focusToggle.classList.toggle('on', settings.focus_timer !== 'off');
+    if (settings.focus_timer_minutes) focusMinutesInput.value = settings.focus_timer_minutes;
+    focusMinutesRow.style.display = focusToggle.classList.contains('on') ? '' : 'none';
+  }
+
+  if (window._loadedSettings) {
+    _applyFocusTimerToUI(window._loadedSettings);
+  } else {
+    document.addEventListener('DOMContentLoaded', function () {
+      _applyFocusTimerToUI(window._loadedSettings);
+    });
+  }
+
+  focusToggle.addEventListener('click', function () {
+    const isOn = this.classList.toggle('on');
+    focusMinutesRow.style.display = isOn ? '' : 'none';
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'focus_timer', value: isOn ? 'on' : 'off' }),
+    });
+  });
+
+  focusMinutesInput.addEventListener('change', function () {
+    const v = Math.max(5, Math.min(90, parseInt(this.value, 10) || 20));
+    this.value = v;
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'focus_timer_minutes', value: String(v) }),
     });
   });
 </script>

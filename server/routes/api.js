@@ -413,20 +413,110 @@ router.post('/nodes/:id/learn', async (req, res) => {
 });
 
 // ── SSE helper: set headers and run an llm streaming call ───────────────────
-async function _runStream(streamFn, res) {
+async function _runStream(streamFn, res, onDone) {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
-  const write = (chunk) => res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n');
+  // Keepalive: Apache buffers SSE; send every 3s so it sees traffic before timing out.
+  const keepalive = setInterval(() => { try { res.write(': ping\n\n'); } catch (_) {} }, 3000);
+  let full = '';
+  const write = (chunk) => { full += chunk; try { res.write('data: ' + JSON.stringify({ t: chunk }) + '\n\n'); } catch (_) {} };
   try {
     await streamFn(write);
+    if (onDone) await onDone(full);
   } catch (err) {
     console.error('[stream]', err.message);
-    res.write('data: ' + JSON.stringify({ error: true }) + '\n\n');
+    try { res.write('data: ' + JSON.stringify({ error: true }) + '\n\n'); } catch (_) {}
   }
-  res.write('data: [DONE]\n\n');
-  res.end();
+  clearInterval(keepalive);
+  try { res.write('data: [DONE]\n\n'); res.end(); } catch (_) {}
+}
+
+// ── Fake-stream: paces an already-complete string through the SSE `write`
+// callback in small word-chunks with a short delay, so the client's real-time
+// chunk-rendering code (built for genuine token streaming) works unchanged for
+// text that was actually generated in one shot (e.g. after a second-pass edit).
+async function _fakeStreamText(text, write, res) {
+  const words = text.split(/(\s+)/);
+  let buf = '', count = 0;
+  for (const w of words) {
+    if (res.writableEnded || res.destroyed) return;
+    buf += w;
+    if (/\S/.test(w)) count++;
+    if (count >= 3 || w === words[words.length - 1]) {
+      write(buf); buf = ''; count = 0;
+      await new Promise((r) => setTimeout(r, 25 + Math.random() * 20));
+    }
+  }
+}
+
+// ── Builds a streamFn for a non-English locale: generate (non-streaming) →
+// second-pass edit → fake-stream the corrected text through the SSE pipe.
+// generateFn is a zero-arg async function returning the raw generated text.
+function _editedStreamFn(generateFn, locale, uid, res) {
+  return async (write) => {
+    const raw = await generateFn();
+    const { text } = await llm.editTranslatedText({ text: raw }, locale, uid);
+    await _fakeStreamText(text, write, res);
+  };
+}
+
+// Reconstructs what this learner has actually been taught so far in this knobit
+// (explain bytes + demonstrate example bodies), so practice questions/grading can
+// be grounded in the real lesson content instead of independently reinvented.
+async function _getLearnedContent(passportId, knobitId) {
+  if (!passportId) return '';
+  const [rows] = await db.execute(
+    `SELECT block_type, content FROM knobit_interactions
+     WHERE passport_id = ? AND knobit_id = ? AND phase IN ('explain', 'demonstrate')
+     ORDER BY id`,
+    [passportId, knobitId]
+  );
+  const parts = [];
+  for (const row of rows) {
+    if (row.block_type === 'byte') {
+      parts.push(row.content);
+    } else if (row.block_type === 'example') {
+      try {
+        const ex = JSON.parse(row.content || '{}');
+        if (ex.body) parts.push(ex.body);
+      } catch { /* malformed example JSON — skip, not worth failing the request over */ }
+    }
+  }
+  return parts.join('\n\n');
+}
+
+// Practice problems already asked in this knobit — generatePractice() has no
+// other way to know it already asked something nearly identical for an
+// earlier problemIndex (e.g. "straightforward" vs "moderate" difficulty on
+// the same fact tends to produce near-duplicate questions otherwise).
+async function _getPriorPracticeQuestions(passportId, knobitId) {
+  if (!passportId) return [];
+  const [rows] = await db.execute(
+    `SELECT content FROM knobit_interactions
+     WHERE passport_id = ? AND knobit_id = ? AND phase = 'practice' AND block_type = 'practice'
+     ORDER BY id`,
+    [passportId, knobitId]
+  );
+  const questions = [];
+  for (const row of rows) {
+    try {
+      const p = JSON.parse(row.content || '{}');
+      if (p.question) questions.push(p.question);
+    } catch { /* malformed practice JSON — skip */ }
+  }
+  return questions;
+}
+
+// ── Persist a knobit lesson block for mid-lesson resume/grounding ───────────
+async function _saveInteraction(passportId, knobitId, phase, blockType, blockIndex, choiceMade, answerText, content) {
+  if (!passportId) return;
+  await db.execute(
+    `INSERT INTO knobit_interactions (passport_id, knobit_id, phase, block_type, block_index, choice_made, answer_text, content)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [passportId, knobitId, phase, blockType, blockIndex, choiceMade || null, answerText || null, content]
+  ).catch((err) => console.error('[knobit_interactions]', err.message));
 }
 
 // ── LLM learning interactions ────────────────────────────────────────────────
@@ -435,7 +525,7 @@ router.post('/learn/interact', async (req, res) => {
     knobitId, phase, action,
     byteIndex = 0, answer, priorChoices = [],
     original = '', question = '', expected = '', userAnswer = '',
-    context = '',
+    context = '', seenUrls = [], previousExample = '',
     stream: wantStream = false,
   } = req.body;
 
@@ -454,54 +544,109 @@ router.post('/learn/interact', async (req, res) => {
     ]);
 
     const uid = req.user?.id;
+    const passportId = req.user?.passport_id;
 
     // ── Streaming branch: text-only phases ──────────────────────────────────
     if (wantStream) {
-      let streamFn;
+      let streamFn, onDone;
       if (phase === 'explain' && action !== 'visual') {
-        if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
+        const isRephrase = action === 'rephrase' || action === 'simpler' || action === 'complex';
+        const generateFn = isRephrase
+          ? () => llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid)
+          : () => llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid);
+        if (locale !== 'en') {
+          streamFn = _editedStreamFn(generateFn, locale, uid, res);
+        } else if (isRephrase) {
           streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, profile, uid, cb);
         } else {
           streamFn = (cb) => llm.streamExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid, cb);
         }
+        onDone = (full) => _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, action || 'ok', null, full);
       } else if (phase === 'meaning') {
-        if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
+        const isRephrase = action === 'rephrase' || action === 'simpler' || action === 'complex';
+        const generateFn = isRephrase
+          ? () => llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid)
+          : () => llm.generateMeaning(nodeLabel, title, locale, uid);
+        if (locale !== 'en') {
+          streamFn = _editedStreamFn(generateFn, locale, uid, res);
+        } else if (isRephrase) {
           streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, profile, uid, cb);
         } else {
           streamFn = (cb) => llm.streamMeaning(nodeLabel, title, locale, uid, cb);
         }
+        onDone = (full) => _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, action || 'ok', null, full);
       } else if (phase === 'ask') {
-        streamFn = (cb) => llm.streamAnswerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid, cb);
+        const generateFn = () => llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid);
+        if (locale !== 'en') {
+          streamFn = _editedStreamFn(generateFn, locale, uid, res);
+        } else {
+          streamFn = (cb) => llm.streamAnswerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid, cb);
+        }
       }
-      if (streamFn) return _runStream(streamFn, res);
+      if (streamFn) return _runStream(streamFn, res, onDone);
     }
 
     let result;
 
     if (phase === 'explain') {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
-        result = { text: await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid) };
+        let text = await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid);
+        if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+        result = { text };
+        await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, action, null, result.text);
       } else if (action === 'visual') {
-        result = await llm.generateExplainByteVisual(nodeLabel, title, original, locale, uid);
+        const validUrls = Array.isArray(seenUrls) ? seenUrls.filter(u => typeof u === 'string').slice(0, 20) : [];
+        result = await llm.generateExplainByteVisual(nodeLabel, title, original, locale, uid, validUrls);
       } else {
-        result = { text: await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid) };
+        let text = await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid);
+        if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+        result = { text };
+        await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, 'ok', null, result.text);
       }
     } else if (phase === 'demonstrate') {
-      result = { demonstrate: await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid) };
+      let demonstrate = await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid, previousExample);
+      if (locale !== 'en') {
+        const edited = await llm.editTranslatedText({ body: demonstrate.body, whatIDid: demonstrate.whatIDid }, locale, uid);
+        demonstrate = { ...demonstrate, ...edited };
+      }
+      result = { demonstrate };
+      await _saveInteraction(passportId, knobitId, 'demonstrate', 'example', byteIndex, null, null, JSON.stringify(result.demonstrate));
     } else if (phase === 'practice') {
+      const learnedContent = await _getLearnedContent(passportId, knobitId);
       if (action === 'grade') {
-        result = { grade: await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid) };
+        let grade = await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid, learnedContent);
+        if (locale !== 'en') {
+          const edited = await llm.editTranslatedText({ feedback: grade.feedback }, locale, uid);
+          grade = { ...grade, ...edited };
+        }
+        result = { grade };
+        await _saveInteraction(passportId, knobitId, 'practice', 'feedback', byteIndex, result.grade.correct ? 'correct' : 'incorrect', userAnswer, JSON.stringify(result.grade));
       } else {
-        result = { practice: await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid) };
+        const priorQuestions = await _getPriorPracticeQuestions(passportId, knobitId);
+        let practice = await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid, learnedContent, priorQuestions);
+        if (locale !== 'en') {
+          const edited = await llm.editTranslatedText({ question: practice.question }, locale, uid);
+          practice = { ...practice, ...edited };
+        }
+        result = { practice };
+        await _saveInteraction(passportId, knobitId, 'practice', 'practice', byteIndex, null, null, JSON.stringify(result.practice));
       }
     } else if (phase === 'meaning') {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
-        result = { text: await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid) };
+        let text = await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid);
+        if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+        result = { text };
+        await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, action, null, result.text);
       } else {
-        result = { text: await llm.generateMeaning(nodeLabel, title, locale, uid) };
+        let text = await llm.generateMeaning(nodeLabel, title, locale, uid);
+        if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+        result = { text };
+        await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, 'ok', null, result.text);
       }
     } else if (phase === 'ask') {
-      result = { text: await llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid) };
+      let text = await llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid);
+      if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
+      result = { text };
     } else {
       return res.status(400).json({ error: `Unknown phase: ${phase}` });
     }
@@ -526,6 +671,10 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
        ON DUPLICATE KEY UPDATE phase_reached = 'done', completed_at = NOW()`,
       [passportId, knobitId]
     );
+    await db.execute(
+      'DELETE FROM knobit_interactions WHERE passport_id = ? AND knobit_id = ?',
+      [passportId, knobitId]
+    ).catch(() => {});
 
     // Recompute node knowledge %
     const [krow] = await db.execute(
