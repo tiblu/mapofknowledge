@@ -517,14 +517,15 @@ function init(data, emergentData) {
 
         try {
           const r = await fetch(`/api/nodes/${d.id}/learn`, { method: 'POST' });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
           const { knobits } = await r.json();
+          if (!Array.isArray(knobits) || !knobits.length) throw new Error('No knobits returned');
           restore();
           closeSidebar();
           window.Learn.open(d, crumb, knobits);
         } catch (err) {
           restore();
-          closeSidebar();
-          window.Learn.open(d, crumb, null);
+          alert(t('msg.connection_error'));
         }
       };
     }
@@ -1459,9 +1460,12 @@ function init(data, emergentData) {
             return (domain ? domain.label : '') + (mid.length ? ' › ' + mid.join(' › ') : '');
           }());
           fetch(`/api/nodes/${nodeId}/learn`, { method: 'POST' })
-            .then(r => r.json())
-            .then(({ knobits }) => { window.Learn.open(node, crumb, knobits); })
-            .catch(() => { window.Learn.open(node, crumb, null); });
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(({ knobits }) => {
+              if (!Array.isArray(knobits) || !knobits.length) throw new Error('No knobits returned');
+              window.Learn.open(node, crumb, knobits);
+            })
+            .catch(() => { alert(t('msg.connection_error')); });
         });
 
         // Collapse toggle
