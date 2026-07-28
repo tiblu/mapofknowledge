@@ -368,7 +368,7 @@ router.post('/nodes/:id/learn', async (req, res) => {
       // Generate in English and persist
       const domain     = await getNodeDomain(node.db_id);
       const breadcrumb = await getNodeBreadcrumb(node.db_id);
-      const generated  = await llm.generateKnobits(node.label, domain, breadcrumb);
+      const generated  = await llm.generateKnobits(node.label, domain, breadcrumb, req.user?.id);
       for (const k of generated) {
         await db.execute(
           'INSERT INTO knobits (node_id, sequence, locale, title) VALUES (?, ?, ?, ?)',
@@ -392,7 +392,7 @@ router.post('/nodes/:id/learn', async (req, res) => {
 
     // Translate titles for non-English locales
     if (locale !== 'en') {
-      knobits = await llm.translateKnobitTitles(knobits, locale);
+      knobits = await llm.translateKnobitTitles(knobits, locale, req.user?.id);
     }
 
     // Attach progress: mark which knobits are already done

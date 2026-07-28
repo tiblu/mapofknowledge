@@ -159,7 +159,7 @@ No headings, no bullet points — just the 2 sentences.${langText(locale)}`,
 }
 
 // ── Knobit generation ─────────────────────────────────────────────────────────
-async function generateKnobits(nodeLabel, domain, breadcrumb) {
+async function generateKnobits(nodeLabel, domain, breadcrumb, userId) {
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: 600,
@@ -184,11 +184,12 @@ Return a JSON array. Each object has exactly:
 Typically 5–12 knobits, progressing from foundational to nuanced.`,
     }],
   });
+  _logUsage(userId, 'knobits', msg.usage, SONNET);
   return parseJSON(msg.content[0].text.trim());
 }
 
 // ── Knobit title translation ──────────────────────────────────────────────────
-async function translateKnobitTitles(knobits, targetLocale) {
+async function translateKnobitTitles(knobits, targetLocale, userId) {
   const langName = LANG_NAMES[targetLocale] || targetLocale;
   const msg = await client.messages.create({
     model: HAIKU,
@@ -203,6 +204,7 @@ Return a JSON array of strings in the same order as the input.
 ${JSON.stringify(knobits.map(k => k.title))}`,
     }],
   });
+  _logUsage(userId, 'translate_titles', msg.usage, HAIKU);
   const translated = parseJSON(msg.content[0].text.trim());
   return knobits.map((k, i) => ({ ...k, title: (Array.isArray(translated) && translated[i]) || k.title }));
 }
