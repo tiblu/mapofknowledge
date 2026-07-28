@@ -359,6 +359,16 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('verify.confirmed',             'en', 'Email address verified!'),
 ('btn.resend_verification',      'en', 'Resend link'),
 ('msg.sending',                  'en', 'Sending...'),
-('msg.sent',                     'en', 'Sent!')
+('msg.sent',                     'en', 'Sent!'),
+
+-- Custom-map manual node-by-node builder (2026-07-29, ported from KnobitMap):
+-- second "Add nodes" tab alongside file upload, same /api/subsets pipeline.
+('cm.method_upload',             'en', 'Upload file'),
+('cm.method_search',             'en', 'Add nodes'),
+('cm.search_hint',               'en', 'Search for a topic on the map and select it to add it here, one node at a time.'),
+('placeholder.cm_search',        'en', 'Search for a topic…'),
+('msg.add_one_node',             'en', 'Please add at least one node.'),
+('msg.upload_file_first',        'en', 'Please upload a JSON or CSV file first.'),
+('btn.remove',                   'en', 'Remove')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
