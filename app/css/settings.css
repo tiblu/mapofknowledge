@@ -60,6 +60,12 @@ body {
   display: flex; flex: 0 0 calc(25% - 8px);
   align-items: center; justify-content: center;
 }
+/* Scoped to this one input (not the shared .st-number-input class) —
+   nudged right 5% and narrowed 10% within its column. */
+#focus-timer-minutes-input {
+  width: 65px; /* 10% narrower than .st-number-input's base 72px */
+  margin-left: 5%;
+}
 #focus-timer-row.ft-expanded > .settings-row-toggle-col {
   flex: 0 0 calc(25% - 8px);
   display: flex; justify-content: flex-end;
