@@ -225,7 +225,10 @@
   }
 
   function _markDone(done) {
-    localStorage.setItem('kq_tour_done', done ? '1' : '0');
+    // Server-side only (per-user, via the authenticated session) — not
+    // localStorage, which is scoped to the browser, not the account. A
+    // shared-browser localStorage flag would silently block the tour for
+    // every other account that ever logs in on that same browser/device.
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -272,8 +275,7 @@
       setTimeout(function () { window.Tour.start(); }, 1800);
       return;
     }
-    // Already completed
-    if (localStorage.getItem('kq_tour_done') === '1') return;
+    // Already completed — per-user server setting only, see _markDone.
     if (settings && settings.tour_completed === '1') return;
     // First visit — start after map settles
     setTimeout(function () { window.Tour.start(); }, 2200);
