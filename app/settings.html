@@ -79,28 +79,20 @@
 
     <div class="settings-row">
       <div class="settings-row-text">
-        <div class="settings-row-label" data-i18n="settings.ambient_sound">Café ambience</div>
-        <div class="settings-row-desc" data-i18n="settings.ambient_sound_desc">Plays soft background café sounds while learning to help with focus.</div>
+        <div class="settings-row-label" data-i18n="settings.map_animation">Map animation</div>
+        <div class="settings-row-desc" data-i18n="settings.animation_desc">How much the knowledge graph moves.</div>
       </div>
-      <button class="st-toggle on" id="ambient-toggle" aria-label="Toggle café ambience">
-        <div class="st-toggle-thumb"></div>
-      </button>
+      <div class="st-picker" id="animation-picker">
+        <button class="st-picker-btn" data-value="lively" data-i18n="settings.anim_lively">Lively</button>
+        <button class="st-picker-btn active" data-value="moderate" data-i18n="settings.anim_moderate">Moderate</button>
+        <button class="st-picker-btn" data-value="static" data-i18n="settings.anim_static">Static</button>
+      </div>
     </div>
+  </div>
 
-    <div class="settings-row" id="focus-timer-row">
-      <div class="settings-row-text">
-        <div class="settings-row-label" data-i18n="settings.focus_timer">Focus timer</div>
-        <div class="settings-row-desc" data-i18n="settings.focus_timer_desc">Reminds you to take a short break after a set number of focused learning minutes.</div>
-      </div>
-      <div class="settings-row-controls" id="focus-timer-minutes-row">
-        <input type="number" class="sf-input st-number-input" id="focus-timer-minutes-input" min="5" max="90" step="5" value="20">
-      </div>
-      <div class="settings-row-toggle-col">
-        <button class="st-toggle on" id="focus-timer-toggle" aria-label="Toggle focus timer">
-          <div class="st-toggle-thumb"></div>
-        </button>
-      </div>
-    </div>
+  <!-- APPEARANCE -->
+  <div class="settings-section">
+    <div class="settings-section-label" data-i18n="settings.appearance">Appearance</div>
 
     <div class="settings-row">
       <div class="settings-row-text">
@@ -113,33 +105,6 @@
         <button class="st-picker-btn" data-value="large" data-i18n="settings.size_large">Large</button>
       </div>
     </div>
-
-    <div class="settings-row">
-      <div class="settings-row-text">
-        <div class="settings-row-label" data-i18n="settings.map_animation">Map animation</div>
-        <div class="settings-row-desc" data-i18n="settings.animation_desc">How much the knowledge graph moves.</div>
-      </div>
-      <div class="st-picker" id="animation-picker">
-        <button class="st-picker-btn" data-value="lively" data-i18n="settings.anim_lively">Lively</button>
-        <button class="st-picker-btn active" data-value="moderate" data-i18n="settings.anim_moderate">Moderate</button>
-        <button class="st-picker-btn" data-value="static" data-i18n="settings.anim_static">Static</button>
-      </div>
-    </div>
-    <div class="settings-row">
-      <div class="settings-row-text">
-        <div class="settings-row-label" data-i18n="settings.guided_tour">Guided tour</div>
-        <div class="settings-row-desc" data-i18n="settings.tour_desc">Replay the introduction to Map of Knowledge.</div>
-      </div>
-      <button class="settings-save-btn settings-save-btn-inline" data-i18n="btn.restart_tour"
-        onclick="localStorage.setItem('kq_force_tour','1');window.location='index.html'">
-        Restart tour
-      </button>
-    </div>
-  </div>
-
-  <!-- APPEARANCE -->
-  <div class="settings-section">
-    <div class="settings-section-label" data-i18n="settings.appearance">Appearance</div>
 
     <div class="settings-row settings-row-column">
       <div class="settings-row-label" data-i18n="settings.colour_palette">Colour palette</div>
@@ -175,6 +140,36 @@
             <span style="background:#0A0A0A"></span>
           </div>
           <span class="st-palette-name" data-i18n="palette.candystore">Candystore</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ATTENTION MANAGEMENT -->
+  <div class="settings-section">
+    <div class="settings-section-label" data-i18n="settings.attention_management">Attention Management</div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="settings.ambient_sound">Café ambience</div>
+        <div class="settings-row-desc" data-i18n="settings.ambient_sound_desc">Plays soft background café sounds while learning to help with focus.</div>
+      </div>
+      <button class="st-toggle on" id="ambient-toggle" aria-label="Toggle café ambience">
+        <div class="st-toggle-thumb"></div>
+      </button>
+    </div>
+
+    <div class="settings-row" id="focus-timer-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="settings.focus_timer">Focus timer</div>
+        <div class="settings-row-desc" data-i18n="settings.focus_timer_desc">Reminds you to take a short break after a set number of focused learning minutes.</div>
+      </div>
+      <div class="settings-row-controls" id="focus-timer-minutes-row">
+        <input type="number" class="sf-input st-number-input" id="focus-timer-minutes-input" min="5" max="90" step="5" value="20">
+      </div>
+      <div class="settings-row-toggle-col">
+        <button class="st-toggle on" id="focus-timer-toggle" aria-label="Toggle focus timer">
+          <div class="st-toggle-thumb"></div>
         </button>
       </div>
     </div>

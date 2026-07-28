@@ -341,6 +341,11 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.download',                'en', 'Download'),
 
 -- Nav menu reorder (added 2026-07-28): new "Map" item, back to the map from any page
-('nav.map',                     'en', 'Map')
+('nav.map',                     'en', 'Map'),
+
+-- Settings reorganization (2026-07-28): Font size -> Appearance, new Attention
+-- Management section (Café ambience + Focus timer), Guided tour row removed
+-- (replayable from Help page's "Take the tour" card instead)
+('settings.attention_management', 'en', 'Attention Management')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
