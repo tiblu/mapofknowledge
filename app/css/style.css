@@ -555,6 +555,25 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 .sb-learn-btn:active { transform: translateY(0); }
 .sb-learn-btn:disabled { cursor: default; opacity: 1; transform: none; }
 
+/* Inline "Learn this" failure — replaces a native alert() */
+.sb-learn-error {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--i15);
+  background: var(--i04);
+  color: var(--c3);
+  font-size: 12.5px; line-height: 1.5;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.sb-learn-error-retry {
+  flex-shrink: 0;
+  padding: 3px 11px; border-radius: 5px; border: 1px solid var(--i25);
+  background: var(--i08); color: var(--c2); font-size: 12px; cursor: pointer;
+  font-family: inherit;
+}
+.sb-learn-error-retry:hover { background: var(--i15); }
+
 /* Inactive hint below Learn/Test buttons */
 .sb-inactive-hint {
   font-size: 11.5px; color: var(--c6); text-align: center;

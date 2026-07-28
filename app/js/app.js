@@ -498,12 +498,19 @@ function init(data, emergentData) {
     sidebar.style.background = nodeGradient(d.color);
 
     // Wire "Learn this" button to open learning mode for this node
-    const learnBtn = document.querySelector(".sb-learn-btn");
+    const learnBtn      = document.querySelector(".sb-learn-btn");
+    const learnErrorEl   = document.getElementById("sb-learn-error");
+    const learnErrorText = document.getElementById("sb-learn-error-text");
+    const learnErrorRetry = document.getElementById("sb-learn-error-retry");
+    if (learnErrorEl) learnErrorEl.style.display = 'none';
+
     if (learnBtn) {
       const crumb = (domainNode ? domainNode.label : "") +
         (crumbParts.length ? " › " + crumbParts.join(" › ") : "");
-      learnBtn.onclick = async function () {
+
+      const attemptLearn = async function () {
         if (d.level !== 5) return;
+        if (learnErrorEl) learnErrorEl.style.display = 'none';
 
         // Instant feedback — API can take several seconds on first visit
         const originalHTML = learnBtn.innerHTML;
@@ -528,9 +535,15 @@ function init(data, emergentData) {
           window.Learn.open(d, crumb, knobits);
         } catch (err) {
           restore();
-          alert(t('msg.connection_error'));
+          if (learnErrorEl && learnErrorText) {
+            learnErrorText.textContent = t('msg.connection_error');
+            learnErrorEl.style.display = 'flex';
+          }
         }
       };
+
+      learnBtn.onclick = attemptLearn;
+      if (learnErrorRetry) learnErrorRetry.onclick = attemptLearn;
     }
 
     sidebar.classList.add("open");

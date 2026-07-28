@@ -1,11 +1,22 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const https     = require('https');
 const db        = require('../db');
 
 // maxRetries: the SDK's built-in retry (network errors, 408/409/429/5xx) covers
 // every non-streaming call here. It does NOT cover a stream that dies mid-flight
 // (see _streamText below for that case) — a stream can't be safely resumed once
 // partial output has already been consumed.
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 3 });
+//
+// keepAlive: false — pooled/reused connections to api.anthropic.com from this
+// zone.ee host intermittently die mid-response ("Premature close"), recurring
+// across many days in pm2 logs on both this project and KnobitMap (same
+// symptom, fixed there the same way 2026-07-xx). A fresh connection per
+// request avoids the reuse entirely.
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  maxRetries: 3,
+  httpAgent: new https.Agent({ keepAlive: false }),
+});
 
 function _logUsage(userId, callType, usage, model) {
   if (!userId || !usage) return;
