@@ -23,6 +23,13 @@ const server = app.listen(target, () => {
 // for that node) has gone stale. Dedup mirrors KnobitMap's: one
 // continue_learning notification per user per 24h, even if multiple nodes
 // qualify in the same run.
+//
+// source != 'estimated' excludes updateAncestorKnowledge's rolled-up
+// aggregate rows on L1-L4 ancestors (bug found 2026-07-29: without this,
+// e.g. "Mathematics" (L1) would get reminded about because some L5
+// descendant's progress rolls up an estimated % onto it too). Only rows
+// written directly for the node the learner actually clicked "Learn this"
+// on (currently L5 only, source 'tested' or 'self_reported') qualify.
 const db = require('./db');
 const { notify } = require('./services/notifications');
 setInterval(async () => {
@@ -39,6 +46,7 @@ setInterval(async () => {
       LEFT JOIN node_translations tr
         ON tr.node_external_id = n.external_id AND tr.locale = COALESCE(us.value, 'en')
       WHERE unk.percentage > 0 AND unk.percentage < 100
+        AND unk.source != 'estimated'
         AND unk.updated_at < DATE_SUB(NOW(), INTERVAL 48 HOUR)
         AND NOT EXISTS (
           SELECT 1 FROM notifications

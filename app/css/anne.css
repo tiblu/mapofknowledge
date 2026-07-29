@@ -4,7 +4,7 @@
    palette.css custom properties, already loaded on every page. */
 
 #anne-widget {
-  position: fixed; bottom: 24px; right: 20px;
+  position: fixed; bottom: 24px; right: 90px;
   z-index: 600;
 }
 #anne-avatar {
