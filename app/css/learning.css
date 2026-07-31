@@ -854,9 +854,10 @@
   margin-bottom: 4px;
 }
 
-/* ── Quit confirmation modals ── */
+/* ── Quit confirmation / download-offer modals ── */
 #quit-knobit-modal,
-#quit-test-modal {
+#quit-test-modal,
+#knobit-download-modal {
   position: fixed;
   inset: 0;
   z-index: 400;
