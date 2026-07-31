@@ -30,6 +30,16 @@ const server = app.listen(target, () => {
 // descendant's progress rolls up an estimated % onto it too). Only rows
 // written directly for the node the learner actually clicked "Learn this"
 // on (currently L5 only, source 'tested' or 'self_reported') qualify.
+//
+// Bug found 2026-07-31: 'tested' is written by TWO unrelated things —
+// /learn/knobit/:id/complete (real lesson progress: % of that node's
+// knobits done) and the Q4 diagnostic-test route (finalScore, no lesson
+// activity at all). Both share the same source value, so a node that was
+// only ever tested (never opened via "Learn this") could still land
+// between 0-100% and trigger this reminder. The EXISTS clause below
+// requires an actual knobit_progress row for one of the node's knobits —
+// something only real lesson engagement ever creates — to tell the two
+// apart.
 const db = require('./db');
 const { notify } = require('./services/notifications');
 setInterval(async () => {
@@ -48,6 +58,11 @@ setInterval(async () => {
       WHERE unk.percentage > 0 AND unk.percentage < 100
         AND unk.source != 'estimated'
         AND unk.updated_at < DATE_SUB(NOW(), INTERVAL 48 HOUR)
+        AND EXISTS (
+          SELECT 1 FROM knobit_progress kp
+          JOIN knobits k ON kp.knobit_id = k.id
+          WHERE kp.passport_id = unk.passport_id AND k.node_id = n.id
+        )
         AND NOT EXISTS (
           SELECT 1 FROM notifications
           WHERE user_id = u.id AND type = 'continue_learning'
