@@ -53,7 +53,6 @@
   // URLs of visuals already shown in the current knobit — sent to server to avoid duplicates
   var _seenVisualUrls = [];
 
-  var _celebrateToastTimer = null;
   var CONFETTI_COLORS = ['#5E9052', '#8BAD7E', '#C4826A', '#E0B84D', '#6B9BD1'];
 
   /* ─── API helper ──────────────────────────────────────────────── */
@@ -984,10 +983,14 @@
   function _showCelebrateToast(text) {
     var el = document.getElementById('lm-celebrate-toast');
     if (!el) return;
-    el.textContent = text;
+    var textEl = el.querySelector('.lm-celebrate-text');
+    if (textEl) textEl.textContent = text;
+    // Restart the rise-and-fade animation even if a prior one is still mid-play
+    // (finishing knobits back-to-back quickly) — re-adding a class that's
+    // already present doesn't retrigger a CSS animation on its own.
+    el.classList.remove('show');
+    void el.offsetWidth;
     el.classList.add('show');
-    clearTimeout(_celebrateToastTimer);
-    _celebrateToastTimer = setTimeout(function () { el.classList.remove('show'); }, 1800);
   }
 
   function _fireConfettiBurst(item) {

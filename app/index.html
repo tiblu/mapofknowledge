@@ -461,10 +461,17 @@
        fullscreen element's subtree are never painted while it's active,
        regardless of position:fixed/z-index. -->
 
-  <!-- Per-knobit completion toast (small, non-blocking — see _celebrateKnobitComplete
-       in learning.js). Not shown for the final knobit in a unit; lm-complete's
-       full-screen view covers that, bigger milestone. -->
-  <div id="lm-celebrate-toast" class="lm-celebrate-toast" role="status" aria-live="polite"></div>
+  <!-- Per-knobit completion bubble: rises + fades at center screen, non-blocking,
+       no dismiss needed (see _celebrateKnobitComplete in learning.js). Not shown
+       for the final knobit in a unit; lm-complete's full-screen view covers
+       that, bigger milestone. -->
+  <div id="lm-celebrate-toast" class="lm-celebrate-toast" role="status" aria-live="polite">
+    <svg class="lm-celebrate-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="10" cy="10" r="9" fill="currentColor" opacity="0.18"/>
+      <path d="M6 10.3l2.6 2.6L14.2 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="lm-celebrate-text"></span>
+  </div>
 
   <!-- ════════════════════════════════════════
        QUIT KNOBIT CONFIRMATION MODAL

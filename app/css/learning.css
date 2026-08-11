@@ -210,29 +210,39 @@
   100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); opacity: 0; }
 }
 
-/* Bottom-center snackbar, absolutely positioned against #learning-mode
-   (the nearest positioned ancestor) so it floats over whichever view is
-   active without taking up flex layout space. */
+/* Center-screen bubble, absolutely positioned against #learning-mode (the
+   nearest positioned ancestor) so it floats over whichever view is active
+   without taking up flex layout space. Was a small bottom-edge snackbar —
+   moved to center and enlarged since the original was easy to miss
+   entirely; the item-level pop/glow/confetti (above) stay as the quieter
+   supporting detail. */
 #lm-celebrate-toast {
   position: absolute;
-  left: 50%; bottom: 22px;
-  transform: translate(-50%, 8px);
+  left: 50%; top: 50%;
   z-index: 2;
-  background: rgba(94,144,82,0.94);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(94,144,82,0.96);
   color: #fff;
-  font-size: 13px; font-weight: 600;
-  padding: 10px 20px;
+  font-size: 16px; font-weight: 650;
+  padding: 16px 28px;
   border-radius: 999px;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.22s ease, transform 0.22s ease;
   text-align: center;
-  box-shadow: 0 6px 18px var(--i18);
+  box-shadow: 0 10px 32px rgba(94,144,82,0.35);
   white-space: nowrap;
 }
+#lm-celebrate-toast .lm-celebrate-icon { flex-shrink: 0; }
+@keyframes lmCelebrateRise {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translateY(14px)  scale(0.85); }
+  18%  { opacity: 1; transform: translate(-50%, -50%) translateY(0)     scale(1); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) translateY(-22px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateY(-42px) scale(1); }
+}
 #lm-celebrate-toast.show {
-  opacity: 1;
-  transform: translate(-50%, 0);
+  animation: lmCelebrateRise 2s ease-out forwards;
 }
 
 /* ── start button (bottom of path view) ── */

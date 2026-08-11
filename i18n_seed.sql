@@ -188,7 +188,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.connection_error',    'en', 'Connection error — please try again.'),
 ('btn.retry',               'en', 'Retry'),
 ('msg.unit_complete',       'en', 'Unit complete!'),
-('msg.knobit_complete_toast', 'en', 'Knobit complete!'),
+('msg.knobit_complete_toast', 'en', 'Knobit completed. Well done!'),
 ('msg.try_youtube',         'en', 'Try searching YouTube for'),
 ('msg.explained',           'en', 'explained'),
 ('msg.test_intro',          'en', '4 questions — from recall to analysis'),
