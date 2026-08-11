@@ -708,8 +708,8 @@
     } else if (type === 'practice-submit') {
       btn(t('btn.submit_answer'), function () { window.practiceSubmit(); });
     } else if (type === 'practice-next') {
-      btn(t('btn.yes_next_problem'), function () { window.practiceNext(); }, 'btn-other');
       btn(t('btn.no_im_done'),       function () { window.practiceDone(); }, 'btn-understand');
+      btn(t('btn.yes_next_problem'), function () { window.practiceNext(); }, 'btn-other');
     } else if (type === 'meaning-options') {
       btn(t('btn.i_understand'),       function () { window.meaningOpt('ok');      }, 'btn-understand');
       btn(t('btn.i_dont_understand'),  function () { window.meaningOpt('no');      }, 'btn-other');
