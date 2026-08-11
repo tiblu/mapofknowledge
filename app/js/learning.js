@@ -53,6 +53,9 @@
   // URLs of visuals already shown in the current knobit — sent to server to avoid duplicates
   var _seenVisualUrls = [];
 
+  var _celebrateToastTimer = null;
+  var CONFETTI_COLORS = ['#5E9052', '#8BAD7E', '#C4826A', '#E0B84D', '#6B9BD1'];
+
   /* ─── API helper ──────────────────────────────────────────────── */
   function apiInteract(params) {
     var knobit = KNOBITS[CURRENT_KNOBIT_IDX];
@@ -470,6 +473,7 @@
       var locked  = !done && !current;
       var item    = document.createElement('div');
       item.className = 'lm-knobit-item' + (done ? ' done' : '') + (current ? ' current' : '') + (locked ? ' locked' : '');
+      item.setAttribute('data-idx', i);
 
       var num       = document.createElement('div');
       num.className = 'lm-knobit-num';
@@ -956,9 +960,62 @@
   };
 
   /* ─── Knobit completion ───────────────────────────────────────── */
+  // Small, non-blocking reward for finishing an individual knobit — deliberately
+  // lighter than _showUnitComplete()'s full-screen treatment, which stays
+  // reserved for the rarer whole-unit milestone. All three pieces (item pop,
+  // toast, confetti) are appended inside #learning-mode's own DOM subtree —
+  // NOT document.body — so they stay visible whether or not the learner is
+  // in the Fullscreen API mode entered via _enterLmFullscreen() (which makes
+  // #learning-mode itself the fullscreen element; anything outside its
+  // subtree, e.g. a body-level toast, would silently never be painted while
+  // it's active — see the knobit-download-modal/focus-break-modal bugs this
+  // pattern was copied from).
+  function _celebrateKnobitComplete(idx) {
+    var listEl = document.getElementById('lm-knobit-list');
+    var item = listEl && listEl.querySelector('.lm-knobit-item[data-idx="' + idx + '"]');
+    if (item) {
+      item.classList.add('lm-just-completed');
+      setTimeout(function () { item.classList.remove('lm-just-completed'); }, 700);
+      _fireConfettiBurst(item);
+    }
+    _showCelebrateToast(t('msg.knobit_complete_toast'));
+  }
+
+  function _showCelebrateToast(text) {
+    var el = document.getElementById('lm-celebrate-toast');
+    if (!el) return;
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(_celebrateToastTimer);
+    _celebrateToastTimer = setTimeout(function () { el.classList.remove('show'); }, 1800);
+  }
+
+  function _fireConfettiBurst(item) {
+    var numEl = item.querySelector('.lm-knobit-num');
+    if (!numEl) return;
+    var burst = document.createElement('div');
+    burst.className = 'lm-confetti-burst';
+    var pieceCount = 10;
+    for (var i = 0; i < pieceCount; i++) {
+      var piece = document.createElement('span');
+      piece.className = 'lm-confetti-piece';
+      var angle = (Math.PI * 2 * i / pieceCount) + (Math.random() * 0.4 - 0.2);
+      var dist  = 24 + Math.random() * 16;
+      piece.style.setProperty('--tx', (Math.cos(angle) * dist).toFixed(1) + 'px');
+      piece.style.setProperty('--ty', (Math.sin(angle) * dist).toFixed(1) + 'px');
+      piece.style.setProperty('--rot', Math.round(Math.random() * 360) + 'deg');
+      piece.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+      piece.style.animationDelay = Math.round(Math.random() * 60) + 'ms';
+      burst.appendChild(piece);
+    }
+    numEl.appendChild(burst);
+    setTimeout(function () { if (burst.parentNode) burst.parentNode.removeChild(burst); }, 750);
+  }
+
   function _completeKnobit() {
     _knobitStarted = false;
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
+    var completedIdx = CURRENT_KNOBIT_IDX;
     KNOBIT_DONE_COUNT++;
     apiComplete(k.id);
 
@@ -968,6 +1025,7 @@
       CURRENT_KNOBIT_IDX++;
       _buildPathView();
       showLmView('lm-path');
+      _celebrateKnobitComplete(completedIdx);
     }
   }
 

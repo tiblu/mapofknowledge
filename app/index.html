@@ -464,6 +464,56 @@
     </div>
   </div><!-- /lm-complete -->
 
+  <!-- Nested inside #learning-mode (not siblings) so they stay visible while
+       #learning-mode is the Fullscreen API element — elements outside the
+       fullscreen element's subtree are never painted while it's active,
+       regardless of position:fixed/z-index. -->
+
+  <!-- Per-knobit completion toast (small, non-blocking — see _celebrateKnobitComplete
+       in learning.js). Not shown for the final knobit in a unit; lm-complete's
+       full-screen view covers that, bigger milestone. -->
+  <div id="lm-celebrate-toast" class="lm-celebrate-toast" role="status" aria-live="polite"></div>
+
+  <!-- ════════════════════════════════════════
+       QUIT KNOBIT CONFIRMATION MODAL
+       ════════════════════════════════════════ -->
+  <div id="quit-knobit-modal" style="display:none">
+    <div class="quit-modal-box">
+      <div class="quit-modal-title" data-i18n="msg.quit_knobit_title">Leave this knobit?</div>
+      <div class="quit-modal-text" data-i18n="msg.quit_knobit_text">You'll learn best by staying focused and finishing in one sitting.</div>
+      <div class="quit-modal-btns">
+        <button class="quit-modal-cancel" id="quit-modal-cancel" data-i18n="btn.keep_learning">Keep learning</button>
+        <button class="quit-modal-confirm" id="quit-modal-confirm" data-i18n="btn.yes_quit">Yes, quit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       FOCUS-TIMER BREAK REMINDER
+       ════════════════════════════════════════ -->
+  <div id="focus-break-modal" style="display:none">
+    <div class="quit-modal-box">
+      <div class="quit-modal-title" data-i18n="msg.focus_break_title">Time for a short break</div>
+      <div class="quit-modal-text" data-i18n="msg.focus_break_text">Your brain now needs about 10 minutes to defocus — stretching or resting is best for maximum learning efficiency.</div>
+      <div class="lm-break-countdown" id="focus-break-countdown">10:00</div>
+      <div class="quit-modal-btns">
+        <button class="quit-modal-confirm" id="focus-break-ignore" data-i18n="btn.ignore">Ignore</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shown once, right after the meaning phase is confirmed, before the knobit
+       is marked complete and its interaction data is cleared server-side. -->
+  <div id="knobit-download-modal" style="display:none">
+    <div class="quit-modal-box">
+      <div class="quit-modal-title" data-i18n="msg.download_offer_title">Download this knobit?</div>
+      <div class="quit-modal-text" data-i18n="msg.download_offer_text">You can download this knobit now. After you continue, its content is cleared.</div>
+      <div class="quit-modal-btns">
+        <button class="quit-modal-cancel" id="knobit-download-btn" data-i18n="btn.download">Download</button>
+        <button class="quit-modal-confirm" id="knobit-download-continue" data-i18n="label.continue">Continue</button>
+      </div>
+    </div>
+  </div>
 
 </div><!-- /learning-mode -->
 
@@ -603,47 +653,6 @@
      ════════════════════════════════════════ -->
 <div id="page-overlay">
   <iframe id="page-overlay-frame" src="" title="Page"></iframe>
-</div>
-
-<!-- ════════════════════════════════════════
-     QUIT KNOBIT CONFIRMATION MODAL
-     ════════════════════════════════════════ -->
-<div id="quit-knobit-modal" style="display:none">
-  <div class="quit-modal-box">
-    <div class="quit-modal-title" data-i18n="msg.quit_knobit_title">Leave this knobit?</div>
-    <div class="quit-modal-text" data-i18n="msg.quit_knobit_text">You'll learn best by staying focused and finishing in one sitting.</div>
-    <div class="quit-modal-btns">
-      <button class="quit-modal-cancel" id="quit-modal-cancel" data-i18n="btn.keep_learning">Keep learning</button>
-      <button class="quit-modal-confirm" id="quit-modal-confirm" data-i18n="btn.yes_quit">Yes, quit</button>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════
-     FOCUS-TIMER BREAK REMINDER
-     ════════════════════════════════════════ -->
-<div id="focus-break-modal" style="display:none">
-  <div class="quit-modal-box">
-    <div class="quit-modal-title" data-i18n="msg.focus_break_title">Time for a short break</div>
-    <div class="quit-modal-text" data-i18n="msg.focus_break_text">Your brain now needs about 10 minutes to defocus — stretching or resting is best for maximum learning efficiency.</div>
-    <div class="lm-break-countdown" id="focus-break-countdown">10:00</div>
-    <div class="quit-modal-btns">
-      <button class="quit-modal-confirm" id="focus-break-ignore" data-i18n="btn.ignore">Ignore</button>
-    </div>
-  </div>
-</div>
-
-<!-- Shown once, right after the meaning phase is confirmed, before the knobit
-     is marked complete and its interaction data is cleared server-side. -->
-<div id="knobit-download-modal" style="display:none">
-  <div class="quit-modal-box">
-    <div class="quit-modal-title" data-i18n="msg.download_offer_title">Download this knobit?</div>
-    <div class="quit-modal-text" data-i18n="msg.download_offer_text">You can download this knobit now. After you continue, its content is cleared.</div>
-    <div class="quit-modal-btns">
-      <button class="quit-modal-cancel" id="knobit-download-btn" data-i18n="btn.download">Download</button>
-      <button class="quit-modal-confirm" id="knobit-download-continue" data-i18n="label.continue">Continue</button>
-    </div>
-  </div>
 </div>
 
 <!-- ════════════════════════════════════════

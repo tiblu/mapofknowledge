@@ -171,6 +171,68 @@
 }
 .kn-arrow { color: #C4B8B0; flex-shrink: 0; }
 
+/* ── per-knobit completion celebration ── */
+@keyframes lmKnobitPop {
+  0%   { transform: scale(0.4); }
+  55%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+@keyframes lmItemGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(139,173,126,0.45); }
+  60%  { box-shadow: 0 0 0 8px rgba(139,173,126,0.15); }
+  100% { box-shadow: 0 0 0 8px rgba(139,173,126,0); }
+}
+.lm-knobit-item.lm-just-completed { animation: lmItemGlow 0.7s ease-out; }
+.lm-knobit-num { position: relative; }
+.lm-knobit-item.lm-just-completed .lm-knobit-num {
+  animation: lmKnobitPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.lm-confetti-burst {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 0; height: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.lm-confetti-piece {
+  position: absolute;
+  left: 0; top: 0;
+  width: 5px; height: 5px;
+  border-radius: 1px;
+  opacity: 1;
+  animation: lmConfettiPop 0.6s ease-out forwards;
+}
+@keyframes lmConfettiPop {
+  0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) rotate(var(--rot)); opacity: 0; }
+}
+
+/* Bottom-center snackbar, absolutely positioned against #learning-mode
+   (the nearest positioned ancestor) so it floats over whichever view is
+   active without taking up flex layout space. */
+#lm-celebrate-toast {
+  position: absolute;
+  left: 50%; bottom: 22px;
+  transform: translate(-50%, 8px);
+  z-index: 2;
+  background: rgba(94,144,82,0.94);
+  color: #fff;
+  font-size: 13px; font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  text-align: center;
+  box-shadow: 0 6px 18px var(--i18);
+  white-space: nowrap;
+}
+#lm-celebrate-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 /* ── start button (bottom of path view) ── */
 .lm-start-bar {
   flex-shrink: 0;
@@ -857,7 +919,8 @@
 /* ── Quit confirmation / download-offer modals ── */
 #quit-knobit-modal,
 #quit-test-modal,
-#knobit-download-modal {
+#knobit-download-modal,
+#focus-break-modal {
   position: fixed;
   inset: 0;
   z-index: 400;
