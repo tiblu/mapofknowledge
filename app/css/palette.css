@@ -364,7 +364,7 @@ html.palette-candystore .quit-modal-cancel   { background: linear-gradient(135de
 html.palette-candystore .kn-chip.active      { background: #18B818; color: #fff; }
 html.palette-candystore .kn-chip.done-chip   { background: #18B818; color: #fff; }
 
-html.palette-candystore .lm-knobit-item.done .kn-index { background: #18B818; color: #fff; }
+html.palette-candystore .lm-knobit-item.done .lm-knobit-num { background: #18B818; color: #fff; }
 
 html.palette-candystore .kn-option-btn.btn-understand {
   background: #18B818; border: 2px solid #0E9A0E; color: #fff; font-weight: 700;

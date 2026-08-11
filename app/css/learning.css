@@ -141,8 +141,11 @@
   background: var(--lm-accent);
 }
 
-/* index circle */
-.kn-index {
+/* index circle — .lm-knobit-num/.lm-knobit-name are the actual classes
+   _buildPathView() creates in learning.js; this rule used to say .kn-index/
+   .kn-name (never-used names left over from an earlier markup pass), so the
+   checkmark/number rendered as bare unstyled text with no circle at all. */
+.lm-knobit-num {
   width: 30px; height: 30px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-size: 12px; font-weight: 700;
@@ -151,25 +154,24 @@
   color: var(--c3);
   transition: background 0.13s;
 }
-.lm-knobit-item.current .kn-index {
+.lm-knobit-item.current .lm-knobit-num {
   background: var(--lm-accent);
   color: #fff;
 }
-.lm-knobit-item.done .kn-index {
+.lm-knobit-item.done .lm-knobit-num {
   background: rgba(139,173,126,0.25);
   color: #5E9052;
 }
-.lm-knobit-item.locked .kn-index {
+.lm-knobit-item.locked .lm-knobit-num {
   background: var(--i05);
   color: var(--c7);
 }
 
-.kn-info { flex: 1; min-width: 0; }
-.kn-name {
+.lm-knobit-name {
+  flex: 1; min-width: 0;
   font-size: 14px; font-weight: 550;
   color: var(--c1); line-height: 1.3;
 }
-.kn-arrow { color: #C4B8B0; flex-shrink: 0; }
 
 /* ── per-knobit completion celebration ── */
 @keyframes lmKnobitPop {
