@@ -1017,7 +1017,12 @@
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
     var completedIdx = CURRENT_KNOBIT_IDX;
     KNOBIT_DONE_COUNT++;
-    apiComplete(k.id);
+    apiComplete(k.id).then(function () {
+      // Documented at the top of this file as a contract, but never actually
+      // called anywhere — the map's node-ring overlay and the continue-chip
+      // both went stale after a knobit completed, until a hard reload.
+      if (window.MapView && window.MapView.refreshProgress) window.MapView.refreshProgress();
+    });
 
     if (CURRENT_KNOBIT_IDX + 1 >= KNOBIT_TOTAL) {
       _showUnitComplete();
@@ -1038,7 +1043,7 @@
     var stat = document.querySelector('.lm-complete-stats');
     if (stat) {
       var cards = stat.querySelectorAll('.lm-complete-stat');
-      if (cards[0]) cards[0].innerHTML = '<div class="lm-stat-num">' + KNOBIT_TOTAL + '</div><div class="lm-stat-label">' + t('label.knobits') + '</div>';
+      if (cards[0]) cards[0].innerHTML = '<div class="lm-cstat-num">' + KNOBIT_TOTAL + '</div><div class="lm-cstat-label">' + t('label.knobits') + '</div>';
     }
     var reflInp = document.getElementById('lm-reflection-input');
     if (reflInp) reflInp.value = '';
