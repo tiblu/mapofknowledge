@@ -53,12 +53,21 @@ social phenomena, logic, abstract principles, or any case where a picture adds a
 If in doubt, skip — a missing visual is fine; an irrelevant one is distracting.
 
 If a visual IS warranted:
-1. Search Wikimedia Commons for a relevant image. Return the Commons file page URL in the format
+1. Prefer Wikimedia Commons. Return the Commons file page URL in the format
    https://commons.wikimedia.org/wiki/File:EXACT_FILENAME — never construct upload.wikimedia.org URLs yourself.
-   Hard rule: reject any image with a visible copyright notice, watermark, company logo, or © mark.
+2. If nothing suitable exists there, these other reputable, freely-usable sources are also acceptable — for
+   these, return the DIRECT image file URL itself (ending .jpg/.jpeg/.png/.svg/.webp — a URL that loads the raw
+   image, never a webpage that merely displays or links to it):
+   - NASA (any nasa.gov subdomain, e.g. images.nasa.gov) — public domain
+   - Smithsonian Institution (si.edu) — public domain / open access
+   - U.S. federal science or health agencies (.gov domains, e.g. noaa.gov, usgs.gov, nih.gov, cdc.gov) — public domain
+   - Openverse (openverse.org) results, only if explicitly licensed CC0, CC-BY, or Public Domain
+   - Pixabay (pixabay.com), Unsplash (unsplash.com), Pexels (pexels.com) — free-to-use stock libraries
+   Hard rule regardless of source: reject any image with a visible copyright notice, watermark, company logo,
+   stock-agency mark, or © mark.
    Only use YouTube if the concept specifically requires motion or animation to understand (e.g. a physical
-   process, a technique, a demonstration) — not just because no Wikimedia image was found.
-2. If nothing genuinely useful exists: set visual to null.`;
+   process, a technique, a demonstration) — not just because no image was found.
+3. If nothing genuinely useful exists across all of the above: set visual to null.`;
 
 // Finds and parses the first complete {...} JSON object in a string,
 // ignoring any surrounding prose or reasoning text Claude may output.
