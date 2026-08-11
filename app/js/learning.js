@@ -552,6 +552,7 @@
 
     var lastPhase = null;
     var lastBlockType = null;
+    var lastFeedbackCorrect = false;
     var blocks = session.blocks;
 
     blocks.forEach(function (row) {
@@ -600,6 +601,7 @@
         }
       } else if (row.block_type === 'feedback') {
         var grade = JSON.parse(row.content || '{}');
+        lastFeedbackCorrect = !!grade.correct;
         _appendBlock({ type: 'feedback', content: (grade.correct ? '✓ ' : '✗ ') + (grade.feedback || '') });
         if (_practiceInputEl) { _practiceInputEl.value = row.answer_text || ''; _practiceInputEl.disabled = true; }
       } else if (row.block_type === 'meaning') {
@@ -621,7 +623,7 @@
     } else if (lastBlockType === 'practice') {
       _setButtonRow('practice-submit');
     } else if (lastBlockType === 'feedback') {
-      _setButtonRow('practice-next');
+      _setButtonRow(lastFeedbackCorrect ? 'practice-next' : 'practice-next-retry');
     } else if (lastBlockType === 'meaning') {
       _setButtonRow('meaning-options');
     }
@@ -709,6 +711,11 @@
     } else if (type === 'practice-next') {
       btn(t('btn.no_im_done'),       function () { window.practiceDone(); }, 'btn-understand');
       btn(t('btn.yes_next_problem'), function () { window.practiceNext(); }, 'btn-other');
+    } else if (type === 'practice-next-retry') {
+      // Wrong answer: no "I'm done" escape hatch — only forward to another
+      // problem, so a learner can't move past practice without having
+      // demonstrated the concept at least once.
+      btn(t('btn.yes_next_problem'), function () { window.practiceNext(); }, 'btn-understand');
     } else if (type === 'meaning-options') {
       btn(t('btn.i_understand'),       function () { window.meaningOpt('ok');      }, 'btn-understand');
       btn(t('btn.i_dont_understand'),  function () { window.meaningOpt('no');      }, 'btn-other');
@@ -849,7 +856,7 @@
     _retryFn = function () {
       _showLoadingBlock();
       apiInteract({ phase: 'practice', action: 'grade', question: capturedProb.question || '', expected: capturedProb.expected || '', userAnswer: capturedAns })
-        .then(function (d) { _retryFn = null; _removeLoadingBlock(); var g = d.grade || {}; _appendBlock({ type: 'feedback', content: (g.correct ? '✓ ' : '✗ ') + (g.feedback || '') }); _setButtonRow('practice-next'); })
+        .then(function (d) { _retryFn = null; _removeLoadingBlock(); var g = d.grade || {}; _appendBlock({ type: 'feedback', content: (g.correct ? '✓ ' : '✗ ') + (g.feedback || '') }); _setButtonRow(g.correct ? 'practice-next' : 'practice-next-retry'); })
         .catch(_onApiError);
     };
     _retryFn();
