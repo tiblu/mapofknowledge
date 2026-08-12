@@ -1001,7 +1001,10 @@
   border-radius: 10px;
   border: 1px solid var(--i09);
   background: var(--i04);
+  cursor: pointer;
+  transition: opacity 0.15s;
 }
+.lm-visual-img:hover { opacity: 0.88; }
 
 .lm-visual-caption {
   font-size: 11px;
@@ -1010,6 +1013,55 @@
   line-height: 1.4;
   font-style: italic;
 }
+
+/* ── Image lightbox — click a .lm-visual-img to open ──
+   Positioning on the #id selector (not the .class) to beat
+   #learning-mode > *'s position:relative at equal specificity; see the
+   same pattern on #lm-celebrate-toast above. */
+#lm-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+}
+.lm-lightbox {
+  background: rgba(20,16,14,0.88);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  cursor: zoom-out;
+}
+.lm-lightbox-img {
+  max-width: min(900px, 100%);
+  max-height: 78vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  cursor: default;
+}
+.lm-lightbox-caption {
+  margin-top: 16px;
+  max-width: 640px;
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  cursor: default;
+}
+.lm-lightbox-caption:empty { display: none; }
+.lm-lightbox-close {
+  position: absolute;
+  top: 20px; right: 24px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.lm-lightbox-close:hover { background: rgba(255,255,255,0.22); }
 
 .lm-visual-video {
   display: inline-flex;

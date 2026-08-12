@@ -473,6 +473,16 @@
     <span class="lm-celebrate-text"></span>
   </div>
 
+  <!-- Image lightbox for visuals shown in the explain-phase stream — click a
+       .lm-visual-img to enlarge, click backdrop/close/Escape to dismiss. -->
+  <div id="lm-lightbox" class="lm-lightbox" style="display:none">
+    <button class="lm-lightbox-close" id="lm-lightbox-close" data-i18n-title="btn.close" title="Close" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+    <img class="lm-lightbox-img" id="lm-lightbox-img" src="" alt="">
+    <div class="lm-lightbox-caption" id="lm-lightbox-caption"></div>
+  </div>
+
   <!-- ════════════════════════════════════════
        QUIT KNOBIT CONFIRMATION MODAL
        ════════════════════════════════════════ -->

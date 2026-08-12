@@ -31,6 +31,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.add',                 'en', 'Add'),
 ('btn.save',                'en', 'Save'),
 ('btn.cancel',              'en', 'Cancel'),
+('btn.close',               'en', 'Close'),
 ('btn.done',                'en', 'Done'),
 ('btn.complete',            'en', 'Mark complete'),
 ('btn.add_goal',            'en', '+ Add goal'),

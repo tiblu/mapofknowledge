@@ -1347,6 +1347,41 @@
       _completeKnobit();
     });
 
+    // Image lightbox — delegated so it covers both freshly-generated visuals
+    // and ones replayed from a mid-knobit resume, without a per-image listener.
+    var stream = document.getElementById('kn-stream');
+    if (stream) stream.addEventListener('click', function (e) {
+      var img = e.target.closest('.lm-visual-img');
+      if (!img) return;
+      var lightbox = document.getElementById('lm-lightbox');
+      var lbImg     = document.getElementById('lm-lightbox-img');
+      var lbCaption = document.getElementById('lm-lightbox-caption');
+      if (!lightbox || !lbImg) return;
+      lbImg.src = img.src;
+      lbImg.alt = img.alt || '';
+      if (lbCaption) {
+        var captionEl = img.parentNode && img.parentNode.querySelector('.lm-visual-caption');
+        lbCaption.textContent = captionEl ? captionEl.textContent : '';
+      }
+      lightbox.style.display = 'flex';
+    });
+
+    var lightboxEl = document.getElementById('lm-lightbox');
+    if (lightboxEl) lightboxEl.addEventListener('click', function (e) {
+      if (e.target === lightboxEl) lightboxEl.style.display = 'none';
+    });
+
+    var lightboxClose = document.getElementById('lm-lightbox-close');
+    if (lightboxClose) lightboxClose.addEventListener('click', function () {
+      lightboxEl.style.display = 'none';
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && lightboxEl && lightboxEl.style.display !== 'none') {
+        lightboxEl.style.display = 'none';
+      }
+    });
+
     window.addEventListener('beforeunload', function (e) {
       if (_knobitStarted) {
         e.preventDefault();
