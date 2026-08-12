@@ -476,7 +476,7 @@
 .block-note {
   background: var(--i04);
   border: 1px dashed var(--i15);
-  font-size: 13px; color: var(--c3); line-height: 1.6;
+  font-size: 13px; color: #000; line-height: 1.6;
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .kn-retry-btn {
