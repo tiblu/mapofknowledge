@@ -81,7 +81,7 @@
 .anne-msg-assistant {
   align-self: flex-start;
   background: var(--panel-a, #F5EAE3);
-  color: var(--c1, #2C2820);
+  color: #000;
   border-bottom-left-radius: 4px;
 }
 .anne-msg-user {
