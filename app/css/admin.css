@@ -202,6 +202,11 @@ body { overflow-y: auto; }
 .badge-cancelled   { background: rgba(224,85,85,.15);   color: #e05555; }
 
 .td-num { color: var(--text-muted, #8899aa); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* Started/Done knobit columns sit side by side — keep them narrow so the
+   pair doesn't take much more room than the single column they replaced. */
+.th-tight { padding-left: 8px; padding-right: 8px; }
+.td-tight { padding-left: 8px; padding-right: 8px; }
 .td-date { color: var(--text-muted, #8899aa); white-space: nowrap; }
 
 .admin-del-btn {

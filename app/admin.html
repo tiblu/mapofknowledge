@@ -109,7 +109,8 @@
                 <option value="cancelled">cancelled</option>
               </select>
             </th>
-            <th data-sort="knobits_done" class="sortable" title="Knobits completed">Knobits</th>
+            <th data-sort="knobits_started" class="sortable th-tight" title="Knobits started, not yet completed">Started</th>
+            <th data-sort="knobits_done" class="sortable th-tight" title="Knobits completed">Done</th>
             <th title="Token activity last 7 days">Activity (7d)</th>
             <th data-sort="estimated_cost" class="sortable" title="Estimated cost for the selected period: $3/M input + $15/M output (Sonnet rate — a rough estimate, cheaper Haiku calls are also billed at this rate here)" id="cost-col-header">Cost ($) — all time</th>
             <th data-sort="created_at" class="sortable">Joined</th>
@@ -123,7 +124,8 @@
             <td></td>
             <td class="td-total-label">Total</td>
             <td></td><td></td><td></td>
-            <td class="td-num" id="total-knobits"></td>
+            <td class="td-num td-tight" id="total-started"></td>
+            <td class="td-num td-tight" id="total-knobits"></td>
             <td></td>
             <td class="td-num" id="total-cost"></td>
             <td></td><td></td><td></td>
@@ -250,8 +252,10 @@
   }
 
   function updateTotals(visible) {
+    var started = visible.reduce(function(s, u) { return s + (Number(u.knobits_started) || 0); }, 0);
     var knobits = visible.reduce(function(s, u) { return s + (Number(u.knobits_done) || 0); }, 0);
     var cost    = visible.reduce(function(s, u) { return s + (Number(u.estimated_cost) || 0); }, 0);
+    document.getElementById('total-started').textContent = fmtNum(started);
     document.getElementById('total-knobits').textContent = fmtNum(knobits);
     document.getElementById('total-cost').textContent    = cost ? '$' + cost.toFixed(4) : '—';
   }
@@ -295,7 +299,8 @@
         + '<td style="color:var(--text-muted,#8899aa)">'+(u.display_name||'—')+'</td>'
         + '<td>'+roleSelect+'</td>'
         + '<td>'+tierSelect+'</td>'
-        + '<td class="td-num">'+fmtNum(u.knobits_done)+'</td>'
+        + '<td class="td-num td-tight">'+fmtNum(u.knobits_started)+'</td>'
+        + '<td class="td-num td-tight">'+fmtNum(u.knobits_done)+'</td>'
         + '<td class="td-spark">'+sparkline(u.activity7d || Array(7).fill(0))+'</td>'
         + '<td class="td-num">'+(u.estimated_cost ? '$'+Number(u.estimated_cost).toFixed(4) : '—')+'</td>'
         + '<td class="td-date">'+fmtDate(u.created_at)+'</td>'
