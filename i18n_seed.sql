@@ -339,7 +339,8 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Knobit DOCX export + mid-knobit resume (added 2026-07-28, ported from KnobitMap)
 ('msg.quit_knobit_text',        'en', 'You''ll learn best by staying focused and finishing in one sitting.'),
 ('msg.download_offer_title',    'en', 'Download this knobit?'),
-('msg.download_offer_text',     'en', 'You can download this knobit now, including any notes you wrote. After you continue, its content — and your notes — are cleared.'),
+('msg.download_offer_text',     'en', 'You can download this knobit now, including any notes you wrote.'),
+('msg.download_offer_warn',     'en', 'After you continue, its content — and your notes — are cleared.'),
 ('btn.download',                'en', 'Download'),
 
 -- Nav menu reorder (added 2026-07-28): new "Map" item, back to the map from any page

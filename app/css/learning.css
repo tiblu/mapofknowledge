@@ -1002,6 +1002,8 @@
   font-size: 14px; color: var(--c3);
   line-height: 1.65; margin-bottom: 22px;
 }
+.quit-modal-text-top { margin-bottom: 6px; }
+.quit-modal-warn { color: var(--lm-accent); font-weight: 600; }
 .lm-break-countdown {
   font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums;
   color: var(--c1); text-align: center;
