@@ -66,6 +66,18 @@
     return dd + '.' + mm + '.' + yy + ' ' + hh + ':' + min;
   }
 
+  // mysql2 returns DATE/DATETIME columns as JS Date objects, which res.json()
+  // serializes to full ISO strings (e.g. "2026-06-04T00:00:00.000Z") — the
+  // layout math below expects the plain "YYYY-MM-DD" / "YYYY-MM-DD HH:MM:SS"
+  // shapes instead, so normalize once, right after the fetch.
+  function normDate(v) {
+    return String(v).slice(0, 10);
+  }
+  function normDateTime(v) {
+    var s = String(v);
+    return s.indexOf('T') !== -1 ? s.slice(0, 19).replace('T', ' ') : s;
+  }
+
   var _rafId = null, _playing = false;
 
   function buildTimeline(rawEvents, rawCompletions) {
@@ -429,8 +441,15 @@
     overlay.style.display = 'flex';
     fetch('/api/profile/timeline')
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-      .then(function (data) { buildTimeline(data.events || [], data.completions || []); })
-      .catch(function () {
+      .then(function (data) {
+        var events = data.events || [];
+        events.forEach(function (e) { e.event_date = normDate(e.event_date); });
+        var completions = data.completions || [];
+        completions.forEach(function (c) { c.completed_at = normDateTime(c.completed_at); });
+        buildTimeline(events, completions);
+      })
+      .catch(function (err) {
+        console.error('Timeline load failed:', err);
         var emptyEl = document.getElementById('tl-empty');
         document.getElementById('tl-stage').style.display = 'none';
         emptyEl.style.display = 'flex';
