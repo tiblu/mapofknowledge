@@ -647,6 +647,21 @@ function _askDbPhase(action) {
 // ── Persist a knobit lesson block for mid-lesson resume/grounding ───────────
 async function _saveInteraction(passportId, knobitId, phase, blockType, blockIndex, choiceMade, answerText, content) {
   if (!passportId) return;
+  // 'ok' is the canonical (non-rephrase) generation for a given block_index —
+  // there should only ever be one. If a generation gets abandoned client-side
+  // (e.g. exiting right as a byte is streaming) it still finishes and saves
+  // server-side; re-entering before that save lands can then trigger a fresh
+  // regeneration, leaving two 'ok' rows for the same block that both render
+  // on resume. Clear any prior 'ok' row first so the latest one wins instead
+  // of stacking. Rephrase variants ('rephrase'/'simpler'/'complex') are
+  // intentionally additive and untouched.
+  if (choiceMade === 'ok') {
+    await db.execute(
+      `DELETE FROM knobit_interactions
+       WHERE passport_id = ? AND knobit_id = ? AND phase = ? AND block_type = ? AND block_index = ? AND choice_made = 'ok'`,
+      [passportId, knobitId, phase, blockType, blockIndex]
+    ).catch(() => {});
+  }
   await db.execute(
     `INSERT INTO knobit_interactions (passport_id, knobit_id, phase, block_type, block_index, choice_made, answer_text, content)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
