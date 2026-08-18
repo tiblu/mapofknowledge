@@ -868,6 +868,72 @@
     }).then(() => window.loadProfile()).catch(() => alert(t('msg.save_failed_short')));
   };
 
+  /* ─── Suggestions (Section 7) ────────────────────────────────────
+     Node-only deep links (no per-knobit resume link exists) — same
+     pattern notifications.html's clickable cards use: close the
+     overlay iframe and let the parent map zoom/open the node, or do
+     a full navigation when this page isn't embedded in the map. */
+  window._suggestGoToNode = function (nodeId) {
+    if (!nodeId) return;
+    if (window.parent !== window && window.parent.closeOverlay) {
+      window.parent.closeOverlay();
+      if (window.parent.MapView && window.parent.MapView.navigateToNode) {
+        window.parent.MapView.navigateToNode(nodeId);
+      }
+    } else {
+      window.location.href = '/app/?node=' + encodeURIComponent(nodeId);
+    }
+  };
+
+  function renderSuggestions(suggestions) {
+    var s = suggestions || {};
+
+    var unfinishedCard = document.getElementById('unfinished-knobits-card');
+    if (unfinishedCard) {
+      var uk = s.unfinishedKnobits || [];
+      var ukRows = uk.length
+        ? uk.map(function (k) {
+            return `<div class="p-suggest-row" onclick="window._suggestGoToNode('${esc(k.nodeId)}')">
+              <div class="p-suggest-row-main">
+                <div class="p-suggest-row-title">${esc(k.title)}</div>
+                <div class="p-suggest-row-sub">${esc(k.nodeLabel)}</div>
+              </div>
+            </div>`;
+          }).join('')
+        : empty(t('msg.no_unfinished_knobits'));
+      unfinishedCard.innerHTML = `
+        <div class="p-card-title">${t('section.suggest_unfinished_title')}</div>
+        <div class="p-suggest-intro">${t('msg.suggest_unfinished_intro')}</div>
+        ${ukRows}`;
+    }
+
+    var pathsCard = document.getElementById('incomplete-paths-card');
+    if (pathsCard) {
+      var ip = s.incompletePaths || [];
+      var ipRows = ip.length
+        ? ip.map(function (p) {
+            return `<div class="p-suggest-row" onclick="window._suggestGoToNode('${esc(p.nodeId)}')">
+              <div class="p-suggest-row-main">
+                <div class="p-suggest-row-title">${esc(p.nodeLabel)}</div>
+              </div>
+              <div class="p-suggest-row-meta">${p.done} / ${p.total}</div>
+            </div>`;
+          }).join('')
+        : empty(t('msg.no_incomplete_paths'));
+      pathsCard.innerHTML = `
+        <div class="p-card-title">${t('section.suggest_paths_title')}</div>
+        <div class="p-suggest-intro">${t('msg.suggest_paths_intro')}</div>
+        ${ipRows}`;
+    }
+
+    var repeatCard = document.getElementById('repeat-content-card');
+    if (repeatCard) {
+      repeatCard.innerHTML = `
+        <div class="p-card-title">${t('section.suggest_repeat_title')}</div>
+        ${empty(t('msg.suggest_repeat_coming'))}`;
+    }
+  }
+
   /* ─── Main load ───────────────────────────────────────────────── */
   window.loadProfile = function () {
     fetch('/api/profile')
@@ -881,6 +947,7 @@
         renderCompetence(d.competence, d.mapKnowledge);
         renderReflections(d.reflections);
         renderGoals(d.goals);
+        renderSuggestions(d.suggestions);
       })
       .catch(err => {
         console.error('Profile load failed:', err);

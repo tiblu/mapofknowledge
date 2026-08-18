@@ -76,6 +76,7 @@
 .pnav-link.s4 .pnav-num { background: rgba(196,162,96,0.24); color: #806020; }
 .pnav-link.s5 .pnav-num { background: rgba(91,168,216,0.20); color: #2068A8; }
 .pnav-link.s6 .pnav-num { background: rgba(196,114,154,0.20); color: #803060; }
+.pnav-link.s7 .pnav-num { background: rgba(91,200,184,0.20); color: #1A7868; }
 
 /* ── Section container ───────────────────── */
 .p-section {
@@ -102,6 +103,7 @@
 .p-section-badge.s4 { background: linear-gradient(135deg, #C8AA68, #A87838); }
 .p-section-badge.s5 { background: linear-gradient(135deg, #5BA8D8, #2878C0); }
 .p-section-badge.s6 { background: linear-gradient(135deg, #D472A0, #A84878); }
+.p-section-badge.s7 { background: linear-gradient(135deg, #5BC8B8, #2E9A88); }
 
 .p-section-titles { flex: 1; }
 .p-section-title {
@@ -133,6 +135,7 @@
 .p-card.s4 { background: linear-gradient(145deg, #fff 0%, #FBF6E8 100%); }
 .p-card.s5 { background: linear-gradient(145deg, #fff 0%, #EEF5FC 100%); }
 .p-card.s6 { background: linear-gradient(145deg, #fff 0%, #FCF0F6 100%); }
+.p-card.s7 { background: linear-gradient(145deg, #fff 0%, #EEFAF7 100%); }
 .p-card.span2 { grid-column: span 2; }
 .p-card.span3 { grid-column: span 3; }
 
@@ -673,6 +676,40 @@ select.p-edit-input { cursor: pointer; }
   font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
   text-transform: uppercase; color: var(--c7);
   margin: 14px 0 8px;
+}
+
+/* Suggestions (Section 7) — rows link out to the map */
+.p-suggest-intro {
+  font-size: 12px; color: var(--c6); line-height: 1.6; margin-bottom: 12px;
+}
+.p-suggest-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(58,48,40,0.08);
+  background: rgba(255,255,255,0.55);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s;
+}
+.p-suggest-row:hover {
+  background: rgba(91,200,184,0.10);
+  border-color: rgba(91,200,184,0.35);
+}
+.p-suggest-row-main { min-width: 0; }
+.p-suggest-row-title {
+  font-size: 13px; font-weight: 600; color: #2C2820;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.p-suggest-row-sub {
+  font-size: 11px; color: var(--c6); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.p-suggest-row-meta {
+  font-size: 11px; font-weight: 700; color: #2E9A88;
+  background: rgba(91,200,184,0.16);
+  padding: 3px 9px; border-radius: 20px;
+  white-space: nowrap; flex-shrink: 0;
 }
 .p-goal-smart-hint {
   font-size: 11px; color: var(--c6);

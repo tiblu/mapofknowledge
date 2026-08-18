@@ -250,6 +250,19 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('section.s4_title',        'en', 'Credentials'),
 ('section.s5_title',        'en', 'Competence State'),
 ('section.s6_title',        'en', 'Goals'),
+('section.s7_title',        'en', 'Suggestions'),
+
+-- Suggestions section (2026-08-18): unfinished knobits, incomplete learning
+-- paths, and a placeholder third subsection (repeat-for-memorization, to be
+-- populated later).
+('section.suggest_unfinished_title', 'en', 'Finish what you started'),
+('msg.suggest_unfinished_intro',     'en', 'Pick up right where you left off.'),
+('msg.no_unfinished_knobits',        'en', 'No unfinished knobits — nice and tidy.'),
+('section.suggest_paths_title',      'en', 'Complete your learning paths'),
+('msg.suggest_paths_intro',          'en', "These paths are partway done — you've completed some knobits but not all of them."),
+('msg.no_incomplete_paths',          'en', 'No incomplete learning paths.'),
+('section.suggest_repeat_title',     'en', 'Repeat for better memorization'),
+('msg.suggest_repeat_coming',        'en', "Coming soon — we'll suggest content worth revisiting here."),
 
 -- Settings page
 ('settings.title',          'en', 'Settings'),

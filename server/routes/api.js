@@ -1023,6 +1023,41 @@ router.get('/profile', async (req, res) => {
 
   try {
     const data = await _fetchFullPassport(passportId);
+
+    // Suggestions (Section 7) — kept out of _fetchFullPassport since that
+    // helper also backs Anne's per-message chat context, and these two
+    // queries have no bearing on what Anne needs to answer a question.
+    const [unfinishedKnobits] = await db.execute(
+      `SELECT k.id, k.title, n.external_id AS nodeId, n.label AS nodeLabel,
+              MAX(ki.created_at) AS last_activity
+       FROM knobit_interactions ki
+       JOIN knobits k ON k.id = ki.knobit_id
+       JOIN nodes n ON n.id = k.node_id
+       LEFT JOIN knobit_progress kp
+              ON kp.passport_id = ki.passport_id AND kp.knobit_id = ki.knobit_id AND kp.phase_reached = 'done'
+       WHERE ki.passport_id = ? AND kp.knobit_id IS NULL
+       GROUP BY k.id, k.title, n.external_id, n.label
+       ORDER BY last_activity DESC
+       LIMIT 50`,
+      [passportId]
+    );
+
+    const [incompletePaths] = await db.execute(
+      `SELECT n.external_id AS nodeId, n.label AS nodeLabel,
+              COUNT(k.id) AS total, COUNT(kp.knobit_id) AS done,
+              MAX(kp.completed_at) AS last_activity
+       FROM knobits k
+       JOIN nodes n ON k.node_id = n.id
+       LEFT JOIN knobit_progress kp ON kp.knobit_id = k.id AND kp.passport_id = ?
+       GROUP BY n.id, n.external_id, n.label
+       HAVING done > 0 AND done < total
+       ORDER BY last_activity DESC
+       LIMIT 50`,
+      [passportId]
+    );
+
+    data.suggestions = { unfinishedKnobits, incompletePaths, repeatContent: [] };
+
     res.json(data);
   } catch (err) {
     console.error('[api/profile]', err.message);
