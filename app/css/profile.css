@@ -609,6 +609,25 @@ select.p-edit-input { cursor: pointer; }
   width: 34px; text-align: right;
 }
 
+/* Knowledge card — view toggle + "By domain" grouping */
+.p-knowledge-toggle { margin-bottom: 12px; }
+.p-domain-group { margin-bottom: 4px; }
+.p-domain-group:not(:first-child) { margin-top: 14px; }
+.p-domain-heading {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding-bottom: 6px; margin-bottom: 2px;
+  border-bottom: 1.5px solid rgba(91,168,216,0.28);
+}
+.p-domain-name {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+  color: #2068A8;
+}
+.p-domain-avg {
+  font-size: 11px; font-weight: 600; color: var(--c6);
+  white-space: nowrap;
+}
+.p-domain-group .p-prof-row { padding-left: 4px; }
+
 /* Goal card */
 .p-goal-card {
   border-radius: 12px; padding: 14px 16px;

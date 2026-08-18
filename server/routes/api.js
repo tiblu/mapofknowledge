@@ -82,6 +82,8 @@ async function _fetchFullPassport(passportId) {
     percentage: r.percentage,
     source:     r.source,
     breadcrumb: [r.p4, r.p3, r.p2, r.p1].filter(Boolean).join(' › '),
+    // Topmost ancestor (L1 domain) — used to group the Knowledge card "By domain".
+    domain:     r.p4 || r.p3 || r.p2 || r.p1 || r.label,
   }));
 
   const [events] = await db.execute(
