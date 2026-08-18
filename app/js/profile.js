@@ -653,11 +653,14 @@
 
     return domains.map(function (d) {
       return `<div class="p-domain-group">
-        <div class="p-domain-heading">
+        <div class="p-domain-heading" onclick="this.closest('.p-domain-group').classList.toggle('collapsed')">
+          <span class="p-domain-chevron">
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M2 3l2.5 3L7 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
           <span class="p-domain-name">${esc(d.domain)}</span>
           <span class="p-domain-avg">${t('label.avg_short')} ${d.avg}%</span>
         </div>
-        ${d.members.map(_knowledgeRow).join('')}
+        <div class="p-domain-members">${d.members.map(_knowledgeRow).join('')}</div>
       </div>`;
     }).join('');
   }
