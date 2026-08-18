@@ -398,6 +398,21 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- toggled via the pin icon next to the ask-bar.
 ('placeholder.write_note',       'en', 'Write a note to yourself…'),
 ('btn.note_add',                 'en', 'Write a note to yourself'),
-('btn.note_cancel',              'en', 'Cancel note')
+('btn.note_cancel',              'en', 'Cancel note'),
+
+-- Learning Journey timeline (2026-08-18): Section 2 lightbox, animated replay
+-- of passport_events + knobit_progress on a domain-lane timeline. Ported from
+-- docs/timeline_demo.html after iterating on it with real data.
+('btn.view_timeline',            'en', 'View timeline'),
+('label.journey_title',          'en', 'Your Learning Journey'),
+('btn.restart',                  'en', 'Restart'),
+('btn.play',                     'en', 'Play'),
+('btn.speed_slow',               'en', 'Slow'),
+('btn.speed_medium',             'en', 'Medium'),
+('btn.speed_fast',               'en', 'Fast'),
+('msg.day_later',                'en', 'day later'),
+('msg.days_later',               'en', 'days later'),
+('msg.no_journey_yet',           'en', 'Nothing here yet — start learning to build your journey.'),
+('msg.knobit_completed_prefix',  'en', 'Knobit completed: ')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

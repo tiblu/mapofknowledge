@@ -1067,6 +1067,55 @@ router.get('/profile', async (req, res) => {
   }
 });
 
+// ── Learning-journey timeline data (Section 2 lightbox) ─────────────────────
+// Two sources, kept separate deliberately: passport_events only carries
+// node-level "Started"/"Completed" milestones (a DATE, no time-of-day),
+// while knobit_progress has an exact completed_at for every single knobit —
+// the client interpolates the latter onto the former's timeline by time.
+router.get('/profile/timeline', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.status(400).json({ error: 'No passport' });
+
+  try {
+    const [events] = await db.execute(
+      `SELECT e.event_date, e.title, e.result, e.type, e.node_external_id,
+              COALESCE(p4.external_id, p3.external_id, p2.external_id, p1.external_id) AS domainId,
+              COALESCE(p4.label, p3.label, p2.label, p1.label) AS domainLabel
+       FROM passport_events e
+       LEFT JOIN nodes n  ON n.external_id = e.node_external_id
+       LEFT JOIN nodes p1 ON p1.id = n.parent_id
+       LEFT JOIN nodes p2 ON p2.id = p1.parent_id
+       LEFT JOIN nodes p3 ON p3.id = p2.parent_id
+       LEFT JOIN nodes p4 ON p4.id = p3.parent_id
+       WHERE e.passport_id = ?
+       ORDER BY e.event_date ASC, e.id ASC`,
+      [passportId]
+    );
+
+    const [completions] = await db.execute(
+      `SELECT kp.completed_at, k.title AS knobitTitle,
+              n.external_id AS nodeExternalId, n.label AS nodeLabel,
+              COALESCE(p4.external_id, p3.external_id, p2.external_id, p1.external_id) AS domainId,
+              COALESCE(p4.label, p3.label, p2.label, p1.label) AS domainLabel
+       FROM knobit_progress kp
+       JOIN knobits k ON k.id = kp.knobit_id
+       JOIN nodes n ON n.id = k.node_id
+       LEFT JOIN nodes p1 ON p1.id = n.parent_id
+       LEFT JOIN nodes p2 ON p2.id = p1.parent_id
+       LEFT JOIN nodes p3 ON p3.id = p2.parent_id
+       LEFT JOIN nodes p4 ON p4.id = p3.parent_id
+       WHERE kp.passport_id = ? AND kp.phase_reached = 'done'
+       ORDER BY kp.completed_at ASC`,
+      [passportId]
+    );
+
+    res.json({ events, completions });
+  } catch (err) {
+    console.error('[api/profile/timeline]', err.message);
+    res.status(500).json({ error: 'Failed to load timeline' });
+  }
+});
+
 // ── Anne — mentor chat widget ────────────────────────────────────────────────
 router.get('/anne/messages', async (req, res) => {
   const passportId = req.user?.passport_id;
