@@ -339,7 +339,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 -- Knobit DOCX export + mid-knobit resume (added 2026-07-28, ported from KnobitMap)
 ('msg.quit_knobit_text',        'en', 'You''ll learn best by staying focused and finishing in one sitting.'),
 ('msg.download_offer_title',    'en', 'Download this knobit?'),
-('msg.download_offer_text',     'en', 'You can download this knobit now. After you continue, its content is cleared.'),
+('msg.download_offer_text',     'en', 'You can download this knobit now, including any notes you wrote. After you continue, its content — and your notes — are cleared.'),
 ('btn.download',                'en', 'Download'),
 
 -- Nav menu reorder (added 2026-07-28): new "Map" item, back to the map from any page
@@ -375,6 +375,12 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 
 -- Anne mentor chat widget (2026-07-29, ported from KnobitMap).
 ('anne.input_placeholder',       'en', 'Ask Anne...'),
-('anne.error',                   'en', 'Something went wrong — please try again.')
+('anne.error',                   'en', 'Something went wrong — please try again.'),
+
+-- Personal notes in the learning thread (2026-08-18): non-AI notes-to-self,
+-- toggled via the pin icon next to the ask-bar.
+('placeholder.write_note',       'en', 'Write a note to yourself…'),
+('btn.note_add',                 'en', 'Write a note to yourself'),
+('btn.note_cancel',              'en', 'Cancel note')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

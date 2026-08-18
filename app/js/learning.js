@@ -33,6 +33,7 @@
   var _MAX_AUTO_RETRY   = 3;
   var _pendingPractice = null;
   var _lastDemoBody    = '';   // previous example's body, sent so the next example doesn't repeat it
+  var _noteMode        = false; // ask-bar is composing a personal note instead of asking Anne
 
   var _PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
   // Fallback for knobits generated before target_bytes existed, and an
@@ -130,6 +131,18 @@
   function apiComplete(knobitId) {
     return fetch('/api/learn/knobit/' + knobitId + '/complete', { method: 'POST' })
       .catch(function () {});
+  }
+
+  // Personal note — no LLM involved, just persisted so it survives resume
+  // and shows up in the .docx download.
+  function apiAddNote(text) {
+    var knobit = KNOBITS[CURRENT_KNOBIT_IDX];
+    if (!knobit) return Promise.reject(new Error('No knobit'));
+    return fetch('/api/learn/knobit/' + knobit.id + '/note', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ phase: _phase, text: text }),
+    });
   }
 
   /* ─── Entry / exit ────────────────────────────────────────────── */
@@ -503,6 +516,7 @@
     _starting = true;
     _knobitStarted  = true;
     _streamButtonEl = null;
+    if (_noteMode) window._toggleNoteMode();
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
     _targetBytes = (Number.isInteger(k.target_bytes) && k.target_bytes > 0)
       ? Math.min(ABSOLUTE_MAX_EXPLAIN_BYTES, k.target_bytes)
@@ -606,14 +620,15 @@
         if (_practiceInputEl) { _practiceInputEl.value = row.answer_text || ''; _practiceInputEl.disabled = true; }
       } else if (row.block_type === 'meaning') {
         _appendBlock({ type: 'meaning', content: row.content });
-      } else if (row.block_type === 'user' || row.block_type === 'note') {
+      } else if (row.block_type === 'user' || row.block_type === 'note' || row.block_type === 'personal_note') {
         _appendBlock({ type: row.block_type, content: row.content });
       }
 
-      // A visual is a decorative addition to the current byte, and an ask-bar
-      // question/answer is a side conversation — neither is a phase
-      // advancement, so don't let them override which button row to restore.
-      if (row.block_type !== 'visual' && row.block_type !== 'user' && row.block_type !== 'note') lastBlockType = row.block_type;
+      // A visual is a decorative addition to the current byte, an ask-bar
+      // question/answer is a side conversation, and a personal note is the
+      // learner's own aside — none of these is a phase advancement, so
+      // don't let them override which button row to restore.
+      if (row.block_type !== 'visual' && row.block_type !== 'user' && row.block_type !== 'note' && row.block_type !== 'personal_note') lastBlockType = row.block_type;
     });
 
     if (lastBlockType === 'byte') {
@@ -1060,8 +1075,41 @@
     showLmView('lm-complete');
   }
 
-  /* ─── Ask bar ─────────────────────────────────────────────────── */
+  /* ─── Ask bar / personal notes ────────────────────────────────── */
+  window._toggleNoteMode = function () {
+    _noteMode = !_noteMode;
+    var bar  = document.getElementById('kn-ask-bar');
+    var inp  = document.getElementById('kn-ask-input');
+    var pin  = document.getElementById('kn-note-icon-pin');
+    var close = document.getElementById('kn-note-icon-close');
+    var btn  = document.getElementById('kn-note-toggle');
+    if (bar) bar.classList.toggle('note-mode', _noteMode);
+    if (pin) pin.style.display = _noteMode ? 'none' : '';
+    if (close) close.style.display = _noteMode ? '' : 'none';
+    if (inp) {
+      inp.placeholder = _noteMode ? t('placeholder.write_note') : t('placeholder.ask_knobit');
+      inp.focus();
+    }
+    if (btn) {
+      var key = _noteMode ? 'btn.note_cancel' : 'btn.note_add';
+      btn.title = window.t ? window.t(key) : (_noteMode ? 'Cancel note' : 'Write a note to yourself');
+      btn.setAttribute('data-i18n-title', key);
+    }
+  };
+
+  window.sendNote = function () {
+    var inp  = document.getElementById('kn-ask-input');
+    var text = inp ? inp.value.trim() : '';
+    if (!text) return;
+    if (inp) inp.value = '';
+
+    _appendBlock({ type: 'personal_note', content: text });
+    apiAddNote(text).catch(function () {});
+    window._toggleNoteMode();
+  };
+
   window.sendAsk = function () {
+    if (_noteMode) { window.sendNote(); return; }
     var inp = document.getElementById('kn-ask-input');
     var q   = inp ? inp.value.trim() : '';
     if (!q) return;
