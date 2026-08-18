@@ -850,6 +850,8 @@
 
 /* Demo "What I did" annotation */
 .lm-demo-what-i-did {
+  display: block;
+  margin-top: 12px;
   opacity: 0.55; font-size: 0.95em;
 }
 
