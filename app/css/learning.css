@@ -61,9 +61,9 @@
 }
 .lm-back-btn:hover { background: var(--i13); }
 
-/* Attention pulse — replayed once on entering the path view, then every
-   30s while it stays active (see showLmView in learning.js). A quick
-   overshoot hop plus an expanding accent-coloured ring. */
+/* Attention pulse — replayed 2s after entering the path view, then every
+   30s while it stays active (see showLmView in learning.js). A slow
+   overshoot hop plus an expanding golden ring. */
 @keyframes lmBackBtnHop {
   0%   { transform: translateY(0)   scale(1);    }
   15%  { transform: translateY(-5px) scale(1.05); }
@@ -72,13 +72,13 @@
   60%, 100% { transform: translateY(0) scale(1); }
 }
 @keyframes lmBackBtnRing {
-  0%   { box-shadow: 0 0 0 0 var(--lm-accent-soft, rgba(196,130,106,0.35)); }
-  60%  { box-shadow: 0 0 0 8px rgba(196,130,106,0); }
-  100% { box-shadow: 0 0 0 0 rgba(196,130,106,0); }
+  0%   { box-shadow: 0 0 0 0 rgba(232,183,45,0.45); }
+  60%  { box-shadow: 0 0 0 8px rgba(232,183,45,0); }
+  100% { box-shadow: 0 0 0 0 rgba(232,183,45,0); }
 }
 .lm-back-btn.attention {
-  animation: lmBackBtnHop 0.7s cubic-bezier(0.34,1.56,0.64,1),
-             lmBackBtnRing 0.9s ease-out;
+  animation: lmBackBtnHop 1.3s cubic-bezier(0.34,1.56,0.64,1),
+             lmBackBtnRing 1.7s ease-out;
 }
 
 .lm-path-meta { flex: 1; min-width: 0; }

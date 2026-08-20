@@ -456,6 +456,7 @@
 
   /* ─── View switching ──────────────────────────────────────────── */
   var _backBtnPulseTimer = null;
+  var _backBtnPulseDelay = null;
 
   function _pulseBackBtn() {
     var btn = document.querySelector('#lm-path .lm-back-btn');
@@ -466,6 +467,7 @@
   }
 
   function _stopBackBtnPulse() {
+    if (_backBtnPulseDelay) { clearTimeout(_backBtnPulseDelay); _backBtnPulseDelay = null; }
     if (_backBtnPulseTimer) { clearInterval(_backBtnPulseTimer); _backBtnPulseTimer = null; }
   }
 
@@ -478,9 +480,12 @@
     // Calls attention to the (currently design-only) back button once on
     // entering the path view, then every 30s for as long as it stays active.
     if (id === 'lm-path') {
-      _pulseBackBtn();
       _stopBackBtnPulse();
-      _backBtnPulseTimer = setInterval(_pulseBackBtn, 30000);
+      _backBtnPulseDelay = setTimeout(function () {
+        _backBtnPulseDelay = null;
+        _pulseBackBtn();
+        _backBtnPulseTimer = setInterval(_pulseBackBtn, 30000);
+      }, 2000);
     } else {
       _stopBackBtnPulse();
     }

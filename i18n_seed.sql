@@ -21,6 +21,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.learn_this',          'en', 'Learn this'),
 ('btn.test_me',             'en', 'Test me'),
 ('btn.back_to_map',         'en', 'Back to the map'),
+('btn.loot_box',            'en', 'Loot Box'),
 ('btn.review_unit',         'en', 'Review this unit'),
 ('btn.keep_learning',       'en', 'Keep learning'),
 ('btn.yes_quit',            'en', 'Yes, quit'),
