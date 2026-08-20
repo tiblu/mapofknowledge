@@ -109,11 +109,26 @@ async function _resolveWikimediaUrl(url) {
   }
 }
 
+// Each round trip through the tool-use loop is its own billed API call, but
+// only the FINAL response was ever returned — callers logging resp.usage were
+// missing every intermediate search-turn's tokens. Accumulate across all
+// turns and report the total on the returned response.
 async function _callWithWebSearch(config) {
   const messages = [...config.messages];
+  let totalInput = 0, totalOutput = 0;
+  // Adds resp's own usage to the running total exactly once, then stamps the
+  // total (so far) onto resp.usage — call once per resp, at most one of
+  // these two per loop iteration.
+  const tally = (resp) => {
+    totalInput  += resp.usage?.input_tokens  || 0;
+    totalOutput += resp.usage?.output_tokens || 0;
+    resp.usage = { input_tokens: totalInput, output_tokens: totalOutput };
+    return resp;
+  };
   for (let i = 0; i < 5; i++) {
     const resp = await client.messages.create({ ...config, messages });
-    if (resp.stop_reason !== 'tool_use') return resp;
+    if (resp.stop_reason !== 'tool_use') return tally(resp);
+    tally(resp);
     messages.push({ role: 'assistant', content: resp.content });
     const results = resp.content
       .filter(b => b.type === 'tool_use')
@@ -121,7 +136,7 @@ async function _callWithWebSearch(config) {
     if (!results.length) return resp;
     messages.push({ role: 'user', content: results });
   }
-  return await client.messages.create({ ...config, messages });
+  return tally(await client.messages.create({ ...config, messages }));
 }
 
 function langText(locale) {
