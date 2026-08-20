@@ -852,6 +852,12 @@
           inp.placeholder = t('placeholder.your_answer');
           inp.rows        = 2;
           wrapper.appendChild(inp);
+          // Old rounds' textareas are never removed (kept visible as thread
+          // history), so this id is never unique in the DOM after the first
+          // problem — track this exact element instead of relying on
+          // getElementById, which would silently return the first (stale,
+          // disabled) match.
+          _practiceInputEl = inp;
         }
         _retryFn = null;
         _setButtonRow('practice-submit');
@@ -859,7 +865,7 @@
   }
 
   window.practiceSubmit = function () {
-    var inp = document.getElementById('kn-practice-input');
+    var inp = _practiceInputEl;
     var ans = inp ? inp.value.trim() : '';
     if (!ans) return;
     if (inp) inp.disabled = true;
