@@ -45,7 +45,7 @@
 /* ── path header ── */
 .lm-path-header {
   flex-shrink: 0;
-  padding: 22px 28px 10px;
+  padding: 15px 28px 10px;
   display: flex;
   align-items: flex-start;
   gap: 16px;
@@ -121,9 +121,9 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 11px 16px;
   border-radius: 14px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   cursor: pointer;
   transition: background 0.13s;
   position: relative;
