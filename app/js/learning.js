@@ -196,6 +196,7 @@
     if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
     _ambientStop();
     _stopFocusTimer();
+    _stopBackBtnPulse();
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.remove('active');
     if (window.Anne) window.Anne.setVisible(true);
@@ -454,11 +455,35 @@
   }
 
   /* ─── View switching ──────────────────────────────────────────── */
+  var _backBtnPulseTimer = null;
+
+  function _pulseBackBtn() {
+    var btn = document.querySelector('#lm-path .lm-back-btn');
+    if (!btn) return;
+    btn.classList.remove('attention');
+    void btn.offsetWidth; // force reflow so the animation restarts
+    btn.classList.add('attention');
+  }
+
+  function _stopBackBtnPulse() {
+    if (_backBtnPulseTimer) { clearInterval(_backBtnPulseTimer); _backBtnPulseTimer = null; }
+  }
+
   window.showLmView = function (id) {
     ['lm-path', 'lm-knobit', 'lm-complete'].forEach(function (v) {
       var el = document.getElementById(v);
       if (el) el.classList.toggle('active', v === id);
     });
+
+    // Calls attention to the (currently design-only) back button once on
+    // entering the path view, then every 30s for as long as it stays active.
+    if (id === 'lm-path') {
+      _pulseBackBtn();
+      _stopBackBtnPulse();
+      _backBtnPulseTimer = setInterval(_pulseBackBtn, 30000);
+    } else {
+      _stopBackBtnPulse();
+    }
   };
 
   /* ─── View 1 — Learning Path ──────────────────────────────────── */

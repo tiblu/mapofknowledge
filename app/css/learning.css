@@ -61,6 +61,26 @@
 }
 .lm-back-btn:hover { background: var(--i13); }
 
+/* Attention pulse — replayed once on entering the path view, then every
+   30s while it stays active (see showLmView in learning.js). A quick
+   overshoot hop plus an expanding accent-coloured ring. */
+@keyframes lmBackBtnHop {
+  0%   { transform: translateY(0)   scale(1);    }
+  15%  { transform: translateY(-5px) scale(1.05); }
+  30%  { transform: translateY(0)   scale(0.97); }
+  45%  { transform: translateY(-2px) scale(1.02); }
+  60%, 100% { transform: translateY(0) scale(1); }
+}
+@keyframes lmBackBtnRing {
+  0%   { box-shadow: 0 0 0 0 var(--lm-accent-soft, rgba(196,130,106,0.35)); }
+  60%  { box-shadow: 0 0 0 8px rgba(196,130,106,0); }
+  100% { box-shadow: 0 0 0 0 rgba(196,130,106,0); }
+}
+.lm-back-btn.attention {
+  animation: lmBackBtnHop 0.7s cubic-bezier(0.34,1.56,0.64,1),
+             lmBackBtnRing 0.9s ease-out;
+}
+
 .lm-path-meta { flex: 1; min-width: 0; }
 .lm-path-crumb {
   font-size: 12px; color: var(--c2);
