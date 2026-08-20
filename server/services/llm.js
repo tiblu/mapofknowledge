@@ -899,6 +899,118 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
   }, userId, 'test_evaluate', onChunk);
 }
 
+// ── Loot Box — further learning resources, opened from the learning-path back
+//    button. Search-heavy (6 of 9 categories need a live URL) — always called
+//    through the /api/learn/lootbox cache, never per view. ─────────────────
+const LOOTBOX_KEYS     = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'fun_fact', 'time_machine', 'influencer', 'hack_it'];
+const LOOTBOX_URL_KEYS = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'influencer'];
+
+function _langNameFor(locale) {
+  if (!locale || locale === 'en') return 'English';
+  return LANG_NAMES[locale] || locale;
+}
+
+async function generateLootBox(nodeLabel, breadcrumb, locale, userId) {
+  const langName = _langNameFor(locale);
+  const prompt = `You are a resource scout for Map of Knowledge, a learning environment. A learner is working through a node on a learning path. Your job is to fill a "Loot Box" — optional extra material that sits alongside the main lesson, in nine fixed categories.
+
+Topic: ${nodeLabel} Where it sits: ${breadcrumb} Learning language: ${langName}
+
+The learner is encountering this topic for the first time — pitch everything as an introduction, not as material for someone who already knows the subject.
+
+The single most important rule
+
+An empty slot is a good outcome. A wrong, dead, generic, or invented item is a bad one, and it is worse than nothing, because it teaches the learner that the Loot Box is not worth opening. Never pad. Never fabricate a URL. Never guess at a title you are not sure exists. If nothing clears the bar for a category, omit that category entirely.
+
+Two kinds of category
+
+Six categories are retrieval: they need a real, live, specific URL. Search for these. Do not produce a URL from memory — URLs from memory are frequently wrong or dead. If your searches do not return something that clears the bar, omit the category.
+
+Categories 6, 7 and 9 are generation: you write them yourself. No URL is required. These will almost always be fillable, so the Loot Box is rarely empty even when search goes badly. But they must be factually correct — search to verify any date, name, or claim you are not certain of, and drop any detail you cannot confirm.
+
+Specificity bar
+
+Every item must be about ${nodeLabel} specifically, not about ${breadcrumb} in general. If the topic is "semantics", a good general introduction to linguistics does not qualify. If the topic is "eigenvalues", a channel that covers all of linear algebra does not qualify unless you can point at the specific video. When you cannot find something topic-specific, omit — do not substitute something broader and hope it passes.
+
+Prefer: free and un-paywalled, still online, well regarded, and accessible to someone new to the topic. Avoid: content farms, SEO listicles, AI-generated slop, anything requiring an account, anything you only half-recognise.
+
+Language
+
+Prefer material in ${langName}. Search in that language first, using native search terms rather than translated English ones.
+
+If ${langName} is a smaller language, good material may simply not exist for this topic — that is expected. In that case English material is acceptable; mark it with "lang" so the app can label it. Never prefer a weak resource in ${langName} over a strong one in English. Quality first, language second.
+
+Special case: if ${nodeLabel} is itself a language being learned, ${langName} is the language of instruction, not the target. Resources about the target language should be in ${langName}; resources that are examples of the target language (a podcast for listening practice, a story to read) should be in the target language and pitched at a beginner in that language.
+
+The nine categories
+
+1. Animation — retrieval. A YouTube animation or explainer video. Wants visual explanation, not a lecture recording of someone talking at a whiteboard for 50 minutes. Under ~25 minutes. Check upload date and view count in results; a video with 40 views from an abandoned channel is usually not the one. Best for anything with a mechanism, a process, or a spatial structure.
+
+2. Play a Game — retrieval. A browser game, simulation, or interactive toy. Must be playable now, free, and no download. Interactive visualisations and sandboxes count. A quiz app does not — that is drilling, not play. This category is genuinely empty for most topics. Fill it when a real one exists and skip it otherwise.
+
+3. Treasure Map — retrieval. A Google Maps or OpenStreetMap link to a place that matters to the topic: where something was discovered, a distribution, a site, a route. Only when geography carries actual meaning. For most abstract topics — most of maths, logic, and theory — there is no such place, and this should be empty rather than a stretched connection to a university building.
+
+4. Podcast — retrieval. A specific episode, not a whole show, unless the show is entirely about ${nodeLabel}. Link to Spotify, the show's own page, or wherever it is publicly hosted.
+
+5. Ancient Scroll — retrieval. One book: popular science, a classic text, a memoir, or fiction that treats the topic seriously. Give author and year. Verify it exists and that the author is right — misattributed books are a common failure. Link to a publisher page, a library record, or Goodreads; no affiliate links. If a short, readable primary source exists — an original paper or essay of a few pages — that is often a better pick than a 400-page overview, and can go here.
+
+6. Fun Fact — generation. Two to four sentences. A surprising fact, an origin story, a good argument between two researchers, a wrong idea people held for a long time. It must be true and it must be about ${nodeLabel} specifically. Search to check anything you are not certain of. Discard anything that smells like a widely repeated myth. No "scientists were baffled" framing — just tell it.
+
+7. Time Machine — generation. Four to seven dated entries, chronological, one line each. Include at least one entry that is a wrong turn, an abandoned idea, or a dispute — those are what make a timeline memorable rather than a list. Every date must be one you are confident in; drop the entry rather than approximate. If the topic has no meaningful history, omit.
+
+8. Influencer — retrieval. One living person actively producing work a learner can follow: a researcher, writer, teacher, or channel. Name them, say in one line what they do and why they are worth following, and link to where their output actually appears — their channel, blog, or site, not a Wikipedia article. Prefer someone specific to ${nodeLabel} over a general science-communication celebrity. Say nothing about them beyond their public professional work.
+
+9. Hack It — generation. One concrete project doable in an evening or a weekend with things a normal person has: a computer, a phone, a notebook, household objects, free software. State the outcome first, then 3–6 steps, then what the learner will have noticed or built by the end. It must produce a result the learner can look at. "Read about X and reflect" is not a project. For abstract topics, good shapes are: collect and analyse a small data set, build a tiny working model, run a self-experiment, or apply the idea to something the learner already has.
+
+Output
+
+Return ONLY a single JSON object — no markdown fences, no commentary outside the JSON. Omit the key entirely for any category that doesn't clear the bar; do not include it with a null or empty value. Use exactly these keys:
+
+{
+  "animation":      { "title": "...", "url": "...", "note": "one short line on what makes it worth watching", "lang": "en"|"${langName}" },
+  "play_a_game":    { "title": "...", "url": "...", "note": "...", "lang": "..." },
+  "treasure_map":   { "title": "...", "url": "...", "note": "one line on why this place matters to the topic", "lang": "..." },
+  "podcast":        { "title": "...", "url": "...", "note": "episode/show name and why it's the pick", "lang": "..." },
+  "ancient_scroll": { "title": "...", "author": "...", "year": 1999, "url": "...", "note": "...", "lang": "..." },
+  "fun_fact":       { "text": "2-4 sentences" },
+  "time_machine":   { "entries": [ { "date": "...", "text": "one line" }, ... ] },
+  "influencer":     { "name": "...", "role": "one line on what they do and why worth following", "url": "..." },
+  "hack_it":        { "outcome": "what the learner will end up with", "steps": [ "...", "..." ], "result": "what they'll have noticed or built by the end" }
+}
+
+"lang" on the six retrieval categories: omit it when the resource is in ${langName}; set it to "en" only when you had to fall back to English material per the Language section above.
+
+Before you return
+
+Check: does every URL come from a search result in this session, or was any assembled from memory? Is every item about ${nodeLabel} rather than its parent field? Is anything included only because the slot existed?`;
+
+  const resp = await _callWithWebSearch({
+    model: SONNET,
+    max_tokens: 3000,
+    tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+    system: [{ type: 'text', text: 'You are a meticulous resource scout. Respond only with the JSON object requested — no markdown fences, no commentary.', cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  _logUsage(userId, 'lootbox', resp.usage, SONNET);
+
+  const fullText = resp.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  if (!fullText) return {};
+
+  let result;
+  try {
+    result = _extractJSON(fullText);
+  } catch {
+    return {};
+  }
+
+  const out = {};
+  for (const key of LOOTBOX_KEYS) {
+    if (result && result[key] && typeof result[key] === 'object') out[key] = result[key];
+  }
+  return out;
+}
+
 // ── Anne — persistent mentor chat widget ──────────────────────────────────────
 // ANNE_APP_HELP: plain-language reference to the app's actual UI, so Anne can
 // answer "how do I..." questions and guide a lost learner, not just coach on
@@ -1009,4 +1121,6 @@ module.exports = {
   streamTestEvaluate,
   generateAnneReply,
   streamAnneReply,
+  generateLootBox,
+  LOOTBOX_URL_KEYS,
 };

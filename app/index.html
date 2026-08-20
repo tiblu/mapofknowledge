@@ -499,57 +499,14 @@
        ════════════════════════════════════════ -->
   <div id="lootbox-modal" style="display:none">
     <div class="lootbox-modal-box">
+      <button class="lootbox-modal-back" id="lootbox-modal-back" style="display:none" data-i18n-title="btn.back_arrow" title="Back" aria-label="Back to loot box">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <button class="lootbox-modal-close" id="lootbox-modal-close" data-i18n-title="btn.close" title="Close" aria-label="Close">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
-      <div class="lootbox-modal-title" data-i18n="lootbox.title">Loot Box</div>
-      <div class="lootbox-grid">
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">🎬</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.animation">Animation</div>
-        </div>
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">🎮</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.play_a_game">Play a Game</div>
-        </div>
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">🗺️</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.treasure_map">Treasure Map</div>
-        </div>
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">🎙️</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.podcast">Podcast</div>
-        </div>
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">📜</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.ancient_scroll">Ancient Scroll</div>
-        </div>
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">💡</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.fun_fact">Fun Fact</div>
-        </div>
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">⏳</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.time_machine">Time Machine</div>
-        </div>
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">📱</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.influencer">Influencer</div>
-        </div>
-        <div class="lootbox-item">
-          <span class="lootbox-item-badge" data-i18n="help.soon">Coming soon</span>
-          <div class="lootbox-item-icon">🛠️</div>
-          <div class="lootbox-item-label" data-i18n="lootbox.hack_it">Hack It</div>
-        </div>
-      </div>
+      <div class="lootbox-modal-title" id="lootbox-modal-title" data-i18n="lootbox.title">Loot Box</div>
+      <div class="lootbox-body" id="lootbox-body"></div>
     </div>
   </div>
 
@@ -803,7 +760,7 @@
 <script src="js/verify-banner.js"></script>
 <script src="js/nav-menu.js"></script>
 <script src="js/tour.js"></script>
-<script src="js/learning.js?v=15"></script>
+<script src="js/learning.js?v=16"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/layers.js?v=4"></script>
 <script src="js/filters.js?v=4"></script>

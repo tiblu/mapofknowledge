@@ -60,6 +60,21 @@ async function run() {
     `);
     console.log('  · user_node_knowledge table ready');
 
+    // lootbox_cache table — one generated Loot Box per (node, locale), reused
+    // across every learner; regenerated when stale (see /api/learn/lootbox)
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS lootbox_cache (
+        id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        node_external_id VARCHAR(20)     NOT NULL,
+        locale           VARCHAR(10)     NOT NULL DEFAULT 'en',
+        data             MEDIUMTEXT      NOT NULL,
+        generated_at     DATETIME        NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_lootbox (node_external_id, locale)
+      )
+    `);
+    console.log('  · lootbox_cache table ready');
+
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
     if (cnt > 0) {
