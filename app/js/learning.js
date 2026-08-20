@@ -474,7 +474,13 @@
 
     var pct = KNOBIT_TOTAL ? Math.round((KNOBIT_DONE_COUNT / KNOBIT_TOTAL) * 100) : 0;
     if (fillEl) fillEl.style.width = pct + '%';
-    if (pctEl)  pctEl.textContent  = pct + '%';
+    if (pctEl) {
+      pctEl.textContent = pct + '%';
+      pctEl.classList.toggle('at-zero', pct <= 0);
+      // Tracks the fill's right edge (with a little inset) so the label
+      // always sits on the coloured bar, not the empty track behind it.
+      pctEl.style.right = pct <= 0 ? '' : 'calc(' + (100 - pct) + '% + 6px)';
+    }
 
     if (!listEl) return;
     listEl.innerHTML = '';
