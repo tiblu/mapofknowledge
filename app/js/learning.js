@@ -24,6 +24,11 @@
   var _byteIdx      = 0;
   var _demoIdx      = 0;
   var _practiceIdx  = 0;
+  // Once true for this knobit's practice phase, stays true — the "must
+  // retry, no skip" gate is meant to block leaving without EVER having
+  // shown understanding, not to punish a later voluntary extra attempt
+  // that happens to go wrong after an earlier one was already correct.
+  var _hasCorrectPracticeAnswer = false;
   var _streamBlocks = [];
   var _priorChoices = [];
   var _loading      = false;
@@ -545,6 +550,7 @@
     _seenVisualUrls  = [];
     _practiceInputEl = null;
     _lastDemoBody    = '';
+    _hasCorrectPracticeAnswer = false;
 
     _setPhase('explain');
     _setButtonRow('');
@@ -563,10 +569,10 @@
     _seenVisualUrls  = [];
     _practiceInputEl = null;
     _lastDemoBody    = '';
+    _hasCorrectPracticeAnswer = false;
 
     var lastPhase = null;
     var lastBlockType = null;
-    var lastFeedbackCorrect = false;
     var blocks = session.blocks;
 
     blocks.forEach(function (row) {
@@ -615,7 +621,7 @@
         }
       } else if (row.block_type === 'feedback') {
         var grade = JSON.parse(row.content || '{}');
-        lastFeedbackCorrect = !!grade.correct;
+        if (grade.correct) _hasCorrectPracticeAnswer = true;
         _appendBlock({ type: 'feedback', content: (grade.correct ? '✓ ' : '✗ ') + (grade.feedback || '') });
         if (_practiceInputEl) { _practiceInputEl.value = row.answer_text || ''; _practiceInputEl.disabled = true; }
       } else if (row.block_type === 'meaning') {
@@ -638,7 +644,7 @@
     } else if (lastBlockType === 'practice') {
       _setButtonRow('practice-submit');
     } else if (lastBlockType === 'feedback') {
-      _setButtonRow(lastFeedbackCorrect ? 'practice-next' : 'practice-next-retry');
+      _setButtonRow(_hasCorrectPracticeAnswer ? 'practice-next' : 'practice-next-retry');
     } else if (lastBlockType === 'meaning') {
       _setButtonRow('meaning-options');
     }
@@ -877,7 +883,7 @@
     _retryFn = function () {
       _showLoadingBlock();
       apiInteract({ phase: 'practice', action: 'grade', question: capturedProb.question || '', expected: capturedProb.expected || '', userAnswer: capturedAns })
-        .then(function (d) { _retryFn = null; _removeLoadingBlock(); var g = d.grade || {}; _appendBlock({ type: 'feedback', content: (g.correct ? '✓ ' : '✗ ') + (g.feedback || '') }); _setButtonRow(g.correct ? 'practice-next' : 'practice-next-retry'); })
+        .then(function (d) { _retryFn = null; _removeLoadingBlock(); var g = d.grade || {}; _appendBlock({ type: 'feedback', content: (g.correct ? '✓ ' : '✗ ') + (g.feedback || '') }); if (g.correct) _hasCorrectPracticeAnswer = true; _setButtonRow(_hasCorrectPracticeAnswer ? 'practice-next' : 'practice-next-retry'); })
         .catch(_onApiError);
     };
     _retryFn();
