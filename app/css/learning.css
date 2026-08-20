@@ -45,11 +45,10 @@
 /* ── path header ── */
 .lm-path-header {
   flex-shrink: 0;
-  padding: 22px 28px 18px;
+  padding: 22px 28px 10px;
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  border-bottom: 1px solid var(--i08);
 }
 .lm-back-btn {
   width: 34px; height: 34px;
@@ -79,22 +78,25 @@
 
 /* progress bar */
 .lm-progress-track {
-  height: 5px;
+  position: relative;
+  height: 17px;
   background: var(--i09);
-  border-radius: 3px;
-  margin: 16px 28px 0;
+  border-radius: 9px;
+  margin: 0 28px 16px;
   overflow: hidden;
 }
 .lm-progress-fill {
   height: 100%;
   background: var(--lm-accent);
-  border-radius: 3px;
+  border-radius: 9px;
   transition: width 0.4s ease;
 }
-.lm-progress-label {
-  font-size: 13px; color: var(--c2);
-  font-weight: 500;
-  padding: 8px 28px 14px;
+.lm-progress-pct {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--c1);
+  letter-spacing: 0.2px;
+  pointer-events: none;
 }
 
 /* ── knobit list ── */

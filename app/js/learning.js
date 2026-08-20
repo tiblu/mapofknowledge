@@ -466,15 +466,15 @@
     var crumbEl = document.getElementById('lm-path-crumb');
     var titleEl = document.getElementById('lm-path-title');
     var fillEl  = document.getElementById('lm-progress-fill');
-    var labelEl = document.getElementById('lm-progress-label');
+    var pctEl   = document.getElementById('lm-progress-pct');
     var listEl  = document.getElementById('lm-knobit-list');
 
     if (crumbEl) crumbEl.textContent = _crumb;
     if (titleEl) titleEl.textContent = _node ? _node.label : '';
 
     var pct = KNOBIT_TOTAL ? Math.round((KNOBIT_DONE_COUNT / KNOBIT_TOTAL) * 100) : 0;
-    if (fillEl)  fillEl.style.width   = pct + '%';
-    if (labelEl) labelEl.textContent  = pct + t('msg.pct_complete_suffix') + (pct < 100 ? ' ' + t('msg.keep_going') : '');
+    if (fillEl) fillEl.style.width = pct + '%';
+    if (pctEl)  pctEl.textContent  = pct + '%';
 
     if (!listEl) return;
     listEl.innerHTML = '';
