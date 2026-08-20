@@ -466,6 +466,16 @@
     btn.classList.add('attention');
   }
 
+  window.openLootBox = function () {
+    var modal = document.getElementById('lootbox-modal');
+    if (modal) modal.style.display = 'flex';
+  };
+
+  window.closeLootBox = function () {
+    var modal = document.getElementById('lootbox-modal');
+    if (modal) modal.style.display = 'none';
+  };
+
   function _stopBackBtnPulse() {
     if (_backBtnPulseDelay) { clearTimeout(_backBtnPulseDelay); _backBtnPulseDelay = null; }
     if (_backBtnPulseTimer) { clearInterval(_backBtnPulseTimer); _backBtnPulseTimer = null; }
@@ -1497,9 +1507,20 @@
       lightboxEl.style.display = 'none';
     });
 
+    var lootboxEl = document.getElementById('lootbox-modal');
+    if (lootboxEl) lootboxEl.addEventListener('click', function (e) {
+      if (e.target === lootboxEl) window.closeLootBox();
+    });
+
+    var lootboxClose = document.getElementById('lootbox-modal-close');
+    if (lootboxClose) lootboxClose.addEventListener('click', window.closeLootBox);
+
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && lightboxEl && lightboxEl.style.display !== 'none') {
         lightboxEl.style.display = 'none';
+      }
+      if (e.key === 'Escape' && lootboxEl && lootboxEl.style.display !== 'none') {
+        window.closeLootBox();
       }
     });
 

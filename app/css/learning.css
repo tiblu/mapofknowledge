@@ -1170,6 +1170,82 @@
 }
 .lm-lightbox-close:hover { background: rgba(255,255,255,0.22); }
 
+/* ── Loot Box — further learning resources, opened from the back button ── */
+#lootbox-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: var(--overlay);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.lootbox-modal-box {
+  position: relative;
+  background: var(--bg);
+  border-radius: 18px;
+  padding: 30px 26px 26px;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 8px 32px var(--i18);
+}
+.lootbox-modal-title {
+  font-size: 17px; font-weight: 700;
+  color: var(--c1); text-align: center;
+  margin-bottom: 20px;
+}
+.lootbox-modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--i06);
+  color: var(--c3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.lootbox-modal-close:hover { background: var(--i08); }
+.lootbox-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.lootbox-item {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+  background: rgba(255,255,255,0.5);
+  border: 1.5px solid var(--i08);
+  border-radius: 14px;
+  padding: 16px 8px 12px;
+  opacity: 0.7;
+}
+.lootbox-item-badge {
+  position: absolute; top: 7px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--c4);
+  background: var(--i06);
+  border-radius: 20px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.lootbox-item-icon {
+  font-size: 24px; line-height: 1;
+  margin: 12px 0 8px;
+}
+.lootbox-item-label {
+  font-size: 11.5px; font-weight: 600; color: var(--c3);
+  line-height: 1.3;
+}
+
+@media (max-width: 420px) {
+  .lootbox-item-icon { font-size: 20px; }
+  .lootbox-item-label { font-size: 10.5px; }
+}
+
 .lm-visual-video {
   display: inline-flex;
   align-items: center;
