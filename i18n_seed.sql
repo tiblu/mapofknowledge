@@ -413,6 +413,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.day_later',                'en', 'day later'),
 ('msg.days_later',               'en', 'days later'),
 ('msg.no_journey_yet',           'en', 'Nothing here yet — start learning to build your journey.'),
-('msg.knobit_completed_prefix',  'en', 'Knobit completed: ')
+('msg.knobit_completed_prefix',  'en', 'Knobit completed: '),
+
+-- Unit-complete "next node" recommendation (2026-08-20): suggests an
+-- unstudied sibling L5 node (or an adjacent L4's) after finishing a unit.
+('label.up_next',                'en', 'Up next')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

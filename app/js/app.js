@@ -1469,6 +1469,31 @@ function init(data, emergentData) {
         chip.classList.add('visible');
       }).catch(() => {});
   }
+  // Shared by the continue-chip and the unit-complete screen's "Up next"
+  // recommendation — fetches/generates the node's knobits and opens learning
+  // mode for it. opts.autoStart also immediately starts the first knobit,
+  // instead of just showing the node's path view.
+  function startLearningNode(nodeId, opts) {
+    const node = nodeId && allNodes[nodeId];
+    if (!node) return Promise.reject(new Error('Unknown node'));
+    const crumb = (function () {
+      const chain = [];
+      let cur = nodeId;
+      while (parentOf[cur] !== undefined) { cur = parentOf[cur]; chain.unshift(allNodes[cur]); }
+      const domain = chain[0];
+      const mid    = chain.slice(1).map(n => n.label);
+      return (domain ? domain.label : '') + (mid.length ? ' › ' + mid.join(' › ') : '');
+    }());
+    return fetch(`/api/nodes/${nodeId}/learn`, { method: 'POST' })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(({ knobits, resumeSession }) => {
+        if (!Array.isArray(knobits) || !knobits.length) throw new Error('No knobits returned');
+        window.Learn.open(node, crumb, knobits, resumeSession);
+        if (opts && opts.autoStart && window.startKnobit) window.startKnobit();
+      });
+  }
+  window.MapView.startLearningNode = startLearningNode;
+
   (function () {
     const chip      = document.getElementById('continue-chip');
     const toggleBtn = document.getElementById('continue-chip-toggle');
@@ -1482,23 +1507,8 @@ function init(data, emergentData) {
         return;
       }
       const nodeId = _continueChipNodeId;
-      const node   = nodeId && allNodes[nodeId];
-      if (!node) return;
-      const crumb = (function () {
-        const chain = [];
-        let cur = nodeId;
-        while (parentOf[cur] !== undefined) { cur = parentOf[cur]; chain.unshift(allNodes[cur]); }
-        const domain = chain[0];
-        const mid    = chain.slice(1).map(n => n.label);
-        return (domain ? domain.label : '') + (mid.length ? ' › ' + mid.join(' › ') : '');
-      }());
-      fetch(`/api/nodes/${nodeId}/learn`, { method: 'POST' })
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(({ knobits, resumeSession }) => {
-          if (!Array.isArray(knobits) || !knobits.length) throw new Error('No knobits returned');
-          window.Learn.open(node, crumb, knobits, resumeSession);
-        })
-        .catch(() => { alert(t('msg.connection_error')); });
+      if (!nodeId) return;
+      startLearningNode(nodeId).catch(() => { alert(t('msg.connection_error')); });
     });
 
     // Collapse toggle

@@ -1059,6 +1059,8 @@
     }
   }
 
+  var _recommendedNodeId = null;
+
   function _showUnitComplete() {
     var titleEl = document.querySelector('.lm-complete-title');
     var s = document.querySelector('.lm-complete-sub');
@@ -1072,8 +1074,31 @@
     }
     var reflInp = document.getElementById('lm-reflection-input');
     if (reflInp) reflInp.value = '';
+
+    _recommendedNodeId = null;
+    var nextWrap = document.getElementById('lm-next-node');
+    if (nextWrap) nextWrap.style.display = 'none';
+    if (_node && _node.id) {
+      fetch('/api/nodes/' + _node.id + '/next-recommendation')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var rec = data && data.recommendation;
+          if (!rec || !nextWrap) return;
+          _recommendedNodeId = rec.external_id;
+          var nameEl = document.getElementById('lm-next-node-name');
+          if (nameEl) nameEl.textContent = rec.label;
+          nextWrap.style.display = '';
+        })
+        .catch(function () {});
+    }
+
     showLmView('lm-complete');
   }
+
+  window._startRecommendedNode = function () {
+    if (!_recommendedNodeId || !window.MapView || !window.MapView.startLearningNode) return;
+    window.MapView.startLearningNode(_recommendedNodeId, { autoStart: true }).catch(function () {});
+  };
 
   /* ─── Ask bar / personal notes ────────────────────────────────── */
   window._toggleNoteMode = function () {
