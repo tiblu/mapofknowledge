@@ -23,6 +23,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('btn.back_to_map',         'en', 'Back to the map'),
 ('btn.loot_box',            'en', 'Loot Box'),
 ('lootbox.title',           'en', 'Loot Box'),
+('lootbox.loading',         'en', 'Fetching your goodies. This will take a bit. Or two bits :)'),
 ('lootbox.animation',       'en', 'Animation'),
 ('lootbox.play_a_game',     'en', 'Play a Game'),
 ('lootbox.treasure_map',    'en', 'Treasure Map'),

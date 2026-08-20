@@ -522,7 +522,9 @@
     if (!body) return;
     if (kind === 'loading') {
       body.innerHTML =
-        '<div class="lootbox-status"><div style="display:flex;gap:5px;">' +
+        '<div class="lootbox-status">' +
+        '<div class="lootbox-status-text">' + _escHtml(window.t('lootbox.loading')) + '</div>' +
+        '<div style="display:flex;gap:5px;">' +
         '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>' +
         '</div></div>';
     } else if (kind === 'error') {
