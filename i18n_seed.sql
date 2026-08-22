@@ -283,6 +283,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('quesst.lumens_title',     'en', 'Lumens & Rank'),
 ('quesst.lumens_label',     'en', 'lumens'),
 ('quesst.lumens_rules_title', 'en', 'How lumens work'),
+('quesst.max_rank_label',   'en', 'Max rank'),
 ('quesst.lumens_rule_1',    'en', 'Complete a knobit: +10 lumens.'),
 ('quesst.lumens_rule_2',    'en', 'Finish an entire topic (all its knobits): +25 lumens, on top of the knobit award.'),
 ('quesst.lumens_rule_3',    'en', 'Finish every topic under a bigger unit: +100 lumens, on top of the above.'),

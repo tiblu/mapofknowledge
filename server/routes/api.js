@@ -1216,6 +1216,7 @@ router.get('/profile', async (req, res) => {
 
     data.suggestions = { unfinishedKnobits, incompletePaths, repeatContent: [] };
     data.streak = await game.getStreak(passportId, req.query.localDate);
+    data.game   = await game.getGameState(passportId);
 
     res.json(data);
   } catch (err) {

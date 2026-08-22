@@ -1081,6 +1081,7 @@
         renderGoals(d.goals);
         renderSuggestions(d.suggestions);
         renderStreak(d.streak);
+        renderLumens(d.game);
       })
       .catch(err => {
         console.error('Profile load failed:', err);
@@ -1115,22 +1116,64 @@
     });
   })();
 
-  /* ─── Section 8 — Lumens info popover ────────────────────────────── */
-  (function () {
+  /* ─── Section 8 — Lumens & Rank (real data) ──────────────────────── */
+  function renderLumens(game) {
+    var card = document.getElementById('qst-lumens-card');
+    if (!card) return;
+    var g       = game || {};
+    var lumens  = g.lumens  || 0;
+    var rank    = g.rank    || 'Wanderer';
+    var rankMin = g.rankMin || 0;
+    var next    = g.nextRank || null;
+
+    var pct = 100;
+    if (next && next.min > rankMin) {
+      pct = Math.max(0, Math.min(100, Math.round(((lumens - rankMin) / (next.min - rankMin)) * 100)));
+    }
+    var nextLabel = next ? esc(next.title) : esc(t('quesst.max_rank_label'));
+
+    card.innerHTML = `
+      <div class="p-card-title-row">
+        <div class="p-card-title">${esc(t('quesst.lumens_title'))}</div>
+        <button type="button" class="qst-info-btn" id="qst-lumens-info-btn" aria-label="${esc(t('quesst.lumens_rules_title'))}">i</button>
+      </div>
+      <div class="qst-lumens-hero">
+        <div class="qst-lumens-icon">✦</div>
+        <div class="qst-lumens-count">${lumens.toLocaleString()}</div>
+        <div class="qst-lumens-label">${esc(t('quesst.lumens_label'))}</div>
+      </div>
+      <div class="qst-rank-row">
+        <span class="qst-rank-badge">${esc(rank)}</span>
+        <div class="qst-rank-bar"><div class="qst-rank-fill" style="width:${pct}%"></div></div>
+        <span class="qst-rank-next">${nextLabel}</span>
+      </div>
+      <div class="qst-info-popover" id="qst-lumens-popover" style="display:none">
+        <div class="qst-info-popover-title">${esc(t('quesst.lumens_rules_title'))}</div>
+        <ul>
+          <li>${esc(t('quesst.lumens_rule_1'))}</li>
+          <li>${esc(t('quesst.lumens_rule_2'))}</li>
+          <li>${esc(t('quesst.lumens_rule_3'))}</li>
+          <li>${esc(t('quesst.lumens_rule_4'))}</li>
+          <li>${esc(t('quesst.lumens_rule_5'))}</li>
+          <li>${esc(t('quesst.lumens_rule_6'))}</li>
+          <li>${esc(t('quesst.lumens_rule_7'))}</li>
+        </ul>
+      </div>`;
+
     var infoBtn = document.getElementById('qst-lumens-info-btn');
     var popover = document.getElementById('qst-lumens-popover');
-    if (!infoBtn || !popover) return;
-
-    infoBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
-    });
-    document.addEventListener('click', function (e) {
-      if (popover.style.display !== 'none' && !popover.contains(e.target) && e.target !== infoBtn) {
-        popover.style.display = 'none';
-      }
-    });
-  })();
+    if (infoBtn && popover) {
+      infoBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', function (e) {
+        if (popover.style.display !== 'none' && !popover.contains(e.target) && e.target !== infoBtn) {
+          popover.style.display = 'none';
+        }
+      });
+    }
+  }
 
   // Boot
   window.loadProfile();
