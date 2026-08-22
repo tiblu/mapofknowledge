@@ -1180,9 +1180,7 @@
     if (isYou) return t('quesst.you_label');
     var name = (fullName || '').trim();
     if (!name) return t('quesst.anon_learner');
-    var parts = name.split(/\s+/);
-    if (parts.length === 1) return parts[0];
-    return parts[0] + ' ' + parts[parts.length - 1].charAt(0).toUpperCase() + '.';
+    return name.split(/\s+/)[0];
   }
 
   function renderLeaderboard(data) {
@@ -1206,7 +1204,10 @@
       return `<div class="qst-lb-row${isYou ? ' you' : ''}">
         <span class="qst-lb-rank">${r.rank}</span>
         <div class="qst-lb-avatar">${esc(initial)}</div>
-        <span class="qst-lb-name">${esc(name)}</span>
+        <div class="qst-lb-info">
+          <span class="qst-lb-name">${esc(name)}</span>
+          <span class="qst-lb-rank-title">${esc(r.rankTitle || '')}</span>
+        </div>
         <span class="qst-lb-lumens">${(r.lumens || 0).toLocaleString()}</span>
       </div>`;
     }

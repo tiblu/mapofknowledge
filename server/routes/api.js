@@ -1178,6 +1178,7 @@ router.get('/streak', async (req, res) => {
 // they're not already in that top 5 ───────────────────────────────────────
 router.get('/leaderboard', async (req, res) => {
   const passportId = req.user?.passport_id;
+  const withRankTitle = (r) => ({ ...r, rankTitle: game.getRank(r.lumens).title });
   try {
     const [top] = await db.execute(
       `SELECT lp.id AS passportId, lp.display_name AS displayName, lp.lumen_total AS lumens,
@@ -1195,10 +1196,10 @@ router.get('/leaderboard', async (req, res) => {
          FROM learner_passports lp WHERE lp.id = ?`,
         [passportId]
       );
-      you = row || null;
+      you = row ? withRankTitle(row) : null;
     }
 
-    res.json({ top, you, passportId: passportId || null });
+    res.json({ top: top.map(withRankTitle), you, passportId: passportId || null });
   } catch (err) {
     console.error('[api/leaderboard]', err.message);
     res.status(500).json({ top: [], you: null, passportId: null });

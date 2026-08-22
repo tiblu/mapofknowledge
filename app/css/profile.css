@@ -1055,8 +1055,10 @@ select.p-edit-input { cursor: pointer; }
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.qst-lb-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--c1); }
+.qst-lb-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.qst-lb-name { font-size: 13px; font-weight: 600; color: var(--c1); }
 .qst-lb-row.you .qst-lb-name { color: #8A6410; }
+.qst-lb-rank-title { font-size: 10.5px; color: var(--c6); }
 .qst-lb-lumens { font-size: 12.5px; font-weight: 650; color: var(--c3); }
 .qst-lb-gap { text-align: center; font-size: 11px; color: var(--c7); letter-spacing: 2px; padding: 2px 0; }
 
@@ -1066,6 +1068,7 @@ select.p-edit-input { cursor: pointer; }
 .p-card.compact .qst-lb-rank { width: 13px; font-size: 11px; }
 .p-card.compact .qst-lb-avatar { width: 22px; height: 22px; font-size: 10px; }
 .p-card.compact .qst-lb-name { font-size: 11.5px; }
+.p-card.compact .qst-lb-rank-title { font-size: 9.5px; }
 .p-card.compact .qst-lb-lumens { font-size: 11px; }
 
 @media (max-width: 640px) {
