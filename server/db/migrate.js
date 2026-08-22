@@ -109,6 +109,20 @@ async function run() {
     `);
     console.log('  · user_streaks table ready');
 
+    // learner_passports.profile_bonus_awarded — one-time flag so the +10
+    // lumens "complete your profile" bonus can't be re-triggered on every
+    // subsequent edit (see maybeAwardProfileCompleteBonus in game.js).
+    const [profileBonusCols] = await conn.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'learner_passports' AND COLUMN_NAME = 'profile_bonus_awarded'`
+    );
+    if (!profileBonusCols.length) {
+      await conn.execute('ALTER TABLE learner_passports ADD COLUMN profile_bonus_awarded TINYINT(1) NOT NULL DEFAULT 0');
+      console.log('  + Added learner_passports.profile_bonus_awarded column');
+    } else {
+      console.log('  · learner_passports.profile_bonus_awarded already exists');
+    }
+
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
     if (cnt > 0) {

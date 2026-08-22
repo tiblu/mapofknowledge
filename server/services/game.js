@@ -449,7 +449,94 @@ async function maybeAwardStreakSaver(passportId, nodeDbId, userId) {
   }
 }
 
+// ── Profile-complete bonus (+10, one-time) ────────────────────────────────────
+// Identity (name, birth year, location, cultural background), learning needs
+// (about), and at least one interest + one value tag — checked after any edit
+// to identity or tags. profile_bonus_awarded guards against re-awarding on
+// later edits once it's already been given.
+async function maybeAwardProfileCompleteBonus(passportId, userId) {
+  if (!passportId) return;
+  try {
+    const [[passport]] = await db.execute(
+      `SELECT display_name, birth_year, location, cultural_background, about, profile_bonus_awarded
+       FROM learner_passports WHERE id = ?`,
+      [passportId]
+    );
+    if (!passport || passport.profile_bonus_awarded) return;
+    const identityDone = !!(passport.display_name && passport.birth_year && passport.location
+      && passport.cultural_background && passport.about);
+    if (!identityDone) return;
+
+    const [[{ interestCnt }]] = await db.execute(
+      `SELECT COUNT(*) AS interestCnt FROM passport_tags WHERE passport_id = ? AND type = 'interest'`,
+      [passportId]
+    );
+    const [[{ valueCnt }]] = await db.execute(
+      `SELECT COUNT(*) AS valueCnt FROM passport_tags WHERE passport_id = ? AND type = 'value'`,
+      [passportId]
+    );
+    if (!(interestCnt > 0 && valueCnt > 0)) return;
+
+    await db.execute('UPDATE learner_passports SET profile_bonus_awarded = 1 WHERE id = ?', [passportId]);
+    const amount = await awardLumens(passportId, userId, 10, 'profile_complete', null);
+    if (userId && amount) {
+      const { notify } = require('./notifications');
+      notify(userId, 'achievement', `+${amount} lumens!`,
+        'Your Learner Passport profile is complete.');
+    }
+  } catch (err) {
+    console.error('[game/maybeAwardProfileCompleteBonus]', err.message);
+  }
+}
+
+// ── Branch-complete bonus (+100, one-time per branch) ─────────────────────────
+// Fires when the just-finished L5 node is the LAST one under its L4 parent to
+// reach 100% — i.e. the whole branch is now fully learned. Single level only
+// (does not cascade further up to L3/L2/L1). Idempotency reuses the
+// user_achievements unique constraint (INSERT IGNORE — if the row already
+// existed, affectedRows is 0 and nothing is awarded twice), even though this
+// isn't shown as a medal.
+async function maybeAwardBranchBonus(passportId, userId, nodeDbId) {
+  if (!passportId || !nodeDbId) return;
+  try {
+    const [[parent]] = await db.execute(
+      `SELECT p.id AS parentDbId, p.external_id AS parentExtId, p.label AS parentLabel
+       FROM nodes n JOIN nodes p ON n.parent_id = p.id
+       WHERE n.id = ? AND p.level = 4`,
+      [nodeDbId]
+    );
+    if (!parent) return;
+
+    const [[{ total, mastered }]] = await db.execute(
+      `SELECT COUNT(child.id) AS total,
+              COUNT(CASE WHEN unk.percentage = 100 THEN 1 END) AS mastered
+       FROM nodes child
+       LEFT JOIN user_node_knowledge unk
+              ON unk.node_external_id = child.external_id AND unk.passport_id = ?
+       WHERE child.parent_id = ? AND child.level = 5`,
+      [passportId, parent.parentDbId]
+    );
+    if (!(total > 0 && mastered === total)) return;
+
+    const [result] = await db.execute(
+      'INSERT IGNORE INTO user_achievements (passport_id, achievement_key) VALUES (?, ?)',
+      [passportId, 'branch_complete_' + parent.parentExtId]
+    );
+    if (!result.affectedRows) return;
+
+    const amount = await awardLumens(passportId, userId, 100, 'branch_complete', parent.parentExtId);
+    if (userId && amount) {
+      const { notify } = require('./notifications');
+      notify(userId, 'achievement', `+${amount} lumens!`,
+        `You completed every topic under "${parent.parentLabel}".`, parent.parentExtId);
+    }
+  } catch (err) {
+    console.error('[game/maybeAwardBranchBonus]', err.message);
+  }
+}
+
 module.exports = {
   awardLumens, checkAchievements, getGameState, getMomentum, getRank, RANKS, getAllAchievements,
   getStreak, recordKnobitCompletion, maybeAwardStreakSaver,
+  maybeAwardProfileCompleteBonus, maybeAwardBranchBonus,
 };

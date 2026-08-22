@@ -1115,6 +1115,23 @@
     });
   })();
 
+  /* ─── Section 8 — Lumens info popover ────────────────────────────── */
+  (function () {
+    var infoBtn = document.getElementById('qst-lumens-info-btn');
+    var popover = document.getElementById('qst-lumens-popover');
+    if (!infoBtn || !popover) return;
+
+    infoBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', function (e) {
+      if (popover.style.display !== 'none' && !popover.contains(e.target) && e.target !== infoBtn) {
+        popover.style.display = 'none';
+      }
+    });
+  })();
+
   // Boot
   window.loadProfile();
 

@@ -337,7 +337,10 @@
 
       <!-- Lumens & rank (1/3 width, next to the video) -->
       <div class="p-card s8" id="qst-lumens-card">
-        <div class="p-card-title" data-i18n="quesst.lumens_title">Lumens &amp; Rank</div>
+        <div class="p-card-title-row">
+          <div class="p-card-title" data-i18n="quesst.lumens_title">Lumens &amp; Rank</div>
+          <button type="button" class="qst-info-btn" id="qst-lumens-info-btn" aria-label="How lumens work" data-i18n-title="quesst.lumens_rules_title" title="How lumens work">i</button>
+        </div>
         <div class="qst-lumens-hero">
           <div class="qst-lumens-icon">✦</div>
           <div class="qst-lumens-count">1,240</div>
@@ -347,6 +350,18 @@
           <span class="qst-rank-badge">Explorer</span>
           <div class="qst-rank-bar"><div class="qst-rank-fill" style="width:62%"></div></div>
           <span class="qst-rank-next">Wayfarer</span>
+        </div>
+        <div class="qst-info-popover" id="qst-lumens-popover" style="display:none">
+          <div class="qst-info-popover-title" data-i18n="quesst.lumens_rules_title">How lumens work</div>
+          <ul>
+            <li data-i18n="quesst.lumens_rule_1">Complete a knobit: +10 lumens.</li>
+            <li data-i18n="quesst.lumens_rule_2">Finish an entire topic (all its knobits): +25 lumens, on top of the knobit award.</li>
+            <li data-i18n="quesst.lumens_rule_3">Finish every topic under a bigger unit: +100 lumens, on top of the above.</li>
+            <li data-i18n="quesst.lumens_rule_4">Complete a knowledge test: +10 lumens, regardless of score.</li>
+            <li data-i18n="quesst.lumens_rule_5">Write a reflection: +5 lumens.</li>
+            <li data-i18n="quesst.lumens_rule_6">Complete your Learner Passport profile: +10 lumens, once.</li>
+            <li data-i18n="quesst.lumens_rule_7">Every award above is scaled by your momentum — the more consistently you learn, the higher it climbs (up to 2×).</li>
+          </ul>
         </div>
       </div>
 

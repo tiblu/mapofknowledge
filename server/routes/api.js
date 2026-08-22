@@ -1135,6 +1135,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       if (done >= total && total > 0) {
         game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => {});
         game.maybeAwardStreakSaver(passportId, node_id, userId).catch(() => {});
+        game.maybeAwardBranchBonus(passportId, userId, node_id).catch(() => {});
       }
       game.checkAchievements(passportId, userId, 'knobit_complete', { totalEver }).catch(() => {});
       game.recordKnobitCompletion(passportId, localDate).catch(() => {});
@@ -1348,6 +1349,7 @@ router.post('/profile/events', async (req, res) => {
          VALUES (?, ?, ?, NOW())`,
         [passportId, evResult.insertId, reflection.trim()]
       );
+      game.awardLumens(passportId, req.user?.id, 5, 'reflection', null).catch(() => {});
     }
     res.json({ ok: true });
   } catch (err) {
@@ -1367,6 +1369,7 @@ router.post('/profile/reflections', async (req, res) => {
        VALUES (?, ?, ?, NOW())`,
       [passportId, event_id || null, text.trim()]
     );
+    game.awardLumens(passportId, req.user?.id, 5, 'reflection', null).catch(() => {});
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save reflection' });
@@ -1522,6 +1525,7 @@ router.post('/profile/tags', async (req, res) => {
       'INSERT INTO passport_tags (passport_id, type, text, sort_order) VALUES (?, ?, ?, 0)',
       [passportId, type, text.trim()]
     );
+    game.maybeAwardProfileCompleteBonus(passportId, req.user?.id).catch(() => {});
     res.json({ id: result.insertId, type, text: text.trim() });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add tag' });
@@ -1557,6 +1561,7 @@ router.post('/profile/identity', async (req, res) => {
       `UPDATE learner_passports SET ${sets}, updated_at = NOW() WHERE id = ?`,
       [...Object.values(updates), passportId]
     );
+    game.maybeAwardProfileCompleteBonus(passportId, req.user?.id).catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update identity' });
@@ -1777,10 +1782,11 @@ async function _saveTestResult(passportId, userId, nodeId, label, evaluation) {
   notify(userId, 'test_result', `Test result: ${label}`,
     `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`, nodeId);
   // ── Gamification ───────────────────────────────────────────────────────────
-  const score      = evaluation.finalScore;
-  const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
-  const reason      = score === 100 ? 'test_perfect' : 'test_complete';
-  game.awardLumens(passportId, userId, lumensBase, reason, nodeId).catch(() => {});
+  // Same flat amount as a knobit, regardless of score — reason still varies
+  // (achievements like "three_peaks" key off the 'test_perfect' reason).
+  const score  = evaluation.finalScore;
+  const reason = score === 100 ? 'test_perfect' : 'test_complete';
+  game.awardLumens(passportId, userId, 10, reason, nodeId).catch(() => {});
   game.checkAchievements(passportId, userId, 'test_complete', { score }).catch(() => {});
 }
 
