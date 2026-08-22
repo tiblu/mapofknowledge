@@ -1343,6 +1343,7 @@ router.post('/anne/message', async (req, res) => {
       'INSERT INTO anne_messages (passport_id, role, content, locale) VALUES (?, "user", ?, ?)',
       [passportId, message, locale]
     );
+    game.checkAchievements(passportId, uid, 'anne_chat', {}).catch(() => {});
 
     const passportData = await _fetchFullPassport(passportId);
     const passportText = renderPassportText(passportData);
@@ -1383,6 +1384,7 @@ router.post('/profile/events', async (req, res) => {
         [passportId, evResult.insertId, reflection.trim()]
       );
       game.awardLumens(passportId, req.user?.id, 5, 'reflection', null).catch(() => {});
+      game.checkAchievements(passportId, req.user?.id, 'reflection', {}).catch(() => {});
     }
     res.json({ ok: true });
   } catch (err) {
@@ -1403,6 +1405,7 @@ router.post('/profile/reflections', async (req, res) => {
       [passportId, event_id || null, text.trim()]
     );
     game.awardLumens(passportId, req.user?.id, 5, 'reflection', null).catch(() => {});
+    game.checkAchievements(passportId, req.user?.id, 'reflection', {}).catch(() => {});
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save reflection' });
@@ -1434,6 +1437,7 @@ router.post('/profile/goals', async (req, res) => {
       `INSERT INTO passport_goals (passport_id, text, status, created_at) VALUES (?, ?, 'in_progress', NOW())`,
       [passportId, text.trim()]
     );
+    game.checkAchievements(passportId, req.user?.id, 'goal_added', {}).catch(() => {});
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add goal' });
@@ -1456,6 +1460,7 @@ router.post('/profile/goals/:id/complete', async (req, res) => {
       notify(req.user?.id, 'goal_complete', 'Goal achieved!',
         `You completed: "${goals[0].text}"`);
     }
+    game.checkAchievements(passportId, req.user?.id, 'goal_complete', {}).catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to complete goal' });

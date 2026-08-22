@@ -64,23 +64,40 @@ const ACHIEVEMENTS = {
     },
   },
 
+  boundless_atlas: {
+    // Next tier beyond polymath_path — same shape, 3x the bar.
+    name: 'The Boundless Atlas',
+    triggers: ['knobit_complete'],
+    check: async (passportId) => {
+      const [[{ cnt }]] = await db.execute(
+        `SELECT COUNT(DISTINCT k.node_id) AS cnt
+         FROM knobit_progress kp
+         JOIN knobits k ON kp.knobit_id = k.id
+         WHERE kp.passport_id = ? AND kp.phase_reached = 'done'`,
+        [passportId]
+      );
+      return cnt >= 150;
+    },
+  },
+
   deep_waters: {
     name: 'Deep Waters',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
-      // True if any L4 node has all its L5 children fully learned
+      // True if any L4 node has all its L5 children fully COMPLETED (100%,
+      // not just mastered) — every knobit in every child node is done.
       const [[{ cnt }]] = await db.execute(
         `SELECT COUNT(*) AS cnt FROM (
            SELECT parent.id,
-                  COUNT(child.id)                                                    AS total,
-                  COUNT(CASE WHEN unk.percentage >= 80 THEN 1 END)                 AS mastered
+                  COUNT(child.id)                                          AS total,
+                  COUNT(CASE WHEN unk.percentage = 100 THEN 1 END)         AS completed
            FROM nodes parent
            JOIN nodes child ON child.parent_id = parent.id AND child.level = 5
            LEFT JOIN user_node_knowledge unk
                   ON unk.node_external_id = child.external_id AND unk.passport_id = ?
            WHERE parent.level = 4
            GROUP BY parent.id
-           HAVING mastered > 0 AND mastered = total
+           HAVING completed > 0 AND completed = total
          ) x`,
         [passportId]
       );
@@ -92,12 +109,13 @@ const ACHIEVEMENTS = {
     name: 'Continent Charted',
     triggers: ['test_complete'],
     check: async (passportId) => {
-      // Any L1 domain where every L5 descendant is mastered (≥80%)
+      // Any L1 domain where every L5 descendant is fully COMPLETED (100%,
+      // not just an 80% mastery threshold).
       const [[{ cnt }]] = await db.execute(
         `SELECT COUNT(*) AS cnt FROM (
            SELECT root.id,
-                  COUNT(leaf.id)                                                     AS total,
-                  COUNT(CASE WHEN unk.percentage >= 80 THEN 1 END)                 AS mastered
+                  COUNT(leaf.id)                                           AS total,
+                  COUNT(CASE WHEN unk.percentage = 100 THEN 1 END)         AS completed
            FROM nodes root
            JOIN nodes leaf ON leaf.level = 5
              AND leaf.external_id IN (
@@ -111,7 +129,7 @@ const ACHIEVEMENTS = {
                   ON unk.node_external_id = leaf.external_id AND unk.passport_id = ?
            WHERE root.level = 1
            GROUP BY root.id
-           HAVING mastered > 0 AND mastered = total
+           HAVING completed > 0 AND completed = total
          ) x`,
         [passportId]
       );
@@ -129,15 +147,47 @@ const ACHIEVEMENTS = {
     check: async () => { const h = new Date().getHours(); return h >= 4 && h < 7; },
   },
 
-  the_long_road: {
-    name: 'The Long Road',
+  first_reflection: {
+    name: 'First Reflection',
+    triggers: ['reflection'],
     check: async (passportId) => {
-      const [rows] = await db.execute(
-        'SELECT last_activity_at FROM user_momentum WHERE passport_id = ?', [passportId]
+      const [[{ cnt }]] = await db.execute(
+        'SELECT COUNT(*) AS cnt FROM passport_reflections WHERE passport_id = ?', [passportId]
       );
-      if (!rows.length) return false;
-      const daysSince = (Date.now() - new Date(rows[0].last_activity_at).getTime()) / 86400000;
-      return daysSince >= 30;
+      return cnt === 1;
+    },
+  },
+
+  first_anne_chat: {
+    name: 'First Words with Anne',
+    triggers: ['anne_chat'],
+    check: async (passportId) => {
+      const [[{ cnt }]] = await db.execute(
+        `SELECT COUNT(*) AS cnt FROM anne_messages WHERE passport_id = ? AND role = 'user'`, [passportId]
+      );
+      return cnt === 1;
+    },
+  },
+
+  first_goal_added: {
+    name: 'First Goal Set',
+    triggers: ['goal_added'],
+    check: async (passportId) => {
+      const [[{ cnt }]] = await db.execute(
+        'SELECT COUNT(*) AS cnt FROM passport_goals WHERE passport_id = ?', [passportId]
+      );
+      return cnt === 1;
+    },
+  },
+
+  first_goal_complete: {
+    name: 'First Goal Achieved',
+    triggers: ['goal_complete'],
+    check: async (passportId) => {
+      const [[{ cnt }]] = await db.execute(
+        `SELECT COUNT(*) AS cnt FROM passport_goals WHERE passport_id = ? AND status = 'completed'`, [passportId]
+      );
+      return cnt === 1;
     },
   },
 
