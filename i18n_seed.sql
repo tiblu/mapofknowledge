@@ -293,6 +293,9 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('quesst.lumens_rule_7',    'en', 'Every award above is scaled by your momentum — the more consistently you learn, the higher it climbs (up to 2×).'),
 ('quesst.achievements_title', 'en', 'Achievements'),
 ('quesst.leaderboard_title', 'en', 'Leaderboard'),
+('quesst.you_label',        'en', 'You'),
+('quesst.anon_learner',     'en', 'Learner'),
+('quesst.leaderboard_empty', 'en', 'No lumens earned yet — be the first!'),
 
 -- Suggestions section (2026-08-18): unfinished knobits, incomplete learning
 -- paths, and a placeholder third subsection (repeat-for-memorization, to be

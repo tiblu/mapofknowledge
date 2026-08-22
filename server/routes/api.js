@@ -1174,6 +1174,37 @@ router.get('/streak', async (req, res) => {
   res.json(await game.getStreak(passportId, req.query.localDate));
 });
 
+// ── Leaderboard — top 5 by lumens, plus the current learner's own rank if
+// they're not already in that top 5 ───────────────────────────────────────
+router.get('/leaderboard', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  try {
+    const [top] = await db.execute(
+      `SELECT lp.id AS passportId, lp.display_name AS displayName, lp.lumen_total AS lumens,
+              (SELECT COUNT(*) FROM learner_passports x WHERE x.lumen_total > lp.lumen_total) + 1 AS rank
+       FROM learner_passports lp
+       ORDER BY lp.lumen_total DESC, lp.id ASC
+       LIMIT 5`
+    );
+
+    let you = null;
+    if (passportId && !top.some(r => r.passportId === passportId)) {
+      const [[row]] = await db.execute(
+        `SELECT lp.id AS passportId, lp.display_name AS displayName, lp.lumen_total AS lumens,
+                (SELECT COUNT(*) FROM learner_passports x WHERE x.lumen_total > lp.lumen_total) + 1 AS rank
+         FROM learner_passports lp WHERE lp.id = ?`,
+        [passportId]
+      );
+      you = row || null;
+    }
+
+    res.json({ top, you, passportId: passportId || null });
+  } catch (err) {
+    console.error('[api/leaderboard]', err.message);
+    res.status(500).json({ top: [], you: null, passportId: null });
+  }
+});
+
 // ── Full profile data for current user ───────────────────────────────────────
 router.get('/profile', async (req, res) => {
   const passportId = req.user?.passport_id;

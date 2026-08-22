@@ -1175,7 +1175,53 @@
     }
   }
 
+  /* ─── Section 8 — Leaderboard (real data) ────────────────────────── */
+  function _lbShortName(fullName, isYou) {
+    if (isYou) return t('quesst.you_label');
+    var name = (fullName || '').trim();
+    if (!name) return t('quesst.anon_learner');
+    var parts = name.split(/\s+/);
+    if (parts.length === 1) return parts[0];
+    return parts[0] + ' ' + parts[parts.length - 1].charAt(0).toUpperCase() + '.';
+  }
+
+  function renderLeaderboard(data) {
+    var card = document.getElementById('qst-leaderboard-card');
+    if (!card) return;
+    var d      = data || {};
+    var top    = d.top || [];
+    var you    = d.you || null;
+    var myId   = d.passportId;
+
+    if (!top.length) {
+      card.innerHTML = `<div class="p-card-title">${esc(t('quesst.leaderboard_title'))}</div>` +
+        empty(t('quesst.leaderboard_empty'));
+      return;
+    }
+
+    function row(r) {
+      var isYou   = !!(myId && r.passportId === myId);
+      var name    = _lbShortName(r.displayName, isYou);
+      var initial = (r.displayName || '?').trim().charAt(0).toUpperCase() || '?';
+      return `<div class="qst-lb-row${isYou ? ' you' : ''}">
+        <span class="qst-lb-rank">${r.rank}</span>
+        <div class="qst-lb-avatar">${esc(initial)}</div>
+        <span class="qst-lb-name">${esc(name)}</span>
+        <span class="qst-lb-lumens">${(r.lumens || 0).toLocaleString()}</span>
+      </div>`;
+    }
+
+    var html = `<div class="p-card-title">${esc(t('quesst.leaderboard_title'))}</div>`;
+    html += top.map(row).join('');
+    if (you) html += '<div class="qst-lb-gap">···</div>' + row(you);
+    card.innerHTML = html;
+  }
+
   // Boot
   window.loadProfile();
+  fetch('/api/leaderboard')
+    .then(r => r.json())
+    .then(renderLeaderboard)
+    .catch(() => {});
 
 })();
