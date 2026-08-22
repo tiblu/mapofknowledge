@@ -65,6 +65,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('filter.display_ring',     'en', 'Ring'),
 ('filter.overlay_label',    'en', 'Overlay'),
 ('filter.ring_color_label', 'en', 'Ring colour'),
+('filter.map_color_label',  'en', 'Map colour'),
 ('btn.match_and_review',    'en', 'Match and review'),
 ('btn.accept_all',          'en', 'Accept all'),
 ('btn.reject_all',          'en', 'Reject all'),

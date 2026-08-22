@@ -1119,6 +1119,11 @@ function init(data, emergentData) {
     if (desc) { desc.ringColor = color; refreshFilterRings(); }
   };
 
+  window.updateFilterColor = function(filterId, color) {
+    const desc = activeFilterDescriptors.find(d => d.id === filterId);
+    if (desc) { desc.color = color; refreshNodeColors(); }
+  };
+
   function applyProgressOverlay() {
     if (!node) return;
     node
@@ -1375,6 +1380,7 @@ function init(data, emergentData) {
     setKnowledgeFilter:   function(pm, t)   { window.setKnowledgeFilter(pm, t); },
     clearKnowledgeFilter: function()         { window.clearKnowledgeFilter(); },
     updateRingColor:      function(fid, c)  { window.updateRingColor(fid, c); },
+    updateFilterColor:    function(fid, c)  { window.updateFilterColor(fid, c); },
     resetZoom:            function()         { window.resetMapZoom(); },
     refreshProgress:      function()         { loadProgress(); },
     setTilt:              function(angle)    { window.setTilt(angle); },

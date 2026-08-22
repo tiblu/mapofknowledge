@@ -41,6 +41,14 @@
     try { localStorage.setItem('kq_ring_color_' + filterId, color); } catch(e) {}
   }
 
+  function getColorOverride(filterId) {
+    try { return localStorage.getItem('kq_color_' + filterId) || null; }
+    catch(e) { return null; }
+  }
+  function setColorOverride(filterId, color) {
+    try { localStorage.setItem('kq_color_' + filterId, color); } catch(e) {}
+  }
+
   (function loadDBSubsets() {
     var hidden;
     try { hidden = JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); }
@@ -52,8 +60,10 @@
         var list = document.querySelector('#filter-panel .fp-list');
         subsets.forEach(function(s) {
           var filterId = 'db-' + s.id;
-          var color    = resolveColor(s.icon_color);
-          var ringOverride = getRingColorOverride(filterId);
+          var baseColor = resolveColor(s.icon_color);
+          var colorOverride = getColorOverride(filterId);
+          var ringOverride  = getRingColorOverride(filterId);
+          var color = colorOverride || baseColor;
           FILTERS[filterId] = {
             label:           s.name,
             color:           color,
@@ -62,7 +72,7 @@
             isOverlay:       !!s.is_overlay,
             displayMode:     s.display_mode || 'color',
             backgroundHidden: !!s.background_hidden,
-            ringColor:       ringOverride || s.ring_color || color
+            ringColor:       ringOverride || s.ring_color || baseColor
           };
           var div = document.createElement('div');
           div.className = 'fp-item';
@@ -120,8 +130,8 @@
 
   /* ─── Filter item clicks (delegated) ────────────────────────────────── */
   list.addEventListener('click', function (e) {
-    // ring color picker clicks are handled separately — don't treat as filter toggle
-    if (e.target.closest('.fp-ring-swatch')) return;
+    // color picker clicks are handled separately — don't treat as filter toggle
+    if (e.target.closest('.fp-color-swatch')) return;
 
     var item = e.target.closest('.fp-item');
     if (!item) return;
@@ -158,15 +168,26 @@
     });
   }
 
-  /* ─── Ring color swatch (delegated, filter panel) ────────────────────── */
+  /* ─── Color swatch (delegated, filter panel) ─────────────────────────── */
   list.addEventListener('change', function (e) {
-    var swatch = e.target.closest('.fp-ring-swatch');
+    var swatch = e.target.closest('.fp-color-swatch');
     if (!swatch) return;
-    var fid = swatch.dataset.filterId;
-    var color = e.target.value;
-    if (FILTERS[fid]) FILTERS[fid].ringColor = color;
-    setRingColorOverride(fid, color);
-    if (typeof window.updateRingColor === 'function') window.updateRingColor(fid, color);
+    var fid    = swatch.dataset.filterId;
+    var filter = FILTERS[fid];
+    var color  = e.target.value;
+    if (!filter) return;
+
+    if (filter.displayMode === 'ring') {
+      filter.ringColor = color;
+      setRingColorOverride(fid, color);
+      if (typeof window.updateRingColor === 'function') window.updateRingColor(fid, color);
+    } else {
+      filter.color = color;
+      setColorOverride(fid, color);
+      if (typeof window.updateFilterColor === 'function') window.updateFilterColor(fid, color);
+      var item = swatch.closest('.fp-item');
+      if (item) item.style.setProperty('--fi-color', color);
+    }
   });
 
   /* ─── Helpers ────────────────────────────────────────────────────────── */
@@ -201,21 +222,24 @@
       var active = fid === baseFilterId || overlayFilterIds.has(fid);
       el.classList.toggle('active', active);
 
-      // show/hide ring color swatch
+      // show/hide color swatch (ring color in ring mode, base color in color mode)
       var filter = FILTERS[fid];
-      var swatch = el.querySelector('.fp-ring-swatch');
-      if (filter && filter.displayMode === 'ring') {
+      var swatch = el.querySelector('.fp-color-swatch');
+      if (filter) {
+        var isRingMode = filter.displayMode === 'ring';
+        var swatchColor = isRingMode ? (filter.ringColor || '#9B8FB5') : (filter.color || '#9B8FB5');
         if (!swatch) {
           swatch = document.createElement('label');
-          swatch.className = 'fp-ring-swatch';
+          swatch.className = 'fp-color-swatch';
           swatch.dataset.filterId = fid;
-          swatch.title = t ? t('filter.ring_color_label') : 'Ring colour';
           var inp = document.createElement('input');
           inp.type = 'color';
-          inp.value = filter.ringColor || '#9B8FB5';
           swatch.appendChild(inp);
           el.appendChild(swatch);
         }
+        swatch.title = t ? t(isRingMode ? 'filter.ring_color_label' : 'filter.map_color_label')
+                          : (isRingMode ? 'Ring colour' : 'Map colour');
+        swatch.querySelector('input').value = swatchColor;
         swatch.style.display = active ? '' : 'none';
       } else if (swatch) {
         swatch.style.display = 'none';
