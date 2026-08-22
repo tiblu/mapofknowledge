@@ -1011,6 +1011,34 @@
       });
   };
 
+  /* ─── Section 8 — Quesst intro video lightbox ───────────────────── */
+  (function () {
+    var openBtn  = document.getElementById('qst-video-open');
+    var closeBtn = document.getElementById('qst-video-close');
+    var lightbox = document.getElementById('qst-video-lightbox');
+    var frame    = document.getElementById('qst-video-frame');
+    if (!openBtn || !lightbox || !frame) return;
+
+    function open() {
+      frame.innerHTML = '<iframe src="https://www.youtube.com/embed/WyFXIwr1eD0?autoplay=1&rel=0" ' +
+        'title="Quesst intro" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>';
+      lightbox.style.display = 'flex';
+    }
+    function close() {
+      lightbox.style.display = 'none';
+      frame.innerHTML = ''; // stop playback
+    }
+
+    openBtn.addEventListener('click', open);
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    lightbox.addEventListener('click', function (e) {
+      if (e.target === lightbox) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && lightbox.style.display !== 'none') close();
+    });
+  })();
+
   // Boot
   window.loadProfile();
 

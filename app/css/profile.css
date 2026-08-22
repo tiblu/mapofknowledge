@@ -77,6 +77,7 @@
 .pnav-link.s5 .pnav-num { background: rgba(91,168,216,0.20); color: #2068A8; }
 .pnav-link.s6 .pnav-num { background: rgba(196,114,154,0.20); color: #803060; }
 .pnav-link.s7 .pnav-num { background: rgba(91,200,184,0.20); color: #1A7868; }
+.pnav-link.s8 .pnav-num { background: rgba(224,184,77,0.24); color: #8A6410; }
 
 /* ── Section container ───────────────────── */
 .p-section {
@@ -104,6 +105,7 @@
 .p-section-badge.s5 { background: linear-gradient(135deg, #5BA8D8, #2878C0); }
 .p-section-badge.s6 { background: linear-gradient(135deg, #D472A0, #A84878); }
 .p-section-badge.s7 { background: linear-gradient(135deg, #5BC8B8, #2E9A88); }
+.p-section-badge.s8 { background: linear-gradient(135deg, #E0B84D, #B8860B); }
 
 .p-section-titles { flex: 1; }
 .p-section-title {
@@ -136,6 +138,7 @@
 .p-card.s5 { background: linear-gradient(145deg, #fff 0%, #EEF5FC 100%); }
 .p-card.s6 { background: linear-gradient(145deg, #fff 0%, #FCF0F6 100%); }
 .p-card.s7 { background: linear-gradient(145deg, #fff 0%, #EEFAF7 100%); }
+.p-card.s8 { background: linear-gradient(145deg, #fff 0%, #FBF6E2 100%); }
 .p-card.span2 { grid-column: span 2; }
 .p-card.span3 { grid-column: span 3; }
 
@@ -881,4 +884,133 @@ select.p-edit-input { cursor: pointer; }
     left: 0;
     padding: 20px 18px 64px;
   }
+}
+
+/* ═══════════════════════════════════════════
+   SECTION 8 — QUESST (gamification, design-only preview)
+   ═══════════════════════════════════════════ */
+
+/* ── Intro video ─────────────────────────── */
+.qst-video-thumb {
+  position: relative;
+  display: block;
+  width: 100%; max-width: 480px;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  border: none; padding: 0;
+  cursor: pointer;
+  background: #000;
+}
+.qst-video-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  transition: transform 0.2s, opacity 0.2s;
+}
+.qst-video-thumb:hover img { transform: scale(1.03); opacity: 0.85; }
+.qst-video-play {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: rgba(20,16,14,0.55);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; padding-left: 3px;
+  transition: background 0.14s, transform 0.14s;
+}
+.qst-video-thumb:hover .qst-video-play { background: rgba(20,16,14,0.75); transform: translate(-50%, -50%) scale(1.08); }
+
+#qst-video-lightbox {
+  position: fixed; inset: 0;
+  z-index: 900;
+  background: rgba(20,16,14,0.88);
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px;
+}
+#qst-video-frame {
+  width: 100%; max-width: 900px;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+#qst-video-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+#qst-video-close {
+  position: absolute; top: 20px; right: 24px;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: rgba(255,255,255,0.12); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.14s;
+}
+#qst-video-close:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Streak ───────────────────────────────── */
+.qst-streak-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6px 0 12px;
+}
+.qst-streak-flame { font-size: 30px; line-height: 1; margin-bottom: 4px; }
+.qst-streak-count { font-size: 28px; font-weight: 750; color: var(--c1); letter-spacing: -0.5px; }
+.qst-streak-label { font-size: 11px; color: var(--c6); margin-top: 2px; }
+.qst-streak-days { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
+.qst-day { width: 16px; height: 16px; border-radius: 5px; background: var(--i10); }
+.qst-day.on { background: linear-gradient(135deg, #F0A868, #D9782E); }
+.qst-streak-momentum { text-align: center; font-size: 11.5px; font-weight: 600; color: #B8860B; }
+
+/* ── Lumens & rank ────────────────────────── */
+.qst-lumens-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6px 0 14px;
+}
+.qst-lumens-icon { font-size: 26px; color: #D9A93D; margin-bottom: 4px; }
+.qst-lumens-count { font-size: 28px; font-weight: 750; color: var(--c1); letter-spacing: -0.5px; }
+.qst-lumens-label { font-size: 11px; color: var(--c6); margin-top: 2px; }
+.qst-rank-row { display: flex; align-items: center; gap: 8px; }
+.qst-rank-badge {
+  font-size: 10.5px; font-weight: 700; color: #8A6410;
+  background: rgba(224,184,77,0.22);
+  padding: 4px 9px; border-radius: 20px; white-space: nowrap;
+}
+.qst-rank-bar { flex: 1; height: 6px; border-radius: 4px; background: var(--i09); overflow: hidden; }
+.qst-rank-fill { height: 100%; background: linear-gradient(90deg, #E0B84D, #B8860B); border-radius: 4px; }
+.qst-rank-next { font-size: 10.5px; color: var(--c6); white-space: nowrap; }
+
+/* ── Achievements ─────────────────────────── */
+.qst-ach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.qst-ach {
+  aspect-ratio: 1; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.qst-ach.unlocked { background: rgba(224,184,77,0.18); }
+.qst-ach.locked { background: var(--i06); color: var(--c7); opacity: 0.6; }
+
+/* ── Leaderboard ──────────────────────────── */
+.qst-lb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--i06);
+}
+.qst-lb-row:first-child { padding-top: 0; }
+.qst-lb-row:last-child { border-bottom: none; padding-bottom: 0; }
+.qst-lb-row.you {
+  background: rgba(224,184,77,0.08); border-radius: 8px;
+  padding-left: 8px; padding-right: 8px; margin: 0 -8px;
+}
+.qst-lb-rank { width: 20px; font-size: 12.5px; font-weight: 700; color: var(--c5); text-align: center; flex-shrink: 0; }
+.qst-lb-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(224,184,77,0.2); color: #8A6410;
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.qst-lb-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--c1); }
+.qst-lb-row.you .qst-lb-name { color: #8A6410; }
+.qst-lb-lumens { font-size: 12.5px; font-weight: 650; color: var(--c3); }
+
+@media (max-width: 640px) {
+  .p-section-body.three-col { grid-template-columns: 1fr; }
+  .p-card.span3 { grid-column: span 1; }
 }

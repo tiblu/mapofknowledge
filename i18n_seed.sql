@@ -266,6 +266,15 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('section.s5_title',        'en', 'Competence State'),
 ('section.s6_title',        'en', 'Goals'),
 ('section.s7_title',        'en', 'Suggestions'),
+('section.s8_title',        'en', 'Quesst'),
+('quesst.preview_note',     'en', 'Design preview — not connected to your real progress yet.'),
+('quesst.quote',            'en', 'The best thing you can do with your life is to bring light to yourself and others.'),
+('quesst.streak_title',     'en', 'Streak'),
+('quesst.day_streak',       'en', 'day streak'),
+('quesst.lumens_title',     'en', 'Lumens & Rank'),
+('quesst.lumens_label',     'en', 'lumens'),
+('quesst.achievements_title', 'en', 'Achievements'),
+('quesst.leaderboard_title', 'en', 'Leaderboard'),
 
 -- Suggestions section (2026-08-18): unfinished knobits, incomplete learning
 -- paths, and a placeholder third subsection (repeat-for-memorization, to be
