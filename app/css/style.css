@@ -67,12 +67,9 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 
 /* ── Streak bonfire — shown only when the learner has an active streak;
    links to the streak card on the Learner Passport. Flame itself stays
-   static; a few small sparks drift up and fade for ~10s right as the icon
-   appears, then stop (each spark's own final keyframe is already
-   opacity:0, so it settles invisibly with no extra fill-mode needed).
-   display:none → flex is what (re)starts it; see refreshStreakIcon in
-   app.js — re-showing an already-visible icon doesn't touch display, so it
-   won't re-trigger. ── */
+   static; a few small sparks drift up and fade around it continuously,
+   staggered so they don't all fire in lockstep. Subtle enough to run
+   indefinitely rather than stopping after a bit. ── */
 .topbar-streak-link {
   position: relative;
   display: flex; align-items: center; justify-content: center;
@@ -94,7 +91,7 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
   background: radial-gradient(circle, #FFDA8A 0%, #E8862E 70%, transparent 100%);
   opacity: 0;
   pointer-events: none;
-  animation: streakSpark 1.4s ease-out 7;
+  animation: streakSpark 1.4s ease-out infinite;
 }
 .topbar-streak-spark.s1 { left: 12px; --drift: 5px;  animation-delay: 0s;   }
 .topbar-streak-spark.s2 { left: 18px; --drift: -4px; animation-delay: 0.5s; }
