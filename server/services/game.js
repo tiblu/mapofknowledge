@@ -118,24 +118,30 @@ const ACHIEVEMENTS = {
     check: async (passportId) => {
       // Any L1 domain where every L5 descendant is fully COMPLETED (100%,
       // not just an 80% mastery threshold).
+      // Non-correlated recursive CTE — walks UP from every L5 leaf to its L1
+      // ancestor in one pass, instead of a per-root correlated subquery
+      // (MariaDB doesn't support a WITH RECURSIVE inside a JOIN condition
+      // that references an outer-query column like the previous version did
+      // — that variant silently threw on every call, caught by
+      // checkAchievements' try/catch, so this achievement could never
+      // actually unlock).
       const [[{ cnt }]] = await db.execute(
-        `SELECT COUNT(*) AS cnt FROM (
-           SELECT root.id,
-                  COUNT(leaf.id)                                           AS total,
-                  COUNT(CASE WHEN unk.percentage = 100 THEN 1 END)         AS completed
-           FROM nodes root
-           JOIN nodes leaf ON leaf.level = 5
-             AND leaf.external_id IN (
-               WITH RECURSIVE desc_cte AS (
-                 SELECT id, external_id FROM nodes WHERE id = root.id
-                 UNION ALL
-                 SELECT n.id, n.external_id FROM nodes n JOIN desc_cte d ON n.parent_id = d.id
-               ) SELECT external_id FROM desc_cte
-             )
+        `WITH RECURSIVE anc AS (
+           SELECT id, parent_id, level, id AS leaf_id FROM nodes WHERE level = 5
+           UNION ALL
+           SELECT n.id, n.parent_id, n.level, a.leaf_id
+           FROM nodes n JOIN anc a ON n.id = a.parent_id
+         )
+         SELECT COUNT(*) AS cnt FROM (
+           SELECT anc.id AS domain_id,
+                  COUNT(*)                                           AS total,
+                  COUNT(CASE WHEN unk.percentage = 100 THEN 1 END)   AS completed
+           FROM anc
+           JOIN nodes leaf ON leaf.id = anc.leaf_id
            LEFT JOIN user_node_knowledge unk
                   ON unk.node_external_id = leaf.external_id AND unk.passport_id = ?
-           WHERE root.level = 1
-           GROUP BY root.id
+           WHERE anc.level = 1
+           GROUP BY anc.id
            HAVING completed > 0 AND completed = total
          ) x`,
         [passportId]
