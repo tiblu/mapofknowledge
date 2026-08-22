@@ -1202,12 +1202,10 @@
     }
 
     function row(r) {
-      var isYou   = !!(myId && r.passportId === myId);
-      var name    = _lbShortName(r.displayName, isYou);
-      var initial = (r.displayName || '?').trim().charAt(0).toUpperCase() || '?';
+      var isYou = !!(myId && r.passportId === myId);
+      var name  = _lbShortName(r.displayName, isYou);
       return `<div class="qst-lb-row${isYou ? ' you' : ''}">
-        <span class="qst-lb-rank">${r.rank}</span>
-        <div class="qst-lb-avatar">${esc(initial)}</div>
+        <span class="qst-lb-rank">${r.rank}.</span>
         <div class="qst-lb-info">
           <span class="qst-lb-name">${esc(name)}</span>
           <span class="qst-lb-rank-title">${esc(r.rankTitle || '')}</span>

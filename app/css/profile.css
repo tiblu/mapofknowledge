@@ -1043,17 +1043,17 @@ select.p-edit-input { cursor: pointer; }
 .qst-rank-fill { height: 100%; background: linear-gradient(90deg, #E0B84D, #B8860B); border-radius: 4px; }
 .qst-rank-next { font-size: 10.5px; color: var(--c6); white-space: nowrap; }
 
-/* ── Achievements — card is always span2 now, so 5 columns fits all 13
-   medals without needing a More/Less toggle. ── */
-.qst-ach-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+/* ── Achievements — card is span2 (matches video width), plenty of room
+   to spread 13 medals across without needing a More/Less toggle. ── */
+.qst-ach-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
 .qst-ach {
   display: flex; flex-direction: column; align-items: center;
   text-align: center;
-  border-radius: 10px;
-  padding: 6px 2px 5px;
+  border-radius: 12px;
+  padding: 12px 6px 10px;
 }
-.qst-ach-icon { font-size: 15px; line-height: 1; margin-bottom: 3px; }
-.qst-ach-name { font-size: 7.5px; line-height: 1.15; font-weight: 650; }
+.qst-ach-icon { font-size: 22px; line-height: 1; margin-bottom: 6px; }
+.qst-ach-name { font-size: 9.5px; line-height: 1.25; font-weight: 650; }
 .qst-ach.unlocked { background: rgba(224,184,77,0.18); }
 .qst-ach.unlocked .qst-ach-name { color: var(--c2); }
 .qst-ach.locked { background: var(--i06); }
@@ -1072,27 +1072,19 @@ select.p-edit-input { cursor: pointer; }
   background: rgba(224,184,77,0.08); border-radius: 8px;
   padding-left: 8px; padding-right: 8px; margin: 0 -8px;
 }
-.qst-lb-rank { width: 20px; font-size: 12.5px; font-weight: 700; color: var(--c5); text-align: center; flex-shrink: 0; }
-.qst-lb-avatar {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: rgba(224,184,77,0.2); color: #8A6410;
-  font-size: 12px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
+.qst-lb-rank { min-width: 16px; font-size: 12.5px; font-weight: 700; color: var(--c5); flex-shrink: 0; }
 .qst-lb-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .qst-lb-name { font-size: 13px; font-weight: 600; color: var(--c1); }
 .qst-lb-row.you .qst-lb-name { color: #8A6410; }
 .qst-lb-rank-title { font-size: 10.5px; color: var(--c6); }
-.qst-lb-lumens { font-size: 12.5px; font-weight: 650; color: var(--c3); }
+.qst-lb-lumens { font-size: 12.5px; font-weight: 650; color: var(--c3); text-align: right; flex-shrink: 0; }
 .qst-lb-lumens-icon { color: #D9A93D; }
 .qst-lb-gap { text-align: center; font-size: 11px; color: var(--c7); letter-spacing: 2px; padding: 2px 0; }
 
 /* Compact variant — leaderboard now shares a row with Streak/Achievements
    instead of spanning the full width, so it needs a smaller footprint. */
 .p-card.compact .qst-lb-row { gap: 8px; padding: 6px 0; }
-.p-card.compact .qst-lb-rank { width: 13px; font-size: 11px; }
-.p-card.compact .qst-lb-avatar { width: 22px; height: 22px; font-size: 10px; }
+.p-card.compact .qst-lb-rank { min-width: 13px; font-size: 11px; }
 .p-card.compact .qst-lb-name { font-size: 11.5px; }
 .p-card.compact .qst-lb-rank-title { font-size: 9.5px; }
 .p-card.compact .qst-lb-lumens { font-size: 11px; }
@@ -1100,5 +1092,5 @@ select.p-edit-input { cursor: pointer; }
 @media (max-width: 640px) {
   .p-section-body.three-col { grid-template-columns: 1fr; }
   .p-card.span2, .p-card.span3 { grid-column: span 1; }
-  .qst-ach-grid { grid-template-columns: repeat(4, 1fr); }
+  .qst-ach-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 }
