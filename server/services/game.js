@@ -148,7 +148,7 @@ const ACHIEVEMENTS = {
   },
 
   first_reflection: {
-    name: 'First Reflection',
+    name: 'Explorer Diary Started',
     triggers: ['reflection'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -159,7 +159,7 @@ const ACHIEVEMENTS = {
   },
 
   first_anne_chat: {
-    name: 'First Words with Anne',
+    name: 'Fireside Chat',
     triggers: ['anne_chat'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -170,7 +170,7 @@ const ACHIEVEMENTS = {
   },
 
   first_goal_added: {
-    name: 'First Goal Set',
+    name: 'Marks the Spot',
     triggers: ['goal_added'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -181,7 +181,7 @@ const ACHIEVEMENTS = {
   },
 
   first_goal_complete: {
-    name: 'First Goal Achieved',
+    name: 'First Peak Reached',
     triggers: ['goal_complete'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
