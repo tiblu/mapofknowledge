@@ -1023,9 +1023,11 @@
         <button type="button" class="qst-info-btn" id="qst-streak-info-btn" aria-label="${esc(t('quesst.streak_rules_title'))}">i</button>
       </div>
       <div class="qst-streak-hero">
-        <div class="qst-streak-flame${cur === 0 ? ' off' : ''}">🔥</div>
-        <div class="qst-streak-count">${cur}</div>
-        <div class="qst-streak-label">${esc(t('quesst.day_streak'))}</div>
+        <div class="qst-streak-count-row">
+          <span class="qst-streak-flame${cur === 0 ? ' off' : ''}">🔥</span>
+          <span class="qst-streak-count">${cur}</span>
+          <span class="qst-streak-label">${esc(t('quesst.day_streak'))}</span>
+        </div>
       </div>
       <div class="qst-streak-days">${dots}</div>
       ${zeroHtml}

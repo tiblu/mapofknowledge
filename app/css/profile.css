@@ -985,12 +985,15 @@ select.p-edit-input { cursor: pointer; }
 #qst-streak-card { scroll-margin-top: 76px; }
 .qst-streak-hero {
   display: flex; flex-direction: column; align-items: center;
-  padding: 2px 0 12px;
+  padding: 4px 0 12px;
 }
-.qst-streak-flame { font-size: 30px; line-height: 1; margin-bottom: 4px; }
+.qst-streak-count-row {
+  display: flex; align-items: baseline; justify-content: center; gap: 7px;
+}
+.qst-streak-flame { font-size: 20px; line-height: 1; }
 .qst-streak-flame.off { filter: grayscale(1); opacity: 0.35; }
 .qst-streak-count { font-size: 28px; font-weight: 750; color: var(--c1); letter-spacing: -0.5px; }
-.qst-streak-label { font-size: 11px; color: var(--c6); margin-top: 2px; }
+.qst-streak-label { font-size: 14px; font-weight: 600; color: var(--c6); }
 .qst-streak-days { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
 .qst-day { width: 16px; height: 16px; border-radius: 5px; background: var(--i10); }
 .qst-day.on { background: linear-gradient(135deg, #F0A868, #D9782E); }

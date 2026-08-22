@@ -270,7 +270,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('quesst.preview_note',     'en', 'Streaks are live — everything else here is still a design preview.'),
 ('quesst.quote',            'en', 'The best thing you can do with your life is to bring light to yourself and others.'),
 ('quesst.streak_title',     'en', 'Streak'),
-('quesst.day_streak',       'en', 'day streak'),
+('quesst.day_streak',       'en', 'days'),
 ('quesst.streak_zero',      'en', 'Complete a knobit today to start your streak!'),
 ('quesst.longest_ever',     'en', 'Your longest ever!'),
 ('quesst.longest_streak_label', 'en', 'Longest'),
