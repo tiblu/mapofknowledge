@@ -1178,7 +1178,7 @@ router.get('/streak', async (req, res) => {
 // they're not already in that top 5 ───────────────────────────────────────
 router.get('/leaderboard', async (req, res) => {
   const passportId = req.user?.passport_id;
-  const withRankTitle = (r) => ({ ...r, rankTitle: game.getRank(r.lumens).title });
+  const withRankTitle = (r) => ({ ...r, rankKey: game.getRank(r.lumens).key });
   try {
     const [top] = await db.execute(
       `SELECT lp.id AS passportId, lp.display_name AS displayName, lp.lumen_total AS lumens,

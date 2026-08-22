@@ -1,14 +1,18 @@
 const db = require('../db');
 
 // ── Rank ladder ───────────────────────────────────────────────────────────────
+// `title` is an English fallback (used only if an i18n lookup for `key`
+// somehow finds nothing); `key` is what the client actually looks up via
+// t('quesst.rank_' + key) so rank names render in the learner's own locale
+// instead of always English.
 const RANKS = [
-  { title: 'Wanderer',     min: 0 },
-  { title: 'Scout',        min: 500 },
-  { title: 'Surveyor',     min: 1500 },
-  { title: 'Cartographer', min: 4000 },
-  { title: 'Navigator',    min: 10000 },
-  { title: 'Geographer',   min: 25000 },
-  { title: 'Polymath',     min: 60000 },
+  { key: 'wanderer',     title: 'Wanderer',     min: 0 },
+  { key: 'scout',        title: 'Scout',        min: 500 },
+  { key: 'surveyor',     title: 'Surveyor',     min: 1500 },
+  { key: 'cartographer', title: 'Cartographer', min: 4000 },
+  { key: 'navigator',    title: 'Navigator',    min: 10000 },
+  { key: 'geographer',   title: 'Geographer',   min: 25000 },
+  { key: 'polymath',     title: 'Polymath',     min: 60000 },
 ];
 
 function getRank(lumens) {
@@ -371,9 +375,10 @@ async function getGameState(passportId) {
 
     return {
       lumens,
-      rank: rank.title,
+      rank: rank.title,        // English fallback only — client should prefer rankKey
+      rankKey: rank.key,
       rankMin: rank.min,
-      nextRank: next ? { title: next.title, min: next.min } : null,
+      nextRank: next ? { title: next.title, key: next.key, min: next.min } : null,
       momentum: { ...mom },
       achievements,
       recentTransactions: recent,
@@ -385,8 +390,12 @@ async function getGameState(passportId) {
 }
 
 // ── All achievement definitions (for listing) ─────────────────────────────────
+// def.name/def.desc are deliberately NOT included here — they're English
+// only, used server-side for the notify() text in checkAchievements below.
+// The client renders name/description via t('achievement.<key>.name'/'.desc')
+// instead, so nothing hardcoded-English ever reaches the UI.
 function getAllAchievements() {
-  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name, icon: def.icon, desc: def.desc }));
+  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, icon: def.icon }));
 }
 
 // Every defined achievement, each flagged unlocked/locked for this learner.

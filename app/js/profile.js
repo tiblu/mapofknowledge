@@ -1122,7 +1122,7 @@
     if (!card) return;
     var g       = game || {};
     var lumens  = g.lumens  || 0;
-    var rank    = g.rank    || 'Wanderer';
+    var rank    = t('quesst.rank_' + (g.rankKey || 'wanderer'));
     var rankMin = g.rankMin || 0;
     var next    = g.nextRank || null;
 
@@ -1130,7 +1130,7 @@
     if (next && next.min > rankMin) {
       pct = Math.max(0, Math.min(100, Math.round(((lumens - rankMin) / (next.min - rankMin)) * 100)));
     }
-    var nextLabel = next ? esc(next.title) : esc(t('quesst.max_rank_label'));
+    var nextLabel = next ? esc(t('quesst.rank_' + next.key)) : esc(t('quesst.max_rank_label'));
 
     card.innerHTML = `
       <div class="p-card-title-row">
@@ -1206,7 +1206,7 @@
         <span class="qst-lb-rank">${r.rank}.</span>
         <div class="qst-lb-info">
           <span class="qst-lb-name">${esc(name)}</span>
-          <span class="qst-lb-rank-title">${esc(r.rankTitle || '')}</span>
+          <span class="qst-lb-rank-title">${r.rankKey ? esc(t('quesst.rank_' + r.rankKey)) : ''}</span>
         </div>
         <span class="qst-lb-lumens"><span class="qst-lb-lumens-icon">✦</span> ${(r.lumens || 0).toLocaleString()}</span>
       </div>`;
@@ -1229,18 +1229,24 @@
       return (b.unlocked ? 1 : 0) - (a.unlocked ? 1 : 0);
     });
 
+    // Names/descriptions are never sent as raw text from the server — only
+    // the achievement's machine key — so this always renders in the
+    // learner's own locale via t(), same as every other UI string.
+    function achName(a) { return t('achievement.' + a.key + '.name'); }
+    function achDesc(a) { return t('achievement.' + a.key + '.desc'); }
+
     function cellHtml(a) {
       var stateClass = a.unlocked ? 'unlocked' : 'locked';
-      return `<div class="qst-ach ${stateClass}" title="${esc(a.name)}">
+      return `<div class="qst-ach ${stateClass}" title="${esc(achName(a))}">
         <div class="qst-ach-icon">${a.icon || '🏅'}</div>
-        <div class="qst-ach-name">${esc(a.name)}</div>
+        <div class="qst-ach-name">${esc(achName(a))}</div>
       </div>`;
     }
 
     // Criteria list stays in definition order (not unlocked-first) — a
     // stable reference, not a ranking.
     var criteriaHtml = all.map(function (a) {
-      return `<li><strong>${esc(a.name)}</strong> — ${esc(a.desc || '')}</li>`;
+      return `<li><strong>${esc(achName(a))}</strong> — ${esc(achDesc(a))}</li>`;
     }).join('');
 
     card.innerHTML = `
