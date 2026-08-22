@@ -760,9 +760,13 @@
     document.getElementById('page-overlay-frame').src = '';
     document.getElementById('nav-dropdown').classList.remove('open');
     if (window.Anne) window.Anne.setVisible(true);
+    // The overlay (e.g. notifications.html) only ever updated its own copy
+    // of the unread dot — this page's copy needs its own re-check now that
+    // whatever happened in there (marking read, etc.) is done.
+    if (window.refreshNotifDot) window.refreshNotifDot();
   };
 </script>
-<script src="js/topbar-notif.js"></script>
+<script src="js/topbar-notif.js?v=2"></script>
 <script src="js/verify-banner.js"></script>
 <script src="js/nav-menu.js"></script>
 <script src="js/tour.js"></script>
