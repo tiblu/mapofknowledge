@@ -307,4 +307,149 @@ function getAllAchievements() {
   return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name }));
 }
 
-module.exports = { awardLumens, checkAchievements, getGameState, getMomentum, getRank, RANKS, getAllAchievements };
+// ── Streaks ──────────────────────────────────────────────────────────────────
+// Deliberately independent of lumens/momentum above — a streak is "did you
+// complete a knobit today", full stop. today/last_completion_date are always
+// the LEARNER'S LOCAL calendar date ('YYYY-MM-DD'), sent by the client (see
+// _localDateStr in learning.js/profile.js) — there is no stored timezone
+// anywhere in this app, so the client is the only thing that actually knows
+// what day it is for that person. Never compare this against server UTC dates.
+const MAX_STREAK_SAVERS = 3;
+
+function _isValidYMD(s) {
+  return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+// Fallback only for callers that somehow have no client date at all — an
+// approximation (server/UTC "today"), not the source of truth.
+function _fallbackToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function _daysBetween(fromYMD, toYMD) {
+  const a = new Date(fromYMD + 'T00:00:00Z');
+  const b = new Date(toYMD   + 'T00:00:00Z');
+  return Math.round((b - a) / 86400000);
+}
+
+async function _loadStreakRow(passportId) {
+  const [rows] = await db.execute(
+    `SELECT current_streak, longest_streak, streak_savers,
+            DATE_FORMAT(last_completion_date, '%Y-%m-%d') AS last_completion_date
+     FROM user_streaks WHERE passport_id = ?`,
+    [passportId]
+  );
+  return rows[0] || { current_streak: 0, longest_streak: 0, streak_savers: 0, last_completion_date: null };
+}
+
+async function _saveStreakRow(passportId, row) {
+  await db.execute(
+    `INSERT INTO user_streaks (passport_id, current_streak, longest_streak, streak_savers, last_completion_date)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       current_streak = VALUES(current_streak), longest_streak = VALUES(longest_streak),
+       streak_savers = VALUES(streak_savers), last_completion_date = VALUES(last_completion_date)`,
+    [passportId, row.current_streak, row.longest_streak, row.streak_savers, row.last_completion_date]
+  );
+}
+
+// Walks forward day-by-day from last_completion_date to today, consuming one
+// Streak Saver per fully-missed day. Breaks the streak (resets to 0) the
+// first time a missed day has no saver left to cover it. A no-op if there's
+// no gap yet (today or yesterday's completion still keeps the streak alive
+// without needing a save).
+function _catchUp(row, today) {
+  if (!row.last_completion_date) return row;
+  const gap = _daysBetween(row.last_completion_date, today);
+  if (gap <= 1) return row;
+  let missedDays = gap - 1;
+  let streak = row.current_streak;
+  let savers = row.streak_savers;
+  while (missedDays > 0) {
+    if (savers > 0) { savers -= 1; missedDays -= 1; }
+    else { streak = 0; break; }
+  }
+  return { ...row, current_streak: streak, streak_savers: savers };
+}
+
+// Read-time evaluation — used to display current state, including catching
+// up (and persisting) a break the learner hasn't triggered by acting yet.
+async function getStreak(passportId, todayYMD) {
+  if (!passportId) return { currentStreak: 0, longestStreak: 0, streakSavers: 0 };
+  const today = _isValidYMD(todayYMD) ? todayYMD : _fallbackToday();
+  try {
+    const before = await _loadStreakRow(passportId);
+    const after  = _catchUp(before, today);
+    if (after.current_streak !== before.current_streak || after.streak_savers !== before.streak_savers) {
+      await _saveStreakRow(passportId, after);
+    }
+    return { currentStreak: after.current_streak, longestStreak: after.longest_streak, streakSavers: after.streak_savers };
+  } catch (err) {
+    console.error('[game/getStreak]', err.message);
+    return { currentStreak: 0, longestStreak: 0, streakSavers: 0 };
+  }
+}
+
+// Called once per knobit completion. A second completion on the same local
+// day is a no-op (already counted) beyond running the same catch-up.
+async function recordKnobitCompletion(passportId, todayYMD) {
+  if (!passportId) return;
+  const today = _isValidYMD(todayYMD) ? todayYMD : _fallbackToday();
+  try {
+    const row = _catchUp(await _loadStreakRow(passportId), today);
+    if (row.last_completion_date !== today) {
+      row.current_streak += 1;
+      row.last_completion_date = today;
+      if (row.current_streak > row.longest_streak) row.longest_streak = row.current_streak;
+    }
+    await _saveStreakRow(passportId, row);
+    return { currentStreak: row.current_streak, longestStreak: row.longest_streak, streakSavers: row.streak_savers };
+  } catch (err) {
+    console.error('[game/recordKnobitCompletion]', err.message);
+  }
+}
+
+// Called when a node's final knobit completes. Awards a Streak Saver (cap
+// MAX_STREAK_SAVERS) if every knobit in the node has a started_at (only true
+// for knobits started after this feature shipped — older ones are silently
+// skipped, never crash) and the elapsed time from the first knobit's start
+// to the last knobit's completion is under 24 hours. Elapsed duration is
+// timezone-invariant, unlike a "same calendar day" check would be — this app
+// has no stored learner timezone, so duration is the only version of "same
+// day" we can actually evaluate correctly server-side.
+async function maybeAwardStreakSaver(passportId, nodeDbId, userId) {
+  if (!passportId || !nodeDbId) return;
+  try {
+    const [[row]] = await db.execute(
+      `SELECT COUNT(*) AS total,
+              SUM(started_at IS NULL) AS missingStart,
+              MIN(started_at) AS firstStart,
+              MAX(kp.completed_at) AS lastDone
+       FROM knobits k
+       JOIN knobit_progress kp ON kp.knobit_id = k.id AND kp.passport_id = ?
+       WHERE k.node_id = ? AND kp.phase_reached = 'done'`,
+      [passportId, nodeDbId]
+    );
+    if (!row || !row.total || row.missingStart > 0 || !row.firstStart || !row.lastDone) return;
+    const elapsedHours = (new Date(row.lastDone) - new Date(row.firstStart)) / 3600000;
+    if (elapsedHours >= 24) return;
+
+    const streakRow = await _loadStreakRow(passportId);
+    if (streakRow.streak_savers >= MAX_STREAK_SAVERS) return;
+    streakRow.streak_savers += 1;
+    await _saveStreakRow(passportId, streakRow);
+
+    if (userId) {
+      const { notify } = require('./notifications');
+      notify(userId, 'achievement', 'Streak Saver earned!',
+        'You finished an entire topic in one sitting — a Streak Saver has been added to your account.');
+    }
+  } catch (err) {
+    console.error('[game/maybeAwardStreakSaver]', err.message);
+  }
+}
+
+module.exports = {
+  awardLumens, checkAchievements, getGameState, getMomentum, getRank, RANKS, getAllAchievements,
+  getStreak, recordKnobitCompletion, maybeAwardStreakSaver,
+};

@@ -718,6 +718,15 @@ function _askDbPhase(action) {
 // ── Persist a knobit lesson block for mid-lesson resume/grounding ───────────
 async function _saveInteraction(passportId, knobitId, phase, blockType, blockIndex, choiceMade, answerText, content) {
   if (!passportId) return;
+  // Stamp knobit_progress.started_at on first touch (COALESCE keeps it fixed
+  // after that) — used only to detect "whole node finished within 24h" for
+  // streak-saver eligibility (see maybeAwardStreakSaver in game.js).
+  db.execute(
+    `INSERT INTO knobit_progress (passport_id, knobit_id, phase_reached, started_at)
+     VALUES (?, ?, 'explain', NOW())
+     ON DUPLICATE KEY UPDATE started_at = COALESCE(started_at, NOW())`,
+    [passportId, knobitId]
+  ).catch(() => {});
   // 'ok' is the canonical (non-rephrase) generation for a given block_index —
   // there should only ever be one. If a generation gets abandoned client-side
   // (e.g. exiting right as a byte is streaming) it still finishes and saves
@@ -1026,6 +1035,7 @@ router.get('/learn/lootbox/:nodeId', async (req, res) => {
 router.post('/learn/knobit/:id/complete', async (req, res) => {
   const knobitId   = req.params.id;
   const passportId = req.user?.passport_id;
+  const localDate  = req.body?.localDate;
   if (!passportId) return res.status(400).json({ error: 'No passport' });
 
   try {
@@ -1124,8 +1134,10 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       game.awardLumens(passportId, userId, 10, 'knobit_complete', knobitId).catch(() => {});
       if (done >= total && total > 0) {
         game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => {});
+        game.maybeAwardStreakSaver(passportId, node_id, userId).catch(() => {});
       }
       game.checkAchievements(passportId, userId, 'knobit_complete', { totalEver }).catch(() => {});
+      game.recordKnobitCompletion(passportId, localDate).catch(() => {});
     }
 
     res.json({ ok: true });
@@ -1194,6 +1206,7 @@ router.get('/profile', async (req, res) => {
     );
 
     data.suggestions = { unfinishedKnobits, incompletePaths, repeatContent: [] };
+    data.streak = await game.getStreak(passportId, req.query.localDate);
 
     res.json(data);
   } catch (err) {

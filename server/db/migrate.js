@@ -75,6 +75,40 @@ async function run() {
     `);
     console.log('  · lootbox_cache table ready');
 
+    // knobit_progress.started_at — stamped on first interaction (see
+    // _saveInteraction in api.js), independent of completed_at. Used to
+    // detect "whole node finished within 24h" for streak-saver eligibility.
+    const [startedCols] = await conn.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'knobit_progress' AND COLUMN_NAME = 'started_at'`
+    );
+    if (!startedCols.length) {
+      await conn.execute('ALTER TABLE knobit_progress ADD COLUMN started_at DATETIME NULL AFTER phase_reached');
+      console.log('  + Added knobit_progress.started_at column');
+    } else {
+      console.log('  · knobit_progress.started_at already exists');
+    }
+
+    // user_streaks table — daily-completion streak, independent of lumens.
+    // last_completion_date is the LEARNER'S LOCAL calendar date (sent by the
+    // client, not derived from server time) — see recordKnobitCompletion/
+    // getStreak in game.js.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS user_streaks (
+        passport_id         BIGINT UNSIGNED NOT NULL,
+        current_streak       INT UNSIGNED NOT NULL DEFAULT 0,
+        longest_streak        INT UNSIGNED NOT NULL DEFAULT 0,
+        streak_savers         TINYINT UNSIGNED NOT NULL DEFAULT 0,
+        last_completion_date  DATE NULL,
+        updated_at            DATETIME NOT NULL DEFAULT NOW() ON UPDATE NOW(),
+        PRIMARY KEY (passport_id),
+        CONSTRAINT fk_streaks_passport
+          FOREIGN KEY (passport_id) REFERENCES learner_passports (id)
+          ON DELETE CASCADE
+      )
+    `);
+    console.log('  · user_streaks table ready');
+
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
     if (cnt > 0) {

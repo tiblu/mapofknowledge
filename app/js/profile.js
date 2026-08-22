@@ -991,9 +991,84 @@
     }
   }
 
+  /* ─── Section 8 — Streak (real data) ─────────────────────────────── */
+  function renderStreak(streak) {
+    var card = document.getElementById('qst-streak-card');
+    if (!card) return;
+    var s = streak || {};
+    var cur     = s.currentStreak || 0;
+    var longest = s.longestStreak || 0;
+    var savers  = s.streakSavers  || 0;
+
+    var lit = Math.min(cur, 7);
+    var dots = '';
+    for (var i = 0; i < 7; i++) {
+      dots += `<span class="qst-day${i >= 7 - lit ? ' on' : ''}"></span>`;
+    }
+
+    var longestHtml = '';
+    if (longest > 0 && cur === longest) {
+      longestHtml = `<div class="qst-streak-longest best">🏆 ${esc(t('quesst.longest_ever'))}</div>`;
+    } else if (longest > 0) {
+      longestHtml = `<div class="qst-streak-longest">${esc(t('quesst.longest_streak_label'))}: ${longest}</div>`;
+    }
+
+    var zeroHtml = cur === 0
+      ? `<div class="qst-streak-zero">${esc(t('quesst.streak_zero'))}</div>`
+      : '';
+
+    card.innerHTML = `
+      <div class="p-card-title-row">
+        <div class="p-card-title">${esc(t('quesst.streak_title'))}</div>
+        <button type="button" class="qst-info-btn" id="qst-streak-info-btn" aria-label="${esc(t('quesst.streak_rules_title'))}">i</button>
+      </div>
+      <div class="qst-streak-hero">
+        <div class="qst-streak-flame${cur === 0 ? ' off' : ''}">🔥</div>
+        <div class="qst-streak-count">${cur}</div>
+        <div class="qst-streak-label">${esc(t('quesst.day_streak'))}</div>
+      </div>
+      <div class="qst-streak-days">${dots}</div>
+      ${zeroHtml}
+      ${longestHtml}
+      <div class="qst-streak-savers">🛡️ ${savers}/3 ${esc(t('quesst.streak_savers_label'))}</div>
+      <div class="qst-info-popover" id="qst-streak-popover" style="display:none">
+        <div class="qst-info-popover-title">${esc(t('quesst.streak_rules_title'))}</div>
+        <ul>
+          <li>${esc(t('quesst.streak_rule_1'))}</li>
+          <li>${esc(t('quesst.streak_rule_2'))}</li>
+          <li>${esc(t('quesst.streak_rule_3'))}</li>
+          <li>${esc(t('quesst.streak_rule_4'))}</li>
+        </ul>
+      </div>`;
+
+    var infoBtn  = document.getElementById('qst-streak-info-btn');
+    var popover  = document.getElementById('qst-streak-popover');
+    if (infoBtn && popover) {
+      infoBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', function (e) {
+        if (popover.style.display !== 'none' && !popover.contains(e.target) && e.target !== infoBtn) {
+          popover.style.display = 'none';
+        }
+      });
+    }
+  }
+
+  // The learner's own local calendar date — no timezone is stored anywhere
+  // server-side, so this is the only place that actually knows what day it
+  // is for them. Used purely for streak bookkeeping (see Section 8).
+  function _localDateStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+
   /* ─── Main load ───────────────────────────────────────────────── */
   window.loadProfile = function () {
-    fetch('/api/profile')
+    fetch('/api/profile?localDate=' + encodeURIComponent(_localDateStr()))
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(d => {
         renderIdentity(d.passport || {});
@@ -1005,6 +1080,7 @@
         renderReflections(d.reflections);
         renderGoals(d.goals);
         renderSuggestions(d.suggestions);
+        renderStreak(d.streak);
       })
       .catch(err => {
         console.error('Profile load failed:', err);

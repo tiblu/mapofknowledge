@@ -945,18 +945,63 @@ select.p-edit-input { cursor: pointer; }
 }
 #qst-video-close:hover { background: rgba(255,255,255,0.22); }
 
+/* ── Card title row + info popover (Streak, and reusable for later cards) ── */
+.p-card.s8 { position: relative; }
+.p-card-title-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.p-card-title-row .p-card-title { margin-bottom: 0; }
+.qst-info-btn {
+  width: 17px; height: 17px; border-radius: 50%;
+  border: none; background: var(--i09); color: var(--c5);
+  font-size: 10.5px; font-weight: 700; font-style: italic; font-family: Georgia, serif;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: background 0.14s, color 0.14s;
+}
+.qst-info-btn:hover { background: rgba(224,184,77,0.30); color: #8A6410; }
+.qst-info-popover {
+  position: absolute; top: 44px; right: 18px;
+  width: 240px; z-index: 20;
+  background: #fff; border: 1px solid var(--i09); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(44,40,32,0.18);
+  padding: 14px 16px;
+}
+.qst-info-popover-title {
+  font-size: 11px; font-weight: 700; color: var(--c1);
+  margin-bottom: 8px;
+}
+.qst-info-popover ul {
+  margin: 0; padding-left: 16px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.qst-info-popover li { font-size: 11.5px; line-height: 1.5; color: var(--c4); }
+
 /* ── Streak ───────────────────────────────── */
 .qst-streak-hero {
   display: flex; flex-direction: column; align-items: center;
-  padding: 6px 0 12px;
+  padding: 2px 0 12px;
 }
 .qst-streak-flame { font-size: 30px; line-height: 1; margin-bottom: 4px; }
+.qst-streak-flame.off { filter: grayscale(1); opacity: 0.35; }
 .qst-streak-count { font-size: 28px; font-weight: 750; color: var(--c1); letter-spacing: -0.5px; }
 .qst-streak-label { font-size: 11px; color: var(--c6); margin-top: 2px; }
 .qst-streak-days { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
 .qst-day { width: 16px; height: 16px; border-radius: 5px; background: var(--i10); }
 .qst-day.on { background: linear-gradient(135deg, #F0A868, #D9782E); }
-.qst-streak-momentum { text-align: center; font-size: 11.5px; font-weight: 600; color: #B8860B; }
+.qst-streak-zero {
+  text-align: center; font-size: 11.5px; color: var(--c5);
+  line-height: 1.4; margin-bottom: 6px;
+}
+.qst-streak-longest {
+  text-align: center; font-size: 11.5px; font-weight: 600; color: var(--c5);
+  margin-bottom: 6px;
+}
+.qst-streak-longest.best { color: #B8860B; }
+.qst-streak-savers {
+  text-align: center; font-size: 11px; font-weight: 600; color: var(--c5);
+}
 
 /* ── Lumens & rank ────────────────────────── */
 .qst-lumens-hero {
