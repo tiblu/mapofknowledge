@@ -65,11 +65,15 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
   margin-left: auto;
 }
 
-/* ── Streak bonfire — shown only when the learner has an active streak;
-   links to the streak card on the Learner Passport. Flame itself stays
-   static; a few small sparks drift up and fade around it continuously,
-   staggered so they don't all fire in lockstep. Subtle enough to run
-   indefinitely rather than stopping after a bit. ── */
+/* ── Streak bonfire — always shown, links to the streak card on the
+   Learner Passport either way. With no active streak it's a desaturated
+   (.off) flame and the sparks are hidden; once there's a streak it's full
+   colour with sparks drifting around it continuously, staggered so they
+   don't all fire in lockstep. (A literal unlit-log glyph — 🪵 — was tried
+   first, but it's Unicode 13.0 and renders as a blank box on Windows 10
+   without an updated emoji font, which a meaningful chunk of real users
+   would hit; a desaturated 🔥 gets the same "inactive" read with zero
+   compatibility risk.) See refreshStreakIcon in app.js for the toggle. ── */
 .topbar-streak-link {
   position: relative;
   display: flex; align-items: center; justify-content: center;
@@ -83,6 +87,8 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
   font-size: 17px; line-height: 1;
   display: inline-block;
 }
+.topbar-streak-link.off .topbar-streak-flame { filter: grayscale(1); opacity: 0.45; }
+.topbar-streak-link.off .topbar-streak-spark { display: none; }
 .topbar-streak-spark {
   position: absolute;
   top: 9px; left: 15px;

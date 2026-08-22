@@ -1470,7 +1470,7 @@ function init(data, emergentData) {
     fetch('/api/streak?localDate=' + encodeURIComponent(_localDateStr()))
       .then(r => r.json())
       .then(({ currentStreak }) => {
-        link.style.display = currentStreak > 0 ? 'flex' : 'none';
+        link.classList.toggle('off', !(currentStreak > 0));
       }).catch(() => {});
   }
 
