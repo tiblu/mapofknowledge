@@ -1224,9 +1224,10 @@
   function renderAchievements(list) {
     var card = document.getElementById('qst-achievements-card');
     if (!card) return;
+    var all = list || [];
     // Unlocked first (stable sort keeps definition order within each group)
     // so earned medals lead the grid.
-    var items = (list || []).slice().sort(function (a, b) {
+    var items = all.slice().sort(function (a, b) {
       return (b.unlocked ? 1 : 0) - (a.unlocked ? 1 : 0);
     });
 
@@ -1238,8 +1239,36 @@
       </div>`;
     }
 
-    card.innerHTML = `<div class="p-card-title">${esc(t('quesst.achievements_title'))}</div>` +
-      `<div class="qst-ach-grid">${items.map(cellHtml).join('')}</div>`;
+    // Criteria list stays in definition order (not unlocked-first) — a
+    // stable reference, not a ranking.
+    var criteriaHtml = all.map(function (a) {
+      return `<li><strong>${esc(a.name)}</strong> — ${esc(a.desc || '')}</li>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="p-card-title-row">
+        <div class="p-card-title">${esc(t('quesst.achievements_title'))}</div>
+        <button type="button" class="qst-info-btn" id="qst-ach-info-btn" aria-label="${esc(t('quesst.ach_rules_title'))}">i</button>
+      </div>
+      <div class="qst-ach-grid">${items.map(cellHtml).join('')}</div>
+      <div class="qst-info-popover qst-ach-popover" id="qst-ach-popover" style="display:none">
+        <div class="qst-info-popover-title">${esc(t('quesst.ach_rules_title'))}</div>
+        <ul>${criteriaHtml}</ul>
+      </div>`;
+
+    var infoBtn = document.getElementById('qst-ach-info-btn');
+    var popover = document.getElementById('qst-ach-popover');
+    if (infoBtn && popover) {
+      infoBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', function (e) {
+        if (popover.style.display !== 'none' && !popover.contains(e.target) && e.target !== infoBtn) {
+          popover.style.display = 'none';
+        }
+      });
+    }
   }
 
   // Boot

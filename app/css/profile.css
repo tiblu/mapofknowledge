@@ -977,6 +977,13 @@ select.p-edit-input { cursor: pointer; }
   display: flex; flex-direction: column; gap: 7px;
 }
 .qst-info-popover li { font-size: 11.5px; line-height: 1.5; color: var(--c4); }
+/* Achievements popover — 13 entries, so wider + scrollable instead of the
+   narrow fixed-height version used on Streak/Lumens. */
+.qst-ach-popover {
+  width: 320px; max-height: 320px;
+  overflow-y: auto;
+}
+.qst-ach-popover li strong { color: var(--c1); font-weight: 700; }
 
 /* ── Streak ───────────────────────────────── */
 /* The topbar bonfire links straight here (not to #s8) so the streak card

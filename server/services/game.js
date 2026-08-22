@@ -23,6 +23,7 @@ const ACHIEVEMENTS = {
 
   first_expedition: {
     name: 'First Expedition',
+    desc: 'Complete your very first knobit.',
     icon: '🧭',
     triggers: ['knobit_complete'],
     check: async (passportId, ctx) => ctx.totalEver === 1,
@@ -30,6 +31,7 @@ const ACHIEVEMENTS = {
 
   perfect_survey: {
     name: 'Perfect Survey',
+    desc: 'Score 100% on a knowledge test.',
     icon: '🎯',
     triggers: ['test_complete'],
     check: async (passportId, ctx) => ctx.score === 100,
@@ -37,6 +39,7 @@ const ACHIEVEMENTS = {
 
   three_peaks: {
     name: 'Three Peaks',
+    desc: 'Score 100% on tests for 3 different topics.',
     icon: '⛰️',
     triggers: ['test_complete'],
     check: async (passportId, ctx) => {
@@ -54,6 +57,7 @@ const ACHIEVEMENTS = {
 
   polymath_path: {
     name: "The Polymath's Path",
+    desc: 'Study knobits across 50 different topics.',
     icon: '📚',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
@@ -71,6 +75,7 @@ const ACHIEVEMENTS = {
   boundless_atlas: {
     // Next tier beyond polymath_path — same shape, 3x the bar.
     name: 'The Boundless Atlas',
+    desc: 'Study knobits across 150 different topics.',
     icon: '🗺️',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
@@ -87,6 +92,7 @@ const ACHIEVEMENTS = {
 
   deep_waters: {
     name: 'Deep Waters',
+    desc: 'Fully complete every topic under one subject area.',
     icon: '🌊',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
@@ -113,6 +119,7 @@ const ACHIEVEMENTS = {
 
   continent_charted: {
     name: 'Continent Charted',
+    desc: 'Fully complete an entire domain — every topic under it.',
     icon: '🌍',
     triggers: ['test_complete'],
     check: async (passportId) => {
@@ -152,18 +159,21 @@ const ACHIEVEMENTS = {
 
   night_cartographer: {
     name: 'Night Cartographer',
+    desc: 'Complete a knobit between midnight and 5am.',
     icon: '🦉',
     check: async () => { const h = new Date().getHours(); return h >= 0 && h < 5; },
   },
 
   dawn_patrol: {
     name: 'Dawn Patrol',
+    desc: 'Complete a knobit between 4am and 7am.',
     icon: '🌅',
     check: async () => { const h = new Date().getHours(); return h >= 4 && h < 7; },
   },
 
   first_reflection: {
     name: 'Explorer Diary Started',
+    desc: 'Write your first reflection.',
     icon: '📔',
     triggers: ['reflection'],
     check: async (passportId) => {
@@ -176,6 +186,7 @@ const ACHIEVEMENTS = {
 
   first_anne_chat: {
     name: 'Fireside Chat',
+    desc: 'Send your first message to Anne.',
     icon: '🔥',
     triggers: ['anne_chat'],
     check: async (passportId) => {
@@ -187,7 +198,8 @@ const ACHIEVEMENTS = {
   },
 
   first_goal_added: {
-    name: 'Marks the Spot',
+    name: 'X Marks the Spot',
+    desc: 'Add your first goal.',
     icon: '📍',
     triggers: ['goal_added'],
     check: async (passportId) => {
@@ -200,6 +212,7 @@ const ACHIEVEMENTS = {
 
   first_goal_complete: {
     name: 'First Peak Reached',
+    desc: 'Complete your first goal.',
     icon: '🏔️',
     triggers: ['goal_complete'],
     check: async (passportId) => {
@@ -373,7 +386,7 @@ async function getGameState(passportId) {
 
 // ── All achievement definitions (for listing) ─────────────────────────────────
 function getAllAchievements() {
-  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name, icon: def.icon }));
+  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name, icon: def.icon, desc: def.desc }));
 }
 
 // Every defined achievement, each flagged unlocked/locked for this learner.
