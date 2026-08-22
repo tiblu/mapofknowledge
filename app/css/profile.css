@@ -45,9 +45,6 @@
   font-size: 14px; font-weight: 650; color: var(--c1);
   letter-spacing: -0.2px;
 }
-.pnav-tagline {
-  font-size: 11px; color: var(--c6); margin-top: 3px; line-height: 1.4;
-}
 
 .pnav-divider { height: 1px; background: var(--i08); margin: 2px 14px; }
 
