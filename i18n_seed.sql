@@ -292,6 +292,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('quesst.lumens_rule_6',    'en', 'Complete your Learner Passport profile: +10 lumens, once.'),
 ('quesst.lumens_rule_7',    'en', 'Every award above is scaled by your momentum — the more consistently you learn, the higher it climbs (up to 2×).'),
 ('quesst.achievements_title', 'en', 'Achievements'),
+('quesst.locked_label',     'en', 'Locked'),
 ('quesst.leaderboard_title', 'en', 'Leaderboard'),
 ('quesst.you_label',        'en', 'You'),
 ('quesst.anon_learner',     'en', 'Learner'),

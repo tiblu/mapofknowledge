@@ -1218,11 +1218,30 @@
     card.innerHTML = html;
   }
 
+  /* ─── Section 8 — Achievements (real data) ───────────────────────── */
+  function renderAchievements(list) {
+    var card = document.getElementById('qst-achievements-card');
+    if (!card) return;
+    var items = list || [];
+    var cells = items.map(function (a) {
+      if (a.unlocked) {
+        return `<div class="qst-ach unlocked" title="${esc(a.name)}">${a.icon || '🏅'}</div>`;
+      }
+      return `<div class="qst-ach locked" title="${esc(t('quesst.locked_label'))}">🔒</div>`;
+    }).join('');
+    card.innerHTML = `<div class="p-card-title">${esc(t('quesst.achievements_title'))}</div>` +
+      `<div class="qst-ach-grid">${cells}</div>`;
+  }
+
   // Boot
   window.loadProfile();
   fetch('/api/leaderboard')
     .then(r => r.json())
     .then(renderLeaderboard)
+    .catch(() => {});
+  fetch('/api/game/achievements')
+    .then(r => r.json())
+    .then(renderAchievements)
     .catch(() => {});
 
 })();

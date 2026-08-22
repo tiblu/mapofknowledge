@@ -23,18 +23,21 @@ const ACHIEVEMENTS = {
 
   first_expedition: {
     name: 'First Expedition',
+    icon: '🧭',
     triggers: ['knobit_complete'],
     check: async (passportId, ctx) => ctx.totalEver === 1,
   },
 
   perfect_survey: {
     name: 'Perfect Survey',
+    icon: '🎯',
     triggers: ['test_complete'],
     check: async (passportId, ctx) => ctx.score === 100,
   },
 
   three_peaks: {
     name: 'Three Peaks',
+    icon: '⛰️',
     triggers: ['test_complete'],
     check: async (passportId, ctx) => {
       const [[{ cnt }]] = await db.execute(
@@ -51,6 +54,7 @@ const ACHIEVEMENTS = {
 
   polymath_path: {
     name: "The Polymath's Path",
+    icon: '📚',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -67,6 +71,7 @@ const ACHIEVEMENTS = {
   boundless_atlas: {
     // Next tier beyond polymath_path — same shape, 3x the bar.
     name: 'The Boundless Atlas',
+    icon: '🗺️',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -82,6 +87,7 @@ const ACHIEVEMENTS = {
 
   deep_waters: {
     name: 'Deep Waters',
+    icon: '🌊',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
       // True if any L4 node has all its L5 children fully COMPLETED (100%,
@@ -107,6 +113,7 @@ const ACHIEVEMENTS = {
 
   continent_charted: {
     name: 'Continent Charted',
+    icon: '🌍',
     triggers: ['test_complete'],
     check: async (passportId) => {
       // Any L1 domain where every L5 descendant is fully COMPLETED (100%,
@@ -139,16 +146,19 @@ const ACHIEVEMENTS = {
 
   night_cartographer: {
     name: 'Night Cartographer',
+    icon: '🦉',
     check: async () => { const h = new Date().getHours(); return h >= 0 && h < 5; },
   },
 
   dawn_patrol: {
     name: 'Dawn Patrol',
+    icon: '🌅',
     check: async () => { const h = new Date().getHours(); return h >= 4 && h < 7; },
   },
 
   first_reflection: {
     name: 'Explorer Diary Started',
+    icon: '📔',
     triggers: ['reflection'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -160,6 +170,7 @@ const ACHIEVEMENTS = {
 
   first_anne_chat: {
     name: 'Fireside Chat',
+    icon: '🔥',
     triggers: ['anne_chat'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -171,6 +182,7 @@ const ACHIEVEMENTS = {
 
   first_goal_added: {
     name: 'Marks the Spot',
+    icon: '📍',
     triggers: ['goal_added'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -182,6 +194,7 @@ const ACHIEVEMENTS = {
 
   first_goal_complete: {
     name: 'First Peak Reached',
+    icon: '🏔️',
     triggers: ['goal_complete'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -354,7 +367,28 @@ async function getGameState(passportId) {
 
 // ── All achievement definitions (for listing) ─────────────────────────────────
 function getAllAchievements() {
-  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name }));
+  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name, icon: def.icon }));
+}
+
+// Every defined achievement, each flagged unlocked/locked for this learner.
+// Iterates from the definitions outward (not from the DB inward), so any
+// non-medal rows in user_achievements — e.g. the branch_complete_<extId>
+// idempotency markers used by the lumens bonus — never leak in here, since
+// they simply don't match any key in ACHIEVEMENTS.
+async function getAchievementsStatus(passportId) {
+  const all = getAllAchievements();
+  if (!passportId) return all.map(a => ({ ...a, unlocked: false, unlockedAt: null }));
+  const [rows] = await db.execute(
+    'SELECT achievement_key, unlocked_at FROM user_achievements WHERE passport_id = ?',
+    [passportId]
+  );
+  const unlockedMap = {};
+  rows.forEach(r => { unlockedMap[r.achievement_key] = r.unlocked_at; });
+  return all.map(a => ({
+    ...a,
+    unlocked: Object.prototype.hasOwnProperty.call(unlockedMap, a.key),
+    unlockedAt: unlockedMap[a.key] || null,
+  }));
 }
 
 // ── Streaks ──────────────────────────────────────────────────────────────────
@@ -587,6 +621,7 @@ async function maybeAwardBranchBonus(passportId, userId, nodeDbId) {
 
 module.exports = {
   awardLumens, checkAchievements, getGameState, getMomentum, getRank, RANKS, getAllAchievements,
+  getAchievementsStatus,
   getStreak, recordKnobitCompletion, maybeAwardStreakSaver,
   maybeAwardProfileCompleteBonus, maybeAwardBranchBonus,
 };

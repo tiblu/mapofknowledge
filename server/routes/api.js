@@ -1924,19 +1924,8 @@ router.post('/game/settings', async (req, res) => {
 // ── Achievements list ────────────────────────────────────────────────────────
 router.get('/game/achievements', async (req, res) => {
   const passportId = req.user?.passport_id;
-  const all = game.getAllAchievements();
-  if (!passportId) return res.json(all.map(a => ({ ...a, unlocked: false })));
   try {
-    const [unlocked] = await db.execute(
-      'SELECT achievement_key, unlocked_at FROM user_achievements WHERE passport_id = ?',
-      [passportId]
-    );
-    const unlockedMap = Object.fromEntries(unlocked.map(r => [r.achievement_key, r.unlocked_at]));
-    res.json(all.map(a => ({
-      ...a,
-      unlocked: !!unlockedMap[a.key],
-      unlocked_at: unlockedMap[a.key] || null,
-    })));
+    res.json(await game.getAchievementsStatus(passportId));
   } catch (err) {
     res.status(500).json({ error: 'Failed to load achievements' });
   }
