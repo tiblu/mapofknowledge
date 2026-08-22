@@ -1222,15 +1222,38 @@
   function renderAchievements(list) {
     var card = document.getElementById('qst-achievements-card');
     if (!card) return;
-    var items = list || [];
-    var cells = items.map(function (a) {
-      if (a.unlocked) {
-        return `<div class="qst-ach unlocked" title="${esc(a.name)}">${a.icon || '🏅'}</div>`;
-      }
-      return `<div class="qst-ach locked" title="${esc(t('quesst.locked_label'))}">🔒</div>`;
-    }).join('');
+    var VISIBLE = 6;
+    // Unlocked first (stable sort keeps definition order within each group)
+    // so earned medals are what actually shows before "More…".
+    var items = (list || []).slice().sort(function (a, b) {
+      return (b.unlocked ? 1 : 0) - (a.unlocked ? 1 : 0);
+    });
+
+    function cellHtml(a) {
+      var stateClass = a.unlocked ? 'unlocked' : 'locked';
+      return `<div class="qst-ach ${stateClass}" title="${esc(a.name)}">
+        <div class="qst-ach-icon">${a.icon || '🏅'}</div>
+        <div class="qst-ach-name">${esc(a.name)}</div>
+      </div>`;
+    }
+
+    var head = items.slice(0, VISIBLE).map(cellHtml).join('');
+    var rest = items.slice(VISIBLE).map(cellHtml).join('');
+
     card.innerHTML = `<div class="p-card-title">${esc(t('quesst.achievements_title'))}</div>` +
-      `<div class="qst-ach-grid">${cells}</div>`;
+      `<div class="qst-ach-grid">${head}</div>` +
+      (rest ? `<div class="qst-ach-grid qst-ach-extra" id="qst-ach-extra" style="display:none">${rest}</div>` : '') +
+      (rest ? `<button type="button" class="qst-ach-more" id="qst-ach-more-btn">${esc(t('quesst.more_label'))}</button>` : '');
+
+    var moreBtn = document.getElementById('qst-ach-more-btn');
+    var extra   = document.getElementById('qst-ach-extra');
+    if (moreBtn && extra) {
+      moreBtn.addEventListener('click', function () {
+        var showing = extra.style.display !== 'none';
+        extra.style.display = showing ? 'none' : 'grid';
+        moreBtn.textContent = showing ? t('quesst.more_label') : t('quesst.less_label');
+      });
+    }
   }
 
   // Boot

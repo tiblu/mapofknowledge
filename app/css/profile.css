@@ -1027,13 +1027,27 @@ select.p-edit-input { cursor: pointer; }
 
 /* ── Achievements ─────────────────────────── */
 .qst-ach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.qst-ach-extra { margin-top: 8px; }
 .qst-ach {
-  aspect-ratio: 1; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+  border-radius: 12px;
+  padding: 8px 3px 7px;
 }
+.qst-ach-icon { font-size: 19px; line-height: 1; margin-bottom: 4px; }
+.qst-ach-name { font-size: 9px; line-height: 1.25; font-weight: 650; }
 .qst-ach.unlocked { background: rgba(224,184,77,0.18); }
-.qst-ach.locked { background: var(--i06); color: var(--c7); opacity: 0.6; }
+.qst-ach.unlocked .qst-ach-name { color: var(--c2); }
+.qst-ach.locked { background: var(--i06); }
+.qst-ach.locked .qst-ach-icon { filter: grayscale(1); opacity: 0.4; }
+.qst-ach.locked .qst-ach-name { color: var(--c6); font-weight: 500; }
+.qst-ach-more {
+  display: block; width: 100%; margin-top: 10px;
+  background: none; border: none; cursor: pointer;
+  font-size: 11px; font-weight: 650; color: #8A6410;
+  text-align: center; padding: 4px 0; font-family: inherit;
+}
+.qst-ach-more:hover { text-decoration: underline; }
 
 /* ── Leaderboard ──────────────────────────── */
 .qst-lb-row {
