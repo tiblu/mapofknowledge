@@ -979,6 +979,10 @@ select.p-edit-input { cursor: pointer; }
 .qst-info-popover li { font-size: 11.5px; line-height: 1.5; color: var(--c4); }
 
 /* ── Streak ───────────────────────────────── */
+/* The topbar bonfire links straight here (not to #s8) so the streak card
+   isn't hidden below the video when the section top scrolls into view —
+   clearance below the fixed top-bar (52px) plus a little breathing room. */
+#qst-streak-card { scroll-margin-top: 76px; }
 .qst-streak-hero {
   display: flex; flex-direction: column; align-items: center;
   padding: 2px 0 12px;

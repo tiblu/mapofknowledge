@@ -66,8 +66,13 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 }
 
 /* ── Streak bonfire — shown only when the learner has an active streak;
-   links to IQuest (Learner Passport § 8). Shimmer is a slow flicker via
-   filter, closer to firelight than a mechanical pulse. ── */
+   links to the streak card on the Learner Passport. Shimmer is a slow
+   flicker via filter, closer to firelight than a mechanical pulse — plays
+   10 times right as the icon appears, then settles (0%/100% is already the
+   resting look, so it lands back at normal with no extra fill-mode needed).
+   display:none → flex is what (re)starts it; see refreshStreakIcon in
+   app.js — re-showing an already-visible icon doesn't touch display, so it
+   won't re-trigger. ── */
 .topbar-streak-link {
   display: flex; align-items: center; justify-content: center;
   width: 32px; height: 32px; border-radius: 8px;
@@ -79,7 +84,7 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
 .topbar-streak-flame {
   font-size: 17px; line-height: 1;
   display: inline-block;
-  animation: streakFlameShimmer 2.4s ease-in-out infinite;
+  animation: streakFlameShimmer 2.4s ease-in-out 10;
 }
 @keyframes streakFlameShimmer {
   0%, 100% { filter: brightness(1) saturate(1);     transform: scale(1);    }
