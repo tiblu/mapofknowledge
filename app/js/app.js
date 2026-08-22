@@ -755,15 +755,19 @@ function init(data, emergentData) {
     if (searchDropdown) searchDropdown.classList.remove('visible');
   }
 
+  const searchWrap = document.querySelector('.topbar-search-wrap');
+
   function clearSearch() {
     searchBox.value = '';
     searchClear.style.display = 'none';
+    if (searchWrap) searchWrap.classList.remove('has-value');
     closeDropdown();
     resetHighlight();
   }
 
   searchBox.addEventListener("input", function() {
     searchClear.style.display = this.value ? "flex" : "none";
+    if (searchWrap) searchWrap.classList.toggle('has-value', !!this.value);
     const q = this.value.trim().toLowerCase();
     if (!q) { resetHighlight(); closeDropdown(); return; }
 
@@ -1453,6 +1457,23 @@ function init(data, emergentData) {
   // (called again from learning.js via window.MapView.refreshProgress after
   // every knobit completion) plus a one-time listener setup, so re-running it
   // doesn't stack duplicate click handlers.
+  // ── Topbar streak bonfire ────────────────────────────────────────────────
+  function _localDateStr() {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+  function refreshStreakIcon() {
+    const link = document.getElementById('topbar-streak-link');
+    if (!link) return;
+    fetch('/api/streak?localDate=' + encodeURIComponent(_localDateStr()))
+      .then(r => r.json())
+      .then(({ currentStreak }) => {
+        link.style.display = currentStreak > 0 ? 'flex' : 'none';
+      }).catch(() => {});
+  }
+
   let _continueChipNodeId = null;
   function refreshContinueChip() {
     const chip       = document.getElementById('continue-chip');
@@ -1521,10 +1542,12 @@ function init(data, emergentData) {
 
     refreshContinueChip();
   }());
+  refreshStreakIcon();
   // Extends the refreshProgress() contract documented at the top of
   // learning.js (which already calls it, but only ever refreshed the map's
-  // node-ring overlay — never this chip) to also cover the continue-chip.
-  window.MapView.refreshProgress = function () { loadProgress(); refreshContinueChip(); };
+  // node-ring overlay — never this chip) to also cover the continue-chip and
+  // the topbar streak bonfire.
+  window.MapView.refreshProgress = function () { loadProgress(); refreshContinueChip(); refreshStreakIcon(); };
 
   // ── Initial build ──────────────────────────────────────────────────────────
   rebuild();

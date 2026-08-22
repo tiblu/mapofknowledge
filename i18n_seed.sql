@@ -168,7 +168,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('tab.achievements',        'en', 'Achievements'),
 
 -- Placeholders
-('placeholder.search_knowledge','en','Search knowledge…'),
+('placeholder.search_knowledge','en','Search'),
 ('placeholder.ask_knobit',  'en', 'Ask anything about this knobit…'),
 ('placeholder.ask_anything','en', 'Ask anything…'),
 ('placeholder.your_answer', 'en', 'Your answer…'),

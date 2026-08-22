@@ -1165,6 +1165,14 @@ router.get('/map/progress', async (req, res) => {
   }
 });
 
+// ── Streak only — lightweight, for the topbar bonfire icon (full /api/profile
+// is too heavy to fetch on every map load just to check one number) ─────────
+router.get('/streak', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.json({ currentStreak: 0, longestStreak: 0, streakSavers: 0 });
+  res.json(await game.getStreak(passportId, req.query.localDate));
+});
+
 // ── Full profile data for current user ───────────────────────────────────────
 router.get('/profile', async (req, res) => {
   const passportId = req.user?.passport_id;

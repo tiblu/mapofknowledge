@@ -65,6 +65,29 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
   margin-left: auto;
 }
 
+/* ── Streak bonfire — shown only when the learner has an active streak;
+   links to IQuest (Learner Passport § 8). Shimmer is a slow flicker via
+   filter, closer to firelight than a mechanical pulse. ── */
+.topbar-streak-link {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.topbar-streak-link:hover { background: var(--i07); }
+.topbar-streak-flame {
+  font-size: 17px; line-height: 1;
+  display: inline-block;
+  animation: streakFlameShimmer 2.4s ease-in-out infinite;
+}
+@keyframes streakFlameShimmer {
+  0%, 100% { filter: brightness(1) saturate(1);     transform: scale(1);    }
+  30%      { filter: brightness(1.18) saturate(1.15); transform: scale(1.05); }
+  55%      { filter: brightness(0.95) saturate(1);   transform: scale(0.98); }
+  80%      { filter: brightness(1.1) saturate(1.1);  transform: scale(1.03); }
+}
+
 .topbar-search-wrap { position: relative; }
 .topbar-search-wrap .search-icon {
   position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
@@ -74,16 +97,27 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
   background: var(--i07);
   border: 1px solid var(--i11);
   border-radius: 8px;
-  padding: 6px 28px 6px 30px;
+  padding: 6px 10px 6px 30px;
   font-size: 12px; color: var(--c2);
-  width: 180px; outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  width: 96px; outline: none;
+  transition: width 0.18s ease, padding-right 0.18s ease, border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 #search-box::placeholder { color: #B8AFA8; }
 #search-box:focus {
   background: #fff;
   border-color: var(--accent-focus);
   box-shadow: 0 0 0 3px var(--accent-s);
+}
+/* Expand while focused, or while it holds a query (has-value, toggled in
+   app.js alongside the clear button) — otherwise typed text past the
+   narrow default width would just get clipped after blur. Right padding
+   only grows once expanded too — no need to reserve room for the clear
+   button while it's hidden, which is what was clipping "Search" at the
+   narrow width. */
+.topbar-search-wrap:focus-within #search-box,
+.topbar-search-wrap.has-value #search-box {
+  width: 190px;
+  padding-right: 28px;
 }
 
 .search-clear {
