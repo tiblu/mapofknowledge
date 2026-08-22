@@ -1043,29 +1043,22 @@ select.p-edit-input { cursor: pointer; }
 .qst-rank-fill { height: 100%; background: linear-gradient(90deg, #E0B84D, #B8860B); border-radius: 4px; }
 .qst-rank-next { font-size: 10.5px; color: var(--c6); white-space: nowrap; }
 
-/* ── Achievements ─────────────────────────── */
-.qst-ach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.qst-ach-extra { margin-top: 8px; }
+/* ── Achievements — card is always span2 now, so 5 columns fits all 13
+   medals without needing a More/Less toggle. ── */
+.qst-ach-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .qst-ach {
   display: flex; flex-direction: column; align-items: center;
   text-align: center;
-  border-radius: 12px;
-  padding: 8px 3px 7px;
+  border-radius: 10px;
+  padding: 6px 2px 5px;
 }
-.qst-ach-icon { font-size: 19px; line-height: 1; margin-bottom: 4px; }
-.qst-ach-name { font-size: 9px; line-height: 1.25; font-weight: 650; }
+.qst-ach-icon { font-size: 15px; line-height: 1; margin-bottom: 3px; }
+.qst-ach-name { font-size: 7.5px; line-height: 1.15; font-weight: 650; }
 .qst-ach.unlocked { background: rgba(224,184,77,0.18); }
 .qst-ach.unlocked .qst-ach-name { color: var(--c2); }
 .qst-ach.locked { background: var(--i06); }
 .qst-ach.locked .qst-ach-icon { filter: grayscale(1); opacity: 0.4; }
 .qst-ach.locked .qst-ach-name { color: var(--c6); font-weight: 500; }
-.qst-ach-more {
-  display: block; width: 100%; margin-top: 10px;
-  background: none; border: none; cursor: pointer;
-  font-size: 11px; font-weight: 650; color: #8A6410;
-  text-align: center; padding: 4px 0; font-family: inherit;
-}
-.qst-ach-more:hover { text-decoration: underline; }
 
 /* ── Leaderboard ──────────────────────────── */
 .qst-lb-row {
@@ -1092,6 +1085,7 @@ select.p-edit-input { cursor: pointer; }
 .qst-lb-row.you .qst-lb-name { color: #8A6410; }
 .qst-lb-rank-title { font-size: 10.5px; color: var(--c6); }
 .qst-lb-lumens { font-size: 12.5px; font-weight: 650; color: var(--c3); }
+.qst-lb-lumens-icon { color: #D9A93D; }
 .qst-lb-gap { text-align: center; font-size: 11px; color: var(--c7); letter-spacing: 2px; padding: 2px 0; }
 
 /* Compact variant — leaderboard now shares a row with Streak/Achievements
@@ -1106,4 +1100,5 @@ select.p-edit-input { cursor: pointer; }
 @media (max-width: 640px) {
   .p-section-body.three-col { grid-template-columns: 1fr; }
   .p-card.span2, .p-card.span3 { grid-column: span 1; }
+  .qst-ach-grid { grid-template-columns: repeat(4, 1fr); }
 }

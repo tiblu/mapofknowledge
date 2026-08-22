@@ -1212,7 +1212,7 @@
           <span class="qst-lb-name">${esc(name)}</span>
           <span class="qst-lb-rank-title">${esc(r.rankTitle || '')}</span>
         </div>
-        <span class="qst-lb-lumens">${(r.lumens || 0).toLocaleString()}</span>
+        <span class="qst-lb-lumens"><span class="qst-lb-lumens-icon">✦</span> ${(r.lumens || 0).toLocaleString()}</span>
       </div>`;
     }
 
@@ -1226,9 +1226,8 @@
   function renderAchievements(list) {
     var card = document.getElementById('qst-achievements-card');
     if (!card) return;
-    var VISIBLE = 6;
     // Unlocked first (stable sort keeps definition order within each group)
-    // so earned medals are what actually shows before "More…".
+    // so earned medals lead the grid.
     var items = (list || []).slice().sort(function (a, b) {
       return (b.unlocked ? 1 : 0) - (a.unlocked ? 1 : 0);
     });
@@ -1241,23 +1240,8 @@
       </div>`;
     }
 
-    var head = items.slice(0, VISIBLE).map(cellHtml).join('');
-    var rest = items.slice(VISIBLE).map(cellHtml).join('');
-
     card.innerHTML = `<div class="p-card-title">${esc(t('quesst.achievements_title'))}</div>` +
-      `<div class="qst-ach-grid">${head}</div>` +
-      (rest ? `<div class="qst-ach-grid qst-ach-extra" id="qst-ach-extra" style="display:none">${rest}</div>` : '') +
-      (rest ? `<button type="button" class="qst-ach-more" id="qst-ach-more-btn">${esc(t('quesst.more_label'))}</button>` : '');
-
-    var moreBtn = document.getElementById('qst-ach-more-btn');
-    var extra   = document.getElementById('qst-ach-extra');
-    if (moreBtn && extra) {
-      moreBtn.addEventListener('click', function () {
-        var showing = extra.style.display !== 'none';
-        extra.style.display = showing ? 'none' : 'grid';
-        moreBtn.textContent = showing ? t('quesst.more_label') : t('quesst.less_label');
-      });
-    }
+      `<div class="qst-ach-grid">${items.map(cellHtml).join('')}</div>`;
   }
 
   // Boot
