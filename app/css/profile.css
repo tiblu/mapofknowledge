@@ -1007,12 +1007,27 @@ select.p-edit-input { cursor: pointer; }
   text-align: center; font-size: 11px; font-weight: 600; color: var(--c5);
 }
 
+/* ── Lumens & Rank + Streak stack — fills the video card's exact height.
+   Grid's default align-items:stretch already makes .qst-stack match row1's
+   height (dictated by the tall video card); Lumens & Rank stays its natural
+   (now more compact) height, and Streak grows to take up whatever's left,
+   so the two together land on exactly the video's height with no gap. ── */
+.qst-stack {
+  grid-column: span 1;
+  display: flex; flex-direction: column; gap: 14px;
+}
+#qst-lumens-card { flex: 0 0 auto; }
+#qst-streak-card { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+
 /* ── Lumens & rank ────────────────────────── */
 .qst-lumens-hero {
   display: flex; flex-direction: column; align-items: center;
-  padding: 6px 0 14px;
+  padding: 4px 0 12px;
 }
-.qst-lumens-icon { font-size: 26px; color: #D9A93D; margin-bottom: 4px; }
+.qst-lumens-count-row {
+  display: flex; align-items: baseline; justify-content: center; gap: 6px;
+}
+.qst-lumens-icon { font-size: 17px; color: #D9A93D; }
 .qst-lumens-count { font-size: 28px; font-weight: 750; color: var(--c1); letter-spacing: -0.5px; }
 .qst-lumens-label { font-size: 11px; color: var(--c6); margin-top: 2px; }
 .qst-rank-row { display: flex; align-items: center; gap: 8px; }

@@ -1138,8 +1138,10 @@
         <button type="button" class="qst-info-btn" id="qst-lumens-info-btn" aria-label="${esc(t('quesst.lumens_rules_title'))}">i</button>
       </div>
       <div class="qst-lumens-hero">
-        <div class="qst-lumens-icon">✦</div>
-        <div class="qst-lumens-count">${lumens.toLocaleString()}</div>
+        <div class="qst-lumens-count-row">
+          <span class="qst-lumens-icon">✦</span>
+          <span class="qst-lumens-count">${lumens.toLocaleString()}</span>
+        </div>
         <div class="qst-lumens-label">${esc(t('quesst.lumens_label'))}</div>
       </div>
       <div class="qst-rank-row">
