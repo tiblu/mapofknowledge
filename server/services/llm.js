@@ -1031,23 +1031,31 @@ Check: does every URL come from a search result in this session, or was any asse
 // answer "how do I..." questions and guide a lost learner, not just coach on
 // study habits. Keep this in sync when learner-facing UI changes — it's a
 // static block, not derived from the code, so it goes stale silently.
-// Deliberately omits: teacher/parent account linking (MoK has neither), and
-// any gamification mechanics beyond the generic "achievements" already used
-// on the Help page — MoK's gamification design is being redone separately,
-// so this shouldn't bake in KnobitMap-specific terms (lumens, rank).
+// Gamification (lumens/rank/streaks/achievements/leaderboard) shipped and is
+// covered below — the earlier note here saying to omit it is stale.
+// Loot Box category names and achievement medal names are NOT translated
+// (bypass the i18n layer entirely, always render in English regardless of
+// locale) — kept in English in the 'et' block below for the same reason.
 const ANNE_APP_HELP = {
   et: `Sa oskad õppijat aidata ka platvormi kasutamisel, kui ta on eksinud või ei tea, kuidas midagi teha. Nii Map of Knowledge töötab:
 
-KAART: Õppija näeb interaktiivset teadmiste kaarti viie tasemega (L1 valdkonnad kuni L5 üksikmõisted). Kaarti saab lohistada ja suumida, mõisteid otsida ülal otsingukastist, ning kasutada vasakul filtreid (nt põhikool/gümnaasium, aine) ja kihte, et kaarti selgemaks muuta.
+KAART: Õppija näeb interaktiivset teadmiste kaarti viie tasemega (L1 valdkonnad kuni L5 üksikmõisted). Kaarti saab lohistada ja suumida, mõisteid otsida ülal otsingukastist (vaikimisi kitsas, laieneb fookuse peale), ning kasutada vasakul filtreid (nt põhikool/gümnaasium, aine) ja kihte, et kaarti selgemaks muuta.
 
 SÕLME KLIKKIMINE: Kui õppija klikib mõistel, avaneb külgpaneel. Nupud sõltuvad mõiste tasemest:
 - L1–L3 (valdkonnad ja keskastme teemad): õpitegevusi veel pole — tuleb liikuda alamteemadesse, kuni jõuab üksikmõisteni.
 - L4: "Tean seda" lüliti lubab õppijal ise märkida, et ta juba oskab seda teemat. "Õpin seda" ja "Teen testi" on siin veel halliks tehtud — need vajavad üksikmõistet (L5).
 - L5 (üksikmõiste): "Õpin seda" avab õppetunni, "Teen testi" käivitab 4-küsimuselise diagnostilise testi, ja "Tean seda" on siin samuti saadaval.
 
-ÕPPETUND: Neli osa — selgitus, näide, harjutus, tähendus (miks see oluline on). Õppija saab igal hetkel öelda "liiga lihtne" või "liiga keeruline", paluda teistsugust selgitust, või küsida küsimusi otse tunni sees (küsimuste riba).
+ÕPPETUND: Neli osa — selgitus, näide, harjutus, tähendus (miks see oluline on). Õppija saab igal hetkel öelda "liiga lihtne" või "liiga keeruline", paluda teistsugust selgitust, või küsida küsimusi otse tunni sees (küsimuste riba). Õpiraja vaates (tunni juures) on nupp mõiste nime kõrval, mis avab "Loot Box" — täiendavate õppematerjalide komplekti selle konkreetse teema jaoks: video ("Animation"), mäng ("Play a Game"), teemaga seotud päris koht ("Treasure Map"), taskuhäälingu osa ("Podcast"), raamat ("Ancient Scroll"), põnev fakt ("Fun Fact"), ajajoon ("Time Machine"), kellegi jälgimiseks ("Influencer") ja käed-külge projekt ("Hack It"). Mitte igal teemal pole kõiki üheksat — näidatakse ainult neid, mis päriselt sobivad; osad avanevad uues vahekaardis, kolm kirjutatud kategooriat (Fun Fact, Time Machine, Hack It) avanevad samas aknas.
 
-EESMÄRGID JA EDU: Edenemine, saavutused ja eesmärgid on koos näha Õppijapassis — see avaneb menüüst (☰ ikoon üleval paremal) valikust "Konto". Eesmärgid on õppija enda vabas vormis märkmed selle kohta, mille nimel ta töötab — uue saab lisada Õppijapassil nupuga "+ Lisa eesmärk" ja märkida valmis olevaks igal ajal.
+EESMÄRGID JA EDU: Edenemine ja eesmärgid on koos näha Õppijapassis — see avaneb menüüst (☰ ikoon üleval paremal) valikust "Konto". Eesmärgid on õppija enda vabas vormis märkmed selle kohta, mille nimel ta töötab — uue saab lisada Õppijapassil nupuga "+ Lisa eesmärk" ja märkida valmis olevaks igal ajal.
+
+IQUEST (MÄNGulisus): Õppijapassi 8. lõik, "IQuest". Neli töötavat kaarti:
+- Seeria (streak): iga päev, mil õppija lõpetab vähemalt ühe knobiti, loetakse (tema enda kohalik päev, kesköö kuni kesköö) — lumenid seda ei mõjuta. Kui terve päev vahele jääb, seeria katkeb, välja arvatud kui õppijal on Streak Saver, mida kasutatakse automaatselt seeria kaitsmiseks. Streak Saveri (kuni 3 korraga) teenib, lõpetades terve teema kõik knobitid 24 tunni jooksul. Kuvatakse ka seni pikim seeria. Väike leegi-ikoon otsingukasti kõrval üleval reageerib — süttinud, kui seeria on aktiivne — ja klõps viib otse siia kaardi juurde.
+- Lumens & Rank: lumeneid teenib knobiti lõpetamisega (+10), terve teema lõpetamisega (+25 juurde), terve suurema üksuse lõpetamisega (+100 juurde), teadmiste testi sooritamisega olenemata tulemusest (+10), refleksiooni kirjutamisega (+5) ja Õppijapassi profiili täitmisega ühekordselt (+10) — kõike korrutab hoo (momentum) kordaja, mis kasvab, mida järjepidevamalt õppija õpib (see EI ole seotud eelmise seeriaga — eraldi mehaanika). Tase (rank) tõuseb redelil kogutud lumenite põhjal.
+- Achievements: 13 medalit verstapostide eest (esimene knobit, täiuslik testitulemus, õppimine ebatavalisel kellaajal, terve valdkonna omandamine, esimese refleksiooni kirjutamine, esimene vestlus sinuga endaga, esimese eesmärgi seadmine/täitmine ja rohkem) — "i" nupp näitab täpselt, mida iga medal nõuab.
+- Leaderboard: 5 parimat õppijat lumenite järgi, pluss oma koht, kui ise top 5-s ei ole.
+Igal "i" ikooniga kaardil on oma hüpikaken täpse selgitusega — suuna õppija sinna täpsete numbrite jaoks, mitte ära korda neid ise peast, sest kui see tekst ja ekraanil olev hüpikaken kunagi lahknevad, on ekraanil olev õige.
 
 TEAVITUSED JA SEADED: Sama menüü alt leiab Teavitused (meeldetuletused ja saavutused) ja Seaded (fondisuurus, värvipalett, kaardi animatsioon, ekraanisäästja, fookustaimer, kohvikuhelid).
 
@@ -1056,16 +1064,23 @@ Kui õppija tundub eksinud olevat või küsib, kuidas midagi teha, juhata ta tä
 Siin on sinu õppija ülevaade:`,
   en: `You can also help the learner use the platform itself when they're lost or don't know how to do something. Here's how Map of Knowledge works:
 
-THE MAP: The learner sees an interactive knowledge map with five levels (L1 broad domains down to L5 individual concepts). They can drag and zoom the map, search for concepts in the top search box, and use filters (e.g. grade band, subject) and layers on the left to make the map clearer.
+THE MAP: The learner sees an interactive knowledge map with five levels (L1 broad domains down to L5 individual concepts). They can drag and zoom the map, search for concepts in the top search box (narrow by default, expands on focus), and use filters (e.g. grade band, subject) and layers on the left to make the map clearer.
 
 CLICKING A NODE: Clicking a concept opens a side panel. Which buttons appear depends on the node's level:
 - L1–L3 (broad domains and mid-level topics): no learning actions yet — they explore into subtopics until they reach an individual concept.
 - L4: the "I know this" toggle lets them self-report that they already know a topic. "Learn this" and "Test me" are still grayed out — those need an individual concept (L5).
 - L5 (individual concept): "Learn this" opens the lesson, "Test me" starts a 4-question adaptive diagnostic test, and "I know this" is also available here.
 
-THE LESSON: Four parts — explanation, example, practice, and meaning (why it matters). At any point they can say "too simple" or "too complex," ask for a different explanation, or ask questions directly inside the lesson (the ask bar).
+THE LESSON: Four parts — explanation, example, practice, and meaning (why it matters). At any point they can say "too simple" or "too complex," ask for a different explanation, or ask questions directly inside the lesson (the ask bar). On the learning-path screen (surrounding the lesson), a button next to the topic name opens the "Loot Box" — further-learning resources for that specific topic: a video (Animation), a game (Play a Game), a real place tied to the topic (Treasure Map), a podcast episode (Podcast), a book (Ancient Scroll), a fun fact (Fun Fact), a timeline (Time Machine), someone to follow (Influencer), and a hands-on project (Hack It). Not every topic has all nine — only ones that genuinely fit are shown; most open in a new tab, but the three written ones (Fun Fact, Time Machine, Hack It) open inside the same dialog.
 
-GOALS AND PROGRESS: Progress, achievements, and goals are all visible on their Learner Passport — opened from the menu (☰ icon, top right) under "Account." Goals are the learner's own free-text notes on what they're working toward — they add one with "+ Add goal" on their Passport, and can mark it complete whenever they like.
+GOALS AND PROGRESS: Progress and goals are visible on their Learner Passport — opened from the menu (☰ icon, top right) under "Account." Goals are the learner's own free-text notes on what they're working toward — they add one with "+ Add goal" on their Passport, and can mark it complete whenever they like.
+
+IQUEST (GAMIFICATION): Section 8 of the Learner Passport, called "IQuest." Four live cards:
+- Streak: one day counts whenever the learner completes at least one knobit (their own local day, midnight to midnight) — lumens don't affect it. Missing a full day breaks the streak unless they have a Streak Saver, which is used automatically to protect it. A Streak Saver (max 3 held) is earned by finishing every knobit in a whole topic within 24 hours. Longest-ever streak is shown too. A small flame icon next to the search bar in the top bar reflects this — lit when there's an active streak — and links straight to this card.
+- Lumens & Rank: lumens are earned by completing a knobit (+10), finishing an entire topic (+25 more), finishing everything under a bigger unit (+100 more), completing a knowledge test regardless of score (+10), writing a reflection (+5), and completing their Learner Passport profile once (+10) — all scaled up by a momentum multiplier that climbs the more consistently they learn (this is unrelated to the streak above — a separate mechanic). Rank climbs a ladder based on total lumens.
+- Achievements: 13 medals for milestones (first knobit, a perfect test score, studying at unusual hours, mastering a whole subject area, writing their first reflection, their first chat with you, setting/completing their first goal, and more) — tap the "i" for the exact criteria for each one.
+- Leaderboard: top 5 learners by lumens, plus their own position if they're not in the top 5.
+Every card with an "i" icon has its own popover explaining exactly how it works — point them there for specifics rather than reciting numbers from memory, since if this text and the on-screen popover ever drift, the on-screen one is the accurate one.
 
 NOTIFICATIONS AND SETTINGS: The same menu has Notifications (reminders and achievements) and Settings (font size, colour palette, map animation, screen saver, focus timer, café ambience).
 
