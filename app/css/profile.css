@@ -779,6 +779,10 @@ select.p-edit-input { cursor: pointer; }
 #pnav-backdrop.open { display: block; }
 
 @media (max-width: 640px) {
+  .p-section-body.three-col { grid-template-columns: 1fr; }
+  .p-card.span2, .p-card.span3 { grid-column: span 1; }
+  .qst-ach-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+
   #pnav-toggle {
     display: flex;
     position: sticky;
@@ -849,58 +853,213 @@ select.p-edit-input { cursor: pointer; }
   margin-bottom: 10px;
 }
 
-/* ── Game state card ─────────────────────────── */
-.p-game-rank-row {
-  display: flex; align-items: center; gap: 12px;
-  margin-bottom: 10px;
+/* ═══════════════════════════════════════════
+   SECTION 8 — IQUEST (gamification)
+   ═══════════════════════════════════════════ */
+
+/* ── Intro video ─────────────────────────── */
+.qst-video-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 14px;
+  overflow: hidden;
+  border: none; padding: 0;
+  cursor: pointer;
+  background: #000;
 }
-.p-game-rank-badge {
-  display: inline-block;
-  padding: 5px 14px; border-radius: 20px;
-  background: linear-gradient(135deg, #D472A0, #A84878);
-  color: #fff; font-size: 13px; font-weight: 700;
+.qst-video-thumb img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  transition: transform 0.2s, opacity 0.2s;
 }
-.p-game-lumens {
-  font-size: 15px; font-weight: 650; color: var(--c1);
+.qst-video-thumb:hover img { transform: scale(1.03); opacity: 0.85; }
+.qst-video-play {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: rgba(20,16,14,0.55);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; padding-left: 3px;
+  transition: background 0.14s, transform 0.14s;
 }
-.p-game-next-label {
-  font-size: 11px; color: var(--c6); margin-bottom: 6px;
+.qst-video-thumb:hover .qst-video-play { background: rgba(20,16,14,0.75); transform: translate(-50%, -50%) scale(1.08); }
+
+#qst-video-lightbox {
+  position: fixed; inset: 0;
+  z-index: 900;
+  background: rgba(20,16,14,0.88);
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 40px;
 }
-.p-game-bar {
-  width: 100%; height: 6px; margin-bottom: 8px;
-  background: rgba(58,48,40,0.08);
-  border-radius: 3px; overflow: hidden;
+#qst-video-frame {
+  width: 100%; max-width: 900px;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
-.p-game-meta {
-  display: flex; gap: 10px; flex-wrap: wrap;
+#qst-video-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+#qst-video-close {
+  position: absolute; top: 20px; right: 24px;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: rgba(255,255,255,0.12); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.14s;
 }
-.p-game-momentum {
-  font-size: 11px; font-weight: 600; color: #2068A0;
-  background: rgba(91,168,216,0.14); padding: 2px 10px; border-radius: 20px;
+#qst-video-close:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Card title row + info popover (Streak, and reusable for later cards) ── */
+.p-card.s8 { position: relative; }
+.p-card-title-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
 }
-.p-game-streak {
-  font-size: 11px; font-weight: 600; color: #8A6A3A;
-  background: rgba(196,166,106,0.18); padding: 2px 10px; border-radius: 20px;
+.p-card-title-row .p-card-title { margin-bottom: 0; }
+.qst-info-btn {
+  width: 17px; height: 17px; border-radius: 50%;
+  border: none; background: var(--i09); color: var(--c5);
+  font-size: 10.5px; font-weight: 700; font-style: italic; font-family: Georgia, serif;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
+  transition: background 0.14s, color 0.14s;
+}
+.qst-info-btn:hover { background: rgba(224,184,77,0.30); color: #8A6410; }
+.qst-info-popover {
+  position: absolute; top: 44px; right: 18px;
+  width: 240px; z-index: 20;
+  background: #fff; border: 1px solid var(--i09); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(44,40,32,0.18);
+  padding: 14px 16px;
+}
+.qst-info-popover-title {
+  font-size: 11px; font-weight: 700; color: var(--c1);
+  margin-bottom: 8px;
+}
+.qst-info-popover ul {
+  margin: 0; padding-left: 16px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.qst-info-popover li { font-size: 11.5px; line-height: 1.5; color: var(--c4); }
+/* Achievements popover — 13 entries, so wider + scrollable instead of the
+   narrow fixed-height version used on Streak/Lumens. */
+.qst-ach-popover {
+  width: 320px; max-height: 320px;
+  overflow-y: auto;
+}
+.qst-ach-popover li strong { color: var(--c1); font-weight: 700; }
+
+/* ── Streak ───────────────────────────────── */
+/* The topbar bonfire links straight here (not to #s8) so the streak card
+   isn't hidden below the video when the section top scrolls into view —
+   clearance below the fixed top-bar (52px) plus a little breathing room. */
+#qst-streak-card { scroll-margin-top: 76px; }
+.qst-streak-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 4px 0 12px;
+}
+.qst-streak-count-row {
+  display: flex; align-items: baseline; justify-content: center; gap: 7px;
+}
+.qst-streak-flame { font-size: 20px; line-height: 1; }
+.qst-streak-flame.off { filter: grayscale(1); opacity: 0.35; }
+.qst-streak-count { font-size: 28px; font-weight: 750; color: var(--c1); letter-spacing: -0.5px; }
+.qst-streak-label { font-size: 14px; font-weight: 600; color: var(--c6); }
+.qst-streak-days { display: flex; justify-content: center; gap: 6px; margin-bottom: 10px; }
+.qst-day { width: 16px; height: 16px; border-radius: 5px; background: var(--i10); }
+.qst-day.on { background: linear-gradient(135deg, #F0A868, #D9782E); }
+.qst-streak-zero {
+  text-align: center; font-size: 11.5px; color: var(--c5);
+  line-height: 1.4; margin-bottom: 6px;
+}
+.qst-streak-longest {
+  text-align: center; font-size: 11.5px; font-weight: 600; color: var(--c5);
+  margin-bottom: 6px;
+}
+.qst-streak-longest.best { color: #B8860B; }
+.qst-streak-savers {
+  text-align: center; font-size: 11px; font-weight: 600; color: var(--c5);
 }
 
-/* ── Achievements grid ───────────────────────── */
-.p-ach-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+/* ── Lumens & Rank + Streak stack — fills the video card's exact height.
+   Grid's default align-items:stretch already makes .qst-stack match row1's
+   height (dictated by the tall video card); Lumens & Rank stays its natural
+   (compact) height, and Streak grows to take up whatever's left, so the
+   two together land on exactly the video's height with no gap. ── */
+.qst-stack {
+  grid-column: span 1;
+  display: flex; flex-direction: column; gap: 14px;
 }
-.p-ach {
-  border-radius: 12px; padding: 12px 10px;
+#qst-lumens-card { flex: 0 0 auto; }
+#qst-streak-card { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+
+/* ── Lumens & rank ────────────────────────── */
+.qst-lumens-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 4px 0 12px;
+}
+.qst-lumens-count-row {
+  display: flex; align-items: baseline; justify-content: center; gap: 6px;
+}
+.qst-lumens-icon { font-size: 17px; color: #D9A93D; }
+.qst-lumens-count { font-size: 28px; font-weight: 750; color: var(--c1); letter-spacing: -0.5px; }
+.qst-lumens-label { font-size: 11px; color: var(--c6); margin-top: 2px; }
+.qst-rank-row { display: flex; align-items: center; gap: 8px; }
+.qst-rank-badge {
+  font-size: 10.5px; font-weight: 700; color: #8A6410;
+  background: rgba(224,184,77,0.22);
+  padding: 4px 9px; border-radius: 20px; white-space: nowrap;
+}
+.qst-rank-bar { flex: 1; height: 6px; border-radius: 4px; background: var(--i09); overflow: hidden; }
+.qst-rank-fill { height: 100%; background: linear-gradient(90deg, #E0B84D, #B8860B); border-radius: 4px; }
+.qst-rank-next { font-size: 10.5px; color: var(--c6); white-space: nowrap; }
+
+/* ── Achievements — card is span2 (matches video width), plenty of room
+   to spread 13 medals across without needing a More/Less toggle. ── */
+.qst-ach-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.qst-ach {
+  display: flex; flex-direction: column; align-items: center;
   text-align: center;
-  border: 1px solid var(--i08);
+  border-radius: 12px;
+  padding: 12px 6px 10px;
 }
-.p-ach-unlocked {
-  background: rgba(255,255,255,0.9);
+.qst-ach-icon { font-size: 22px; line-height: 1; margin-bottom: 6px; }
+.qst-ach-name { font-size: 9.5px; line-height: 1.25; font-weight: 650; }
+.qst-ach.unlocked { background: rgba(224,184,77,0.18); }
+.qst-ach.unlocked .qst-ach-name { color: var(--c2); }
+.qst-ach.locked { background: var(--i06); }
+.qst-ach.locked .qst-ach-icon { filter: grayscale(1); opacity: 0.4; }
+.qst-ach.locked .qst-ach-name { color: var(--c6); font-weight: 500; }
+
+/* ── Leaderboard ──────────────────────────── */
+.qst-lb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--i06);
 }
-.p-ach-locked {
-  background: var(--i05);
-  opacity: 0.6;
+.qst-lb-row:first-child { padding-top: 0; }
+.qst-lb-row:last-child { border-bottom: none; padding-bottom: 0; }
+.qst-lb-row.you {
+  background: rgba(224,184,77,0.08); border-radius: 8px;
+  padding-left: 8px; padding-right: 8px; margin: 0 -8px;
 }
-.p-ach-icon { font-size: 22px; margin-bottom: 6px; }
-.p-ach-icon-locked { filter: grayscale(1); }
-.p-ach-name { font-size: 11px; font-weight: 600; color: var(--c2); line-height: 1.35; }
-.p-ach-name-locked { color: var(--c6); }
+.qst-lb-rank { min-width: 16px; font-size: 12.5px; font-weight: 700; color: var(--c5); flex-shrink: 0; }
+.qst-lb-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.qst-lb-name { font-size: 13px; font-weight: 600; color: var(--c1); }
+.qst-lb-row.you .qst-lb-name { color: #8A6410; }
+.qst-lb-rank-title { font-size: 10.5px; color: var(--c6); }
+.qst-lb-lumens { font-size: 12.5px; font-weight: 650; color: var(--c3); text-align: right; flex-shrink: 0; }
+.qst-lb-lumens-icon { color: #D9A93D; }
+.qst-lb-gap { text-align: center; font-size: 11px; color: var(--c7); letter-spacing: 2px; padding: 2px 0; }
+
+/* Compact variant — leaderboard now shares a row with Streak/Achievements
+   instead of spanning the full width, so it needs a smaller footprint. */
+.p-card.compact .qst-lb-row { gap: 8px; padding: 6px 0; }
+.p-card.compact .qst-lb-rank { min-width: 13px; font-size: 11px; }
+.p-card.compact .qst-lb-name { font-size: 11.5px; }
+.p-card.compact .qst-lb-rank-title { font-size: 9.5px; }
+.p-card.compact .qst-lb-lumens { font-size: 11px; }
 

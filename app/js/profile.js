@@ -898,73 +898,273 @@
     }).then(() => window.loadProfile()).catch(() => alert(t('msg.save_failed_short')));
   };
 
-  function renderGameState(state, achievements) {
-    var gsCard = document.getElementById('game-state-card');
-    var achCard = document.getElementById('game-achievements-card');
-    // Rank titles and achievement names come from the server pre-bundled in
-    // both languages (title/title_et, name/name_et) rather than through
-    // ui_strings — so this file (not the server) decides which one to show,
-    // using the same window._uiLocale convention as fmtDate() above.
-    var isEt = window._uiLocale === 'et';
+  /* ─── Section 8 — Streak (real data) ─────────────────────────────── */
+  function renderStreak(streak) {
+    var card = document.getElementById('qst-streak-card');
+    if (!card) return;
+    var s = streak || {};
+    var cur     = s.currentStreak || 0;
+    var longest = s.longestStreak || 0;
+    var savers  = s.streakSavers  || 0;
 
-    if (gsCard) {
-      if (!state) {
-        gsCard.innerHTML = `<div class="p-card-title">${t('game.your_rank')}</div>${empty(t('msg.game_no_data'))}`;
-      } else {
-        var lumens     = state.lumens || 0;
-        var rankKey    = state.rank || '';
-        var rankTitle  = (isEt && state.rankTitle_et) || state.rankTitle || rankKey;
-        var nextTitle  = state.nextRank ? ((isEt && state.nextRank.title_et) || state.nextRank.title || '') : '';
-        var rankMin    = state.rankMin || 0;
-        var nextMin    = state.nextRank ? state.nextRank.min : lumens;
-        var pct        = nextMin > rankMin
-          ? Math.min(100, Math.round(((lumens - rankMin) / (nextMin - rankMin)) * 100))
-          : 100;
-        var momKey     = state.momentum ? state.momentum.label : '';
-        var momLabel   = momKey ? t(momKey) : '';
-        var streak     = state.momentum ? state.momentum.streakDays : 0;
-        gsCard.innerHTML = `
-          <div class="p-card-title">${t('game.your_rank')}</div>
-          <div class="p-game-rank-row">
-            <div class="p-game-rank-badge">${esc(rankTitle)}</div>
-            <div class="p-game-lumens">${lumens} ${t('game.lumens_unit')}</div>
-          </div>
-          ${nextTitle ? `<div class="p-game-next-label">${t('game.next_rank')}: ${esc(nextTitle)}</div>` : ''}
-          <div class="p-bar-track p-game-bar">
-            <div class="p-bar-fill" style="width:${pct}%;background:var(--accent)"></div>
-          </div>
-          <div class="p-game-meta">
-            ${momLabel ? `<span class="p-game-momentum">${esc(momLabel)}</span>` : ''}
-            ${streak ? `<span class="p-game-streak">${streak}${t('label.day_streak')}</span>` : ''}
-          </div>`;
-      }
+    var lit = Math.min(cur, 7);
+    var dots = '';
+    for (var i = 0; i < 7; i++) {
+      dots += `<span class="qst-day${i >= 7 - lit ? ' on' : ''}"></span>`;
     }
 
-    if (achCard) {
-      var all = Array.isArray(achievements) ? achievements : [];
-      var unlocked = all.filter(function(a) { return a.unlocked; });
-      var locked   = all.filter(function(a) { return !a.unlocked; });
-      var achHtml  = '';
-      unlocked.forEach(function(a) {
-        achHtml += `<div class="p-ach p-ach-unlocked">
-          <div class="p-ach-icon">${esc(a.icon || '🏅')}</div>
-          <div class="p-ach-name">${esc((isEt && a.name_et) || a.name)}</div>
-        </div>`;
+    var longestHtml = '';
+    if (longest > 0 && cur === longest) {
+      longestHtml = `<div class="qst-streak-longest best">🏆 ${esc(t('quesst.longest_ever'))}</div>`;
+    } else if (longest > 0) {
+      longestHtml = `<div class="qst-streak-longest">${esc(t('quesst.longest_streak_label'))}: ${longest}</div>`;
+    }
+
+    var zeroHtml = cur === 0
+      ? `<div class="qst-streak-zero">${esc(t('quesst.streak_zero'))}</div>`
+      : '';
+
+    card.innerHTML = `
+      <div class="p-card-title-row">
+        <div class="p-card-title">${esc(t('quesst.streak_title'))}</div>
+        <button type="button" class="qst-info-btn" id="qst-streak-info-btn" aria-label="${esc(t('quesst.streak_rules_title'))}">i</button>
+      </div>
+      <div class="qst-streak-hero">
+        <div class="qst-streak-count-row">
+          <span class="qst-streak-flame${cur === 0 ? ' off' : ''}">🔥</span>
+          <span class="qst-streak-count">${cur}</span>
+          <span class="qst-streak-label">${esc(t('quesst.day_streak'))}</span>
+        </div>
+      </div>
+      <div class="qst-streak-days">${dots}</div>
+      ${zeroHtml}
+      ${longestHtml}
+      <div class="qst-streak-savers">🛡️ ${savers}/3 ${esc(t('quesst.streak_savers_label'))}</div>
+      <div class="qst-info-popover" id="qst-streak-popover" style="display:none">
+        <div class="qst-info-popover-title">${esc(t('quesst.streak_rules_title'))}</div>
+        <ul>
+          <li>${esc(t('quesst.streak_rule_1'))}</li>
+          <li>${esc(t('quesst.streak_rule_2'))}</li>
+          <li>${esc(t('quesst.streak_rule_3'))}</li>
+          <li>${esc(t('quesst.streak_rule_4'))}</li>
+        </ul>
+      </div>`;
+
+    var infoBtn  = document.getElementById('qst-streak-info-btn');
+    var popover  = document.getElementById('qst-streak-popover');
+    if (infoBtn && popover) {
+      infoBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
       });
-      locked.slice(0, 6).forEach(function(a) {
-        achHtml += `<div class="p-ach p-ach-locked">
-          <div class="p-ach-icon p-ach-icon-locked">${esc(a.icon || '🔒')}</div>
-          <div class="p-ach-name p-ach-name-locked">${esc((isEt && a.name_et) || a.name)}</div>
-        </div>`;
+      document.addEventListener('click', function (e) {
+        if (popover.style.display !== 'none' && !popover.contains(e.target) && e.target !== infoBtn) {
+          popover.style.display = 'none';
+        }
       });
-      achCard.innerHTML = `<div class="p-card-title">${t('game.achievements')}</div>
-        <div class="p-ach-grid">${achHtml || empty(t('msg.no_achievements'))}</div>`;
+    }
+  }
+
+  // The learner's own local calendar date — no timezone is stored anywhere
+  // server-side, so this is the only place that actually knows what day it
+  // is for them. Used purely for streak bookkeeping (see Section 8).
+  function _localDateStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+
+  /* ─── Section 8 — intro video lightbox ───────────────────────────── */
+  (function () {
+    var openBtn  = document.getElementById('qst-video-open');
+    var closeBtn = document.getElementById('qst-video-close');
+    var lightbox = document.getElementById('qst-video-lightbox');
+    var frame    = document.getElementById('qst-video-frame');
+    if (!openBtn || !lightbox || !frame) return;
+
+    function open() {
+      frame.innerHTML = '<iframe src="https://www.youtube.com/embed/WyFXIwr1eD0?autoplay=1&rel=0" ' +
+        'title="IQuest intro" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>';
+      lightbox.style.display = 'flex';
+    }
+    function close() {
+      lightbox.style.display = 'none';
+      frame.innerHTML = ''; // stop playback
+    }
+
+    openBtn.addEventListener('click', open);
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    lightbox.addEventListener('click', function (e) {
+      if (e.target === lightbox) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && lightbox.style.display !== 'none') close();
+    });
+  })();
+
+  /* ─── Section 8 — Lumens & Rank (real data) ──────────────────────── */
+  function renderLumens(game) {
+    var card = document.getElementById('qst-lumens-card');
+    if (!card) return;
+    var g       = game || {};
+    var lumens  = g.lumens  || 0;
+    var rank    = t('quesst.rank_' + (g.rankKey || 'wanderer'));
+    var rankMin = g.rankMin || 0;
+    var next    = g.nextRank || null;
+
+    var pct = 100;
+    if (next && next.min > rankMin) {
+      pct = Math.max(0, Math.min(100, Math.round(((lumens - rankMin) / (next.min - rankMin)) * 100)));
+    }
+    var nextLabel = next ? esc(t('quesst.rank_' + next.key)) : esc(t('quesst.max_rank_label'));
+
+    card.innerHTML = `
+      <div class="p-card-title-row">
+        <div class="p-card-title">${esc(t('quesst.lumens_title'))}</div>
+        <button type="button" class="qst-info-btn" id="qst-lumens-info-btn" aria-label="${esc(t('quesst.lumens_rules_title'))}">i</button>
+      </div>
+      <div class="qst-lumens-hero">
+        <div class="qst-lumens-count-row">
+          <span class="qst-lumens-icon">✦</span>
+          <span class="qst-lumens-count">${lumens.toLocaleString()}</span>
+        </div>
+        <div class="qst-lumens-label">${esc(t('quesst.lumens_label'))}</div>
+      </div>
+      <div class="qst-rank-row">
+        <span class="qst-rank-badge">${esc(rank)}</span>
+        <div class="qst-rank-bar"><div class="qst-rank-fill" style="width:${pct}%"></div></div>
+        <span class="qst-rank-next">${nextLabel}</span>
+      </div>
+      <div class="qst-info-popover" id="qst-lumens-popover" style="display:none">
+        <div class="qst-info-popover-title">${esc(t('quesst.lumens_rules_title'))}</div>
+        <ul>
+          <li>${esc(t('quesst.lumens_rule_1'))}</li>
+          <li>${esc(t('quesst.lumens_rule_2'))}</li>
+          <li>${esc(t('quesst.lumens_rule_3'))}</li>
+          <li>${esc(t('quesst.lumens_rule_4'))}</li>
+          <li>${esc(t('quesst.lumens_rule_5'))}</li>
+          <li>${esc(t('quesst.lumens_rule_6'))}</li>
+          <li>${esc(t('quesst.lumens_rule_7'))}</li>
+        </ul>
+      </div>`;
+
+    var infoBtn = document.getElementById('qst-lumens-info-btn');
+    var popover = document.getElementById('qst-lumens-popover');
+    if (infoBtn && popover) {
+      infoBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', function (e) {
+        if (popover.style.display !== 'none' && !popover.contains(e.target) && e.target !== infoBtn) {
+          popover.style.display = 'none';
+        }
+      });
+    }
+  }
+
+  /* ─── Section 8 — Leaderboard (real data) ────────────────────────── */
+  function _lbShortName(fullName, isYou) {
+    if (isYou) return t('quesst.you_label');
+    var name = (fullName || '').trim();
+    if (!name) return t('quesst.anon_learner');
+    return name.split(/\s+/)[0];
+  }
+
+  function renderLeaderboard(data) {
+    var card = document.getElementById('qst-leaderboard-card');
+    if (!card) return;
+    var d      = data || {};
+    var top    = d.top || [];
+    var you    = d.you || null;
+    var myId   = d.passportId;
+
+    if (!top.length) {
+      card.innerHTML = `<div class="p-card-title">${esc(t('quesst.leaderboard_title'))}</div>` +
+        empty(t('quesst.leaderboard_empty'));
+      return;
+    }
+
+    function row(r) {
+      var isYou = !!(myId && r.passportId === myId);
+      var name  = _lbShortName(r.displayName, isYou);
+      return `<div class="qst-lb-row${isYou ? ' you' : ''}">
+        <span class="qst-lb-rank">${r.rank}.</span>
+        <div class="qst-lb-info">
+          <span class="qst-lb-name">${esc(name)}</span>
+          <span class="qst-lb-rank-title">${r.rankKey ? esc(t('quesst.rank_' + r.rankKey)) : ''}</span>
+        </div>
+        <span class="qst-lb-lumens"><span class="qst-lb-lumens-icon">✦</span> ${(r.lumens || 0).toLocaleString()}</span>
+      </div>`;
+    }
+
+    var html = `<div class="p-card-title">${esc(t('quesst.leaderboard_title'))}</div>`;
+    html += top.map(row).join('');
+    if (you) html += '<div class="qst-lb-gap">···</div>' + row(you);
+    card.innerHTML = html;
+  }
+
+  /* ─── Section 8 — Achievements (real data) ───────────────────────── */
+  function renderAchievements(list) {
+    var card = document.getElementById('qst-achievements-card');
+    if (!card) return;
+    var all = list || [];
+    // Unlocked first (stable sort keeps definition order within each group)
+    // so earned medals lead the grid.
+    var items = all.slice().sort(function (a, b) {
+      return (b.unlocked ? 1 : 0) - (a.unlocked ? 1 : 0);
+    });
+
+    // Names/descriptions are never sent as raw text from the server — only
+    // the achievement's machine key — so this always renders in the
+    // learner's own locale via t(), same as every other UI string.
+    function achName(a) { return t('achievement.' + a.key + '.name'); }
+    function achDesc(a) { return t('achievement.' + a.key + '.desc'); }
+
+    function cellHtml(a) {
+      var stateClass = a.unlocked ? 'unlocked' : 'locked';
+      return `<div class="qst-ach ${stateClass}" title="${esc(achName(a))}">
+        <div class="qst-ach-icon">${a.icon || '🏅'}</div>
+        <div class="qst-ach-name">${esc(achName(a))}</div>
+      </div>`;
+    }
+
+    // Criteria list stays in definition order (not unlocked-first) — a
+    // stable reference, not a ranking.
+    var criteriaHtml = all.map(function (a) {
+      return `<li><strong>${esc(achName(a))}</strong> — ${esc(achDesc(a))}</li>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="p-card-title-row">
+        <div class="p-card-title">${esc(t('quesst.achievements_title'))}</div>
+        <button type="button" class="qst-info-btn" id="qst-ach-info-btn" aria-label="${esc(t('quesst.ach_rules_title'))}">i</button>
+      </div>
+      <div class="qst-ach-grid">${items.map(cellHtml).join('')}</div>
+      <div class="qst-info-popover qst-ach-popover" id="qst-ach-popover" style="display:none">
+        <div class="qst-info-popover-title">${esc(t('quesst.ach_rules_title'))}</div>
+        <ul>${criteriaHtml}</ul>
+      </div>`;
+
+    var infoBtn = document.getElementById('qst-ach-info-btn');
+    var popover = document.getElementById('qst-ach-popover');
+    if (infoBtn && popover) {
+      infoBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+      });
+      document.addEventListener('click', function (e) {
+        if (popover.style.display !== 'none' && !popover.contains(e.target) && e.target !== infoBtn) {
+          popover.style.display = 'none';
+        }
+      });
     }
   }
 
   /* ─── Main load ───────────────────────────────────────────────── */
   window.loadProfile = function () {
-    fetch('/api/profile')
+    fetch('/api/profile?localDate=' + encodeURIComponent(_localDateStr()))
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(d => {
         renderIdentity(d.passport || {});
@@ -975,21 +1175,24 @@
         renderCompetence(d.competence, d.mapKnowledge);
         renderReflections(d.reflections);
         renderGoals(d.goals);
+        renderStreak(d.streak);
+        renderLumens(d.game);
       })
       .catch(err => {
         console.error('Profile load failed:', err);
       });
-
-    Promise.all([
-      fetch('/api/game/state').then(r => r.json()).catch(() => null),
-      fetch('/api/game/achievements').then(r => r.json()).catch(() => []),
-    ]).then(function(results) {
-      renderGameState(results[0], results[1]);
-    });
   };
 
   // Boot — render immediately, then re-render once the correct-locale strings arrive
   window.loadProfile();
   window._onStringsLoad = window.loadProfile;
+  fetch('/api/leaderboard')
+    .then(r => r.json())
+    .then(renderLeaderboard)
+    .catch(() => {});
+  fetch('/api/game/achievements')
+    .then(r => r.json())
+    .then(renderAchievements)
+    .catch(() => {});
 
 })();

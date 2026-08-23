@@ -1245,7 +1245,7 @@ function init(data) {
     clearKnowledgeFilter: function()         { window.clearKnowledgeFilter(); },
     updateRingColor:      function(fid, c)  { window.updateRingColor(fid, c); },
     resetZoom:            function()         { window.resetMapZoom(); },
-    refreshProgress:      function()         { loadProgress(); },
+    refreshProgress:      function()         { loadProgress(); refreshStreakIcon(); },
     openDemoNode:         function()         {
       var target = simNodes.find(function(n) { return n.level === 4 && n.x; });
       if (!target) return;
@@ -1435,6 +1435,24 @@ function init(data) {
       })
       .catch(function () {});
   }());
+
+  // ── Topbar streak bonfire ────────────────────────────────────────────────
+  function _localDateStr() {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+  function refreshStreakIcon() {
+    const link = document.getElementById('topbar-streak-link');
+    if (!link) return;
+    fetch('/api/streak?localDate=' + encodeURIComponent(_localDateStr()))
+      .then(r => r.json())
+      .then(({ currentStreak }) => {
+        link.classList.toggle('off', !(currentStreak > 0));
+      }).catch(() => {});
+  }
+  refreshStreakIcon();
 
   // ── Initial build ──────────────────────────────────────────────────────────
   rebuild();

@@ -141,8 +141,22 @@
     _scrollStream();
   }
 
+  // The learner's own local calendar date — there is no stored timezone
+  // anywhere server-side, so this is the only place that actually knows
+  // what day it is for them. Used server-side purely for streak bookkeeping.
+  function _localDateStr() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, '0');
+    var day = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + m + '-' + day;
+  }
+
   function apiComplete(knobitId) {
-    return fetch('/api/learn/knobit/' + knobitId + '/complete', { method: 'POST' })
+    return fetch('/api/learn/knobit/' + knobitId + '/complete', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ localDate: _localDateStr() }),
+    })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data && data.goalCompleted) _showGoalCelebration(data.goalCompleted);

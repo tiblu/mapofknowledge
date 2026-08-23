@@ -65,6 +65,44 @@ body { background: var(--map-bg); font-family: system-ui, -apple-system, sans-se
   margin-left: auto;
 }
 
+/* ── Streak bonfire icon — always visible; when there's no active streak
+   (.off) flame and the sparks are hidden; once there's a streak it's full
+   colour with sparks drifting around it continuously, staggered so they
+   don't all fire in lockstep. See refreshStreakIcon in app.js for the toggle. ── */
+.topbar-streak-link {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.topbar-streak-link:hover { background: var(--i07); }
+.topbar-streak-flame {
+  font-size: 17px; line-height: 1;
+  display: inline-block;
+}
+.topbar-streak-link.off .topbar-streak-flame { filter: grayscale(1); opacity: 0.45; }
+.topbar-streak-link.off .topbar-streak-spark { display: none; }
+.topbar-streak-spark {
+  position: absolute;
+  top: 9px; left: 15px;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFDA8A 0%, #E8862E 70%, transparent 100%);
+  opacity: 0;
+  pointer-events: none;
+  animation: streakSpark 1.4s ease-out infinite;
+}
+.topbar-streak-spark.s1 { left: 12px; --drift: 5px;  animation-delay: 0s;   }
+.topbar-streak-spark.s2 { left: 18px; --drift: -4px; animation-delay: 0.5s; }
+.topbar-streak-spark.s3 { left: 15px; --drift: 3px;  animation-delay: 0.9s; }
+@keyframes streakSpark {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  15%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--drift, 4px), -15px) scale(0.3); }
+}
+
 .topbar-search-wrap { position: relative; }
 .topbar-search-wrap .search-icon {
   position: absolute; left: 9px; top: 50%; transform: translateY(-50%);

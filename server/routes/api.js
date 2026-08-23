@@ -784,10 +784,11 @@ async function _saveTestResult(passportId, userId, nodeId, label, displayLabel, 
   notify(userId, 'test_result',
     locale === 'et' ? `Testi tulemus: ${displayLabel}` : `Test result: ${displayLabel}`,
     locale === 'et' ? `Sinu tulemus: ${evaluation.finalScore}% teadmiste diagnostikas.` : `You scored ${evaluation.finalScore}% on the knowledge diagnostic.`, nodeId);
-  const score      = evaluation.finalScore;
-  const lumensBase = score === 100 ? 100 : score >= 80 ? 50 : 20;
-  const reason     = score === 100 ? 'test_perfect' : 'test_complete';
-  game.awardLumens(passportId, userId, lumensBase, reason, nodeId).catch(() => {});
+  // Same flat amount as a knobit, regardless of score — reason still varies
+  // (achievements like "three_peaks" key off the 'test_perfect' reason).
+  const score  = evaluation.finalScore;
+  const reason = score === 100 ? 'test_perfect' : 'test_complete';
+  game.awardLumens(passportId, userId, 10, reason, nodeId).catch(() => {});
   game.checkAchievements(passportId, userId, 'test_complete', { score }).catch(() => {});
 }
 
@@ -802,6 +803,15 @@ function _askDbPhase(action) {
 // ── Persist a knobit lesson block for mid-lesson resume ─────────────────────
 async function _saveInteraction(passportId, knobitId, phase, blockType, blockIndex, choiceMade, answerText, content) {
   if (!passportId) return;
+  // Stamp knobit_progress.started_at on first touch (COALESCE keeps it fixed
+  // after that) — used only to detect "whole node finished within 24h" for
+  // streak-saver eligibility (see maybeAwardStreakSaver in game.js).
+  db.execute(
+    `INSERT INTO knobit_progress (passport_id, knobit_id, phase_reached, started_at)
+     VALUES (?, ?, 'explain', NOW())
+     ON DUPLICATE KEY UPDATE started_at = COALESCE(started_at, NOW())`,
+    [passportId, knobitId]
+  ).catch(() => {});
   await db.execute(
     `INSERT INTO knobit_interactions (passport_id, knobit_id, phase, block_type, block_index, choice_made, answer_text, content)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -1055,6 +1065,7 @@ router.get('/learn/knobit/:id/download', async (req, res) => {
 router.post('/learn/knobit/:id/complete', async (req, res) => {
   const knobitId   = req.params.id;
   const passportId = req.user?.passport_id;
+  const localDate  = req.body?.localDate;
   if (!passportId) return res.status(400).json({ error: 'No passport' });
 
   try {
@@ -1166,8 +1177,11 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       game.awardLumens(passportId, userId, 10, 'knobit_complete', knobitId).catch(() => {});
       if (done >= total && total > 0) {
         game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => {});
+        game.maybeAwardStreakSaver(passportId, node_id, userId).catch(() => {});
+        game.maybeAwardBranchBonus(passportId, userId, node_id).catch(() => {});
       }
       game.checkAchievements(passportId, userId, 'knobit_complete', { totalEver }).catch(() => {});
+      game.recordKnobitCompletion(passportId, localDate).catch(() => {});
 
       // ── Goal completion ────────────────────────────────────────────────────
       if (pct === 100) {
@@ -1184,6 +1198,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
           notify(userId, 'goal_complete',
             locale === 'et' ? 'Eesmärk täidetud! 🎉' : 'Goal completed! 🎉',
             locale === 'et' ? `Läbisid: "${nodeLabel}"` : `You finished: "${nodeLabel}"`, nodeExtId);
+          game.checkAchievements(passportId, userId, 'goal_complete', {}).catch(() => {});
           return res.json({ ok: true, goalCompleted: { nodeLabel, nodeExtId } });
         }
       }
@@ -1214,6 +1229,46 @@ router.get('/map/progress', async (req, res) => {
   }
 });
 
+// ── Streak only — lightweight, for the topbar bonfire icon (full /api/profile
+// is too heavy to fetch on every map load just to check one number) ─────────
+router.get('/streak', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.json({ currentStreak: 0, longestStreak: 0, streakSavers: 0 });
+  res.json(await game.getStreak(passportId, req.query.localDate));
+});
+
+// ── Leaderboard — top 5 by lumens, plus the current learner's own rank if
+// they're not already in that top 5 ───────────────────────────────────────
+router.get('/leaderboard', async (req, res) => {
+  const passportId = req.user?.passport_id;
+  const withRankTitle = (r) => ({ ...r, rankKey: game.getRank(r.lumens).key });
+  try {
+    const [top] = await db.execute(
+      `SELECT lp.id AS passportId, lp.display_name AS displayName, lp.lumen_total AS lumens,
+              (SELECT COUNT(*) FROM learner_passports x WHERE x.lumen_total > lp.lumen_total) + 1 AS rank
+       FROM learner_passports lp
+       ORDER BY lp.lumen_total DESC, lp.id ASC
+       LIMIT 5`
+    );
+
+    let you = null;
+    if (passportId && !top.some(r => r.passportId === passportId)) {
+      const [[row]] = await db.execute(
+        `SELECT lp.id AS passportId, lp.display_name AS displayName, lp.lumen_total AS lumens,
+                (SELECT COUNT(*) FROM learner_passports x WHERE x.lumen_total > lp.lumen_total) + 1 AS rank
+         FROM learner_passports lp WHERE lp.id = ?`,
+        [passportId]
+      );
+      you = row ? withRankTitle(row) : null;
+    }
+
+    res.json({ top: top.map(withRankTitle), you, passportId: passportId || null });
+  } catch (err) {
+    console.error('[api/leaderboard]', err.message);
+    res.status(500).json({ top: [], you: null, passportId: null });
+  }
+});
+
 // ── Full profile data for current user ───────────────────────────────────────
 router.get('/profile', async (req, res) => {
   const passportId = req.user?.passport_id;
@@ -1222,6 +1277,8 @@ router.get('/profile', async (req, res) => {
   try {
     const locale = await getUserLocale(req.user?.id);
     const data = await _fetchFullPassport(passportId, locale);
+    data.streak = await game.getStreak(passportId, req.query.localDate);
+    data.game   = await game.getGameState(passportId);
     res.json({ ...data, role: req.user.role });
   } catch (err) {
     console.error('[api/profile]', err.message);
@@ -1266,6 +1323,7 @@ router.post('/anne/message', async (req, res) => {
       'INSERT INTO anne_messages (passport_id, role, content, locale) VALUES (?, "user", ?, ?)',
       [passportId, message, locale]
     );
+    game.checkAchievements(passportId, uid, 'anne_chat', {}).catch(() => {});
 
     const passportData = await _fetchFullPassport(passportId, locale);
     const passportText = renderPassportText(passportData);
@@ -1305,6 +1363,8 @@ router.post('/profile/events', async (req, res) => {
          VALUES (?, ?, ?, NOW())`,
         [passportId, evResult.insertId, reflection.trim()]
       );
+      game.awardLumens(passportId, req.user?.id, 5, 'reflection', null).catch(() => {});
+      game.checkAchievements(passportId, req.user?.id, 'reflection', {}).catch(() => {});
     }
     res.json({ ok: true });
   } catch (err) {
@@ -1324,6 +1384,8 @@ router.post('/profile/reflections', async (req, res) => {
        VALUES (?, ?, ?, NOW())`,
       [passportId, event_id || null, text.trim()]
     );
+    game.awardLumens(passportId, req.user?.id, 5, 'reflection', null).catch(() => {});
+    game.checkAchievements(passportId, req.user?.id, 'reflection', {}).catch(() => {});
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save reflection' });
@@ -1365,6 +1427,7 @@ router.post('/profile/goals', async (req, res) => {
        VALUES (?, ?, ?, ?, ?, 'in_progress', NOW())`,
       [passportId, goalText, node_external_id || null, node_breadcrumb || null, target_date || null]
     );
+    game.checkAchievements(passportId, req.user?.id, 'goal_added', {}).catch(() => {});
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add goal' });
@@ -1391,6 +1454,7 @@ router.post('/profile/goals/:id/complete', async (req, res) => {
         locale === 'et' ? 'Eesmärk täidetud! 🎉' : 'Goal completed! 🎉',
         locale === 'et' ? `Läbisid: "${label}"` : `You finished: "${label}"`, g.node_external_id);
     }
+    game.checkAchievements(passportId, req.user?.id, 'goal_complete', {}).catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to complete goal' });
@@ -1493,6 +1557,7 @@ router.post('/profile/tags', async (req, res) => {
       'INSERT INTO passport_tags (passport_id, type, text, sort_order) VALUES (?, ?, ?, 0)',
       [passportId, type, text.trim()]
     );
+    game.maybeAwardProfileCompleteBonus(passportId, req.user?.id).catch(() => {});
     res.json({ id: result.insertId, type, text: text.trim() });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add tag' });
@@ -1528,6 +1593,7 @@ router.post('/profile/identity', async (req, res) => {
       `UPDATE learner_passports SET ${sets}, updated_at = NOW() WHERE id = ?`,
       [...Object.values(updates), passportId]
     );
+    game.maybeAwardProfileCompleteBonus(passportId, req.user?.id).catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update identity' });
@@ -1947,19 +2013,8 @@ router.post('/game/settings', async (req, res) => {
 // ── Achievements list ────────────────────────────────────────────────────────
 router.get('/game/achievements', async (req, res) => {
   const passportId = req.user?.passport_id;
-  const all = game.getAllAchievements();
-  if (!passportId) return res.json(all.map(a => ({ ...a, unlocked: false })));
   try {
-    const [unlocked] = await db.execute(
-      'SELECT achievement_key, unlocked_at FROM user_achievements WHERE passport_id = ?',
-      [passportId]
-    );
-    const unlockedMap = Object.fromEntries(unlocked.map(r => [r.achievement_key, r.unlocked_at]));
-    res.json(all.map(a => ({
-      ...a,
-      unlocked: !!unlockedMap[a.key],
-      unlocked_at: unlockedMap[a.key] || null,
-    })));
+    res.json(await game.getAchievementsStatus(passportId));
   } catch (err) {
     res.status(500).json({ error: 'Failed to load achievements' });
   }

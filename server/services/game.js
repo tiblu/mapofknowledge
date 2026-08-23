@@ -1,14 +1,18 @@
 const db = require('../db');
 
 // ── Rank ladder ───────────────────────────────────────────────────────────────
+// `title` is an English fallback (used only if an i18n lookup for `key`
+// somehow finds nothing); `key` is what the client actually looks up via
+// t('quesst.rank_' + key) so rank names render in the learner's own locale
+// instead of always English.
 const RANKS = [
-  { key: 'rank.wanderer',        title: 'Wanderer',        title_et: 'Rändur',        min: 0 },
-  { key: 'rank.explorer',        title: 'Explorer',        title_et: 'Avastaja',      min: 500 },
-  { key: 'rank.pathfinder',      title: 'Pathfinder',      title_et: 'Teejuht',       min: 1500 },
-  { key: 'rank.navigator',       title: 'Navigator',       title_et: 'Navigaator',    min: 4000 },
-  { key: 'rank.cartographer',    title: 'Cartographer',    title_et: 'Kartograaf',    min: 10000 },
-  { key: 'rank.discoverer',      title: 'Discoverer',      title_et: 'Maadeuurija',   min: 25000 },
-  { key: 'rank.world_traveller', title: 'World Traveller', title_et: 'Maailmarändur', min: 60000 },
+  { key: 'wanderer',     title: 'Wanderer',     min: 0 },
+  { key: 'scout',        title: 'Scout',        min: 500 },
+  { key: 'surveyor',     title: 'Surveyor',     min: 1500 },
+  { key: 'cartographer', title: 'Cartographer', min: 4000 },
+  { key: 'navigator',    title: 'Navigator',    min: 10000 },
+  { key: 'geographer',   title: 'Geographer',   min: 25000 },
+  { key: 'polymath',     title: 'Polymath',     min: 60000 },
 ];
 
 function getRank(lumens) {
@@ -18,26 +22,34 @@ function getRank(lumens) {
 }
 
 // ── Achievement definitions ───────────────────────────────────────────────────
-// Each def: { name, triggers (optional whitelist), check(passportId, ctx) → bool }
+// Each def: { name, desc, name_et, desc_et, icon, triggers (optional
+// whitelist), check(passportId, ctx) → bool }. name/desc/name_et/desc_et are
+// used ONLY server-side, to build the locale-aware notify() text below — the
+// client never receives them (see getAllAchievements). It always renders via
+// t('achievement.<key>.name'/'.desc') instead, so nothing hardcoded-English
+// (or hardcoded-Estonian) ever reaches the UI.
 const ACHIEVEMENTS = {
 
   first_expedition: {
-    name: 'First Step',
-    name_et: 'Esimene samm',
+    name: 'First Expedition', name_et: 'Esimene ekspeditsioon',
+    desc: 'Complete your very first knobit.', desc_et: 'Lõpeta oma esimene knobit.',
+    icon: '🧭',
     triggers: ['knobit_complete'],
     check: async (passportId, ctx) => ctx.totalEver === 1,
   },
 
   perfect_survey: {
-    name: 'Full Marks',
-    name_et: 'Täispunktid',
+    name: 'Perfect Survey', name_et: 'Täiuslik tulemus',
+    desc: 'Score 100% on a knowledge test.', desc_et: 'Saavuta teadmiste testis 100%.',
+    icon: '🎯',
     triggers: ['test_complete'],
     check: async (passportId, ctx) => ctx.score === 100,
   },
 
   three_peaks: {
-    name: 'Hat-Trick',
-    name_et: 'Kolmik',
+    name: 'Three Peaks', name_et: 'Kolm tippu',
+    desc: 'Score 100% on tests for 3 different topics.', desc_et: 'Saavuta 100% tulemus kolme erineva teema testides.',
+    icon: '⛰️',
     triggers: ['test_complete'],
     check: async (passportId, ctx) => {
       const [[{ cnt }]] = await db.execute(
@@ -53,8 +65,9 @@ const ACHIEVEMENTS = {
   },
 
   polymath_path: {
-    name: 'All-Rounder',
-    name_et: 'Kõikehõlmav',
+    name: "The Polymath's Path", name_et: 'Polühistori tee',
+    desc: 'Study knobits across 50 different topics.', desc_et: 'Õpi knobiteid 50 erineval teemal.',
+    icon: '📚',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
       const [[{ cnt }]] = await db.execute(
@@ -68,24 +81,44 @@ const ACHIEVEMENTS = {
     },
   },
 
-  deep_waters: {
-    name: 'Deep Dive',
-    name_et: 'Süvitsi',
+  boundless_atlas: {
+    // Next tier beyond polymath_path — same shape, 3x the bar.
+    name: 'The Boundless Atlas', name_et: 'Piiritu atlas',
+    desc: 'Study knobits across 150 different topics.', desc_et: 'Õpi knobiteid 150 erineval teemal.',
+    icon: '🗺️',
     triggers: ['knobit_complete'],
     check: async (passportId) => {
-      // True if any L4 node has all its L5 children fully learned
+      const [[{ cnt }]] = await db.execute(
+        `SELECT COUNT(DISTINCT k.node_id) AS cnt
+         FROM knobit_progress kp
+         JOIN knobits k ON kp.knobit_id = k.id
+         WHERE kp.passport_id = ? AND kp.phase_reached = 'done'`,
+        [passportId]
+      );
+      return cnt >= 150;
+    },
+  },
+
+  deep_waters: {
+    name: 'Deep Waters', name_et: 'Sügavad veed',
+    desc: 'Fully complete every topic under one subject area.', desc_et: 'Lõpeta täielikult kõik ühe valdkonna teemad.',
+    icon: '🌊',
+    triggers: ['knobit_complete'],
+    check: async (passportId) => {
+      // True if any L4 node has all its L5 children fully COMPLETED (100%,
+      // not just mastered) — every knobit in every child node is done.
       const [[{ cnt }]] = await db.execute(
         `SELECT COUNT(*) AS cnt FROM (
            SELECT parent.id,
-                  COUNT(child.id)                                                    AS total,
-                  COUNT(CASE WHEN unk.percentage >= 80 THEN 1 END)                 AS mastered
+                  COUNT(child.id)                                          AS total,
+                  COUNT(CASE WHEN unk.percentage = 100 THEN 1 END)         AS completed
            FROM nodes parent
            JOIN nodes child ON child.parent_id = parent.id AND child.level = 5
            LEFT JOIN user_node_knowledge unk
                   ON unk.node_external_id = child.external_id AND unk.passport_id = ?
            WHERE parent.level = 4
            GROUP BY parent.id
-           HAVING mastered > 0 AND mastered = total
+           HAVING completed > 0 AND completed = total
          ) x`,
         [passportId]
       );
@@ -94,30 +127,37 @@ const ACHIEVEMENTS = {
   },
 
   continent_charted: {
-    name: 'Domain Conqueror',
-    name_et: 'Valdkonna vallutaja',
+    name: 'Continent Charted', name_et: 'Kontinent kaardistatud',
+    desc: 'Fully complete an entire domain — every topic under it.', desc_et: 'Lõpeta täielikult terve valdkond — kõik selle alla kuuluvad teemad.',
+    icon: '🌍',
     triggers: ['test_complete'],
     check: async (passportId) => {
-      // Any L1 domain where every L5 descendant is mastered (≥80%)
+      // Any L1 domain where every L5 descendant is fully COMPLETED (100%,
+      // not just an 80% mastery threshold).
+      // Non-correlated recursive CTE — walks UP from every L5 leaf to its L1
+      // ancestor in one pass, instead of a per-root correlated subquery
+      // (MariaDB doesn't support a WITH RECURSIVE inside a JOIN condition
+      // that references an outer-query column — that variant silently
+      // throws on every call, caught by checkAchievements' try/catch, so
+      // this achievement could never actually unlock).
       const [[{ cnt }]] = await db.execute(
-        `SELECT COUNT(*) AS cnt FROM (
-           SELECT root.id,
-                  COUNT(leaf.id)                                                     AS total,
-                  COUNT(CASE WHEN unk.percentage >= 80 THEN 1 END)                 AS mastered
-           FROM nodes root
-           JOIN nodes leaf ON leaf.level = 5
-             AND leaf.external_id IN (
-               WITH RECURSIVE desc_cte AS (
-                 SELECT id, external_id FROM nodes WHERE id = root.id
-                 UNION ALL
-                 SELECT n.id, n.external_id FROM nodes n JOIN desc_cte d ON n.parent_id = d.id
-               ) SELECT external_id FROM desc_cte
-             )
+        `WITH RECURSIVE anc AS (
+           SELECT id, parent_id, level, id AS leaf_id FROM nodes WHERE level = 5
+           UNION ALL
+           SELECT n.id, n.parent_id, n.level, a.leaf_id
+           FROM nodes n JOIN anc a ON n.id = a.parent_id
+         )
+         SELECT COUNT(*) AS cnt FROM (
+           SELECT anc.id AS domain_id,
+                  COUNT(*)                                           AS total,
+                  COUNT(CASE WHEN unk.percentage = 100 THEN 1 END)   AS completed
+           FROM anc
+           JOIN nodes leaf ON leaf.id = anc.leaf_id
            LEFT JOIN user_node_knowledge unk
                   ON unk.node_external_id = leaf.external_id AND unk.passport_id = ?
-           WHERE root.level = 1
-           GROUP BY root.id
-           HAVING mastered > 0 AND mastered = total
+           WHERE anc.level = 1
+           GROUP BY anc.id
+           HAVING completed > 0 AND completed = total
          ) x`,
         [passportId]
       );
@@ -126,27 +166,68 @@ const ACHIEVEMENTS = {
   },
 
   night_cartographer: {
-    name: 'Night Owl',
-    name_et: 'Öökull',
+    name: 'Night Cartographer', name_et: 'Öine kartograaf',
+    desc: 'Complete a knobit between midnight and 5am.', desc_et: 'Lõpeta knobit kesköö ja kell 5 vahel.',
+    icon: '🦉',
     check: async () => { const h = new Date().getHours(); return h >= 0 && h < 5; },
   },
 
   dawn_patrol: {
-    name: 'Early Bird',
-    name_et: 'Varajane lind',
+    name: 'Dawn Patrol', name_et: 'Koidupatrull',
+    desc: 'Complete a knobit between 4am and 7am.', desc_et: 'Lõpeta knobit kell 4 ja 7 vahel hommikul.',
+    icon: '🌅',
     check: async () => { const h = new Date().getHours(); return h >= 4 && h < 7; },
   },
 
-  the_long_road: {
-    name: 'Back on Track',
-    name_et: 'Tagasi rajal',
+  first_reflection: {
+    name: 'Explorer Diary Started', name_et: 'Rändaja päevik algas',
+    desc: 'Write your first reflection.', desc_et: 'Kirjuta oma esimene refleksioon.',
+    icon: '📔',
+    triggers: ['reflection'],
     check: async (passportId) => {
-      const [rows] = await db.execute(
-        'SELECT last_activity_at FROM user_momentum WHERE passport_id = ?', [passportId]
+      const [[{ cnt }]] = await db.execute(
+        'SELECT COUNT(*) AS cnt FROM passport_reflections WHERE passport_id = ?', [passportId]
       );
-      if (!rows.length) return false;
-      const daysSince = (Date.now() - new Date(rows[0].last_activity_at).getTime()) / 86400000;
-      return daysSince >= 30;
+      return cnt === 1;
+    },
+  },
+
+  first_anne_chat: {
+    name: 'Fireside Chat', name_et: 'Vestlus lõkke ääres',
+    desc: 'Send your first message to Anne.', desc_et: 'Saada Annele oma esimene sõnum.',
+    icon: '🔥',
+    triggers: ['anne_chat'],
+    check: async (passportId) => {
+      const [[{ cnt }]] = await db.execute(
+        `SELECT COUNT(*) AS cnt FROM anne_messages WHERE passport_id = ? AND role = 'user'`, [passportId]
+      );
+      return cnt === 1;
+    },
+  },
+
+  first_goal_added: {
+    name: 'X Marks the Spot', name_et: 'X tähistab kohta',
+    desc: 'Add your first goal.', desc_et: 'Lisa oma esimene eesmärk.',
+    icon: '📍',
+    triggers: ['goal_added'],
+    check: async (passportId) => {
+      const [[{ cnt }]] = await db.execute(
+        'SELECT COUNT(*) AS cnt FROM passport_goals WHERE passport_id = ?', [passportId]
+      );
+      return cnt === 1;
+    },
+  },
+
+  first_goal_complete: {
+    name: 'First Peak Reached', name_et: 'Esimene tipp vallutatud',
+    desc: 'Complete your first goal.', desc_et: 'Täida oma esimene eesmärk.',
+    icon: '🏔️',
+    triggers: ['goal_complete'],
+    check: async (passportId) => {
+      const [[{ cnt }]] = await db.execute(
+        `SELECT COUNT(*) AS cnt FROM passport_goals WHERE passport_id = ? AND status = 'completed'`, [passportId]
+      );
+      return cnt === 1;
     },
   },
 
@@ -161,10 +242,10 @@ function _calcMultiplier(streakDays) {
 }
 
 function momentumLabel(multiplier) {
-  if (multiplier >= 2.0)  return 'momentum.full_throttle';
-  if (multiplier >= 1.5)  return 'momentum.in_the_flow';
-  if (multiplier >= 1.25) return 'momentum.on_the_road';
-  return 'momentum.setting_out';
+  if (multiplier >= 2.0)  return 'Full sail';
+  if (multiplier >= 1.5)  return 'Steady expedition';
+  if (multiplier >= 1.25) return 'Building pace';
+  return 'Setting out';
 }
 
 async function getMomentum(passportId) {
@@ -172,7 +253,7 @@ async function getMomentum(passportId) {
     'SELECT last_activity_at, streak_days, multiplier FROM user_momentum WHERE passport_id = ?',
     [passportId]
   );
-  if (!rows.length) return { multiplier: 1.0, streakDays: 0, label: 'momentum.setting_out' };
+  if (!rows.length) return { multiplier: 1.0, streakDays: 0, label: 'Setting out' };
 
   const m = rows[0];
   const hoursSince = (Date.now() - new Date(m.last_activity_at).getTime()) / 3600000;
@@ -181,23 +262,13 @@ async function getMomentum(passportId) {
       'UPDATE user_momentum SET streak_days=0, multiplier=1.00, updated_at=NOW() WHERE passport_id=?',
       [passportId]
     );
-    return { multiplier: 1.0, streakDays: 0, label: 'momentum.setting_out' };
+    return { multiplier: 1.0, streakDays: 0, label: 'Setting out' };
   }
   const mult = parseFloat(m.multiplier);
   return { multiplier: mult, streakDays: m.streak_days, label: momentumLabel(mult) };
 }
 
-const STREAK_MILESTONES = [
-  { days: 7,  title_en: '7-day streak! 🔥',  body_en: 'Amazing! You have the maximum 2× lumen bonus.',
-              title_et: '7-päevane seeria! 🔥', body_et: 'Suurepärane! Sul on maksimaalne 2× lumenite boonus.' },
-  { days: 4,  title_en: '4-day streak!',      body_en: 'Nice work! Your lumen bonus is now 1.5×.',
-              title_et: '4-päevane seeria!',     body_et: 'Hea töö! Sinu lumenite boonus on nüüd 1.5×.' },
-  { days: 2,  title_en: '2-day streak!',      body_en: "You're back! Keep it up and the bonus grows.",
-              title_et: '2-päevane seeria!',     body_et: 'Oled tagasi! Jätka nii ja boonus kasvab.' },
-];
-
-async function _updateMomentum(passportId, userId) {
-  const { notify, getUserLocale } = require('./notifications');
+async function _updateMomentum(passportId) {
   const [rows] = await db.execute(
     'SELECT last_activity_at, streak_days FROM user_momentum WHERE passport_id = ?',
     [passportId]
@@ -216,8 +287,7 @@ async function _updateMomentum(passportId, userId) {
   const hoursSince = (Date.now() - new Date(m.last_activity_at).getTime()) / 3600000;
   const daysSince  = Math.floor(hoursSince / 24);
 
-  const prevStreak = m.streak_days;
-  let streakDays = prevStreak;
+  let streakDays = m.streak_days;
   if (hoursSince > 72) {
     streakDays = 1;
   } else if (daysSince >= 1) {
@@ -229,17 +299,6 @@ async function _updateMomentum(passportId, userId) {
     'UPDATE user_momentum SET last_activity_at=NOW(), streak_days=?, multiplier=?, updated_at=NOW() WHERE passport_id=?',
     [streakDays, mult, passportId]
   );
-
-  if (userId && streakDays > prevStreak) {
-    const milestone = STREAK_MILESTONES.find(m => m.days === streakDays);
-    if (milestone) {
-      const locale = await getUserLocale(userId);
-      notify(userId, 'streak',
-        locale === 'et' ? milestone.title_et : milestone.title_en,
-        locale === 'et' ? milestone.body_et : milestone.body_en);
-    }
-  }
-
   return mult;
 }
 
@@ -247,7 +306,7 @@ async function _updateMomentum(passportId, userId) {
 async function awardLumens(passportId, userId, baseAmount, reason, referenceId) {
   if (!passportId || baseAmount <= 0) return 0;
   try {
-    const multiplier = await _updateMomentum(passportId, userId);
+    const multiplier = await _updateMomentum(passportId);
     const amount = Math.round(baseAmount * multiplier);
     await db.execute(
       'INSERT INTO lumen_transactions (passport_id, amount, reason, reference_id, multiplier) VALUES (?, ?, ?, ?, ?)',
@@ -286,8 +345,8 @@ async function checkAchievements(passportId, userId, trigger, ctx = {}) {
           const locale = await getUserLocale(userId);
           const achName = locale === 'et' ? def.name_et : def.name;
           notify(userId, 'achievement',
-            locale === 'et' ? `Saavutus avatud: ${achName}` : `Achievement unlocked: ${achName}`,
-            locale === 'et' ? `Oled teeninud "${achName}" saavutuse.` : `You've earned the "${achName}" achievement.`
+            locale === 'et' ? `Saavutus avatud: ${achName}` : `Medal unlocked: ${achName}`,
+            locale === 'et' ? `Oled teeninud "${achName}" saavutuse.` : `You've earned the "${achName}" expedition medal.`
           );
         }
       } catch { /* individual check failure is non-fatal */ }
@@ -322,11 +381,10 @@ async function getGameState(passportId) {
 
     return {
       lumens,
-      rank: rank.key,
-      rankTitle: rank.title,
-      rankTitle_et: rank.title_et,
+      rank: rank.title,        // English fallback only — client should prefer rankKey
+      rankKey: rank.key,
       rankMin: rank.min,
-      nextRank: next ? { key: next.key, title: next.title, title_et: next.title_et, min: next.min } : null,
+      nextRank: next ? { title: next.title, key: next.key, min: next.min } : null,
       momentum: { ...mom },
       achievements,
       recentTransactions: recent,
@@ -338,8 +396,275 @@ async function getGameState(passportId) {
 }
 
 // ── All achievement definitions (for listing) ─────────────────────────────────
+// def.name/def.desc (and their _et counterparts) are deliberately NOT
+// included here — they're used only server-side, for the notify() text in
+// checkAchievements above. The client renders name/description via
+// t('achievement.<key>.name'/'.desc') instead, so nothing hardcoded ever
+// reaches the UI.
 function getAllAchievements() {
-  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, name: def.name, name_et: def.name_et }));
+  return Object.entries(ACHIEVEMENTS).map(([key, def]) => ({ key, icon: def.icon }));
 }
 
-module.exports = { awardLumens, checkAchievements, getGameState, getMomentum, getRank, RANKS, getAllAchievements };
+// Every defined achievement, each flagged unlocked/locked for this learner.
+// Iterates from the definitions outward (not from the DB inward), so any
+// non-medal rows in user_achievements — e.g. the branch_complete_<extId>
+// idempotency markers used by the lumens bonus — never leak in here, since
+// they simply don't match any key in ACHIEVEMENTS.
+async function getAchievementsStatus(passportId) {
+  const all = getAllAchievements();
+  if (!passportId) return all.map(a => ({ ...a, unlocked: false, unlockedAt: null }));
+  const [rows] = await db.execute(
+    'SELECT achievement_key, unlocked_at FROM user_achievements WHERE passport_id = ?',
+    [passportId]
+  );
+  const unlockedMap = {};
+  rows.forEach(r => { unlockedMap[r.achievement_key] = r.unlocked_at; });
+  return all.map(a => ({
+    ...a,
+    unlocked: Object.prototype.hasOwnProperty.call(unlockedMap, a.key),
+    unlockedAt: unlockedMap[a.key] || null,
+  }));
+}
+
+// ── Streaks ──────────────────────────────────────────────────────────────────
+// Deliberately independent of lumens/momentum above — a streak is "did you
+// complete a knobit today", full stop. today/last_completion_date are always
+// the LEARNER'S LOCAL calendar date ('YYYY-MM-DD'), sent by the client (see
+// _localDateStr in learning.js/profile.js) — there is no stored timezone
+// anywhere in this app, so the client is the only thing that actually knows
+// what day it is for that person. Never compare this against server UTC dates.
+const MAX_STREAK_SAVERS = 3;
+
+function _isValidYMD(s) {
+  return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+// Fallback only for callers that somehow have no client date at all — an
+// approximation (server/UTC "today"), not the source of truth.
+function _fallbackToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function _daysBetween(fromYMD, toYMD) {
+  const a = new Date(fromYMD + 'T00:00:00Z');
+  const b = new Date(toYMD   + 'T00:00:00Z');
+  return Math.round((b - a) / 86400000);
+}
+
+async function _loadStreakRow(passportId) {
+  const [rows] = await db.execute(
+    `SELECT current_streak, longest_streak, streak_savers,
+            DATE_FORMAT(last_completion_date, '%Y-%m-%d') AS last_completion_date
+     FROM user_streaks WHERE passport_id = ?`,
+    [passportId]
+  );
+  return rows[0] || { current_streak: 0, longest_streak: 0, streak_savers: 0, last_completion_date: null };
+}
+
+async function _saveStreakRow(passportId, row) {
+  await db.execute(
+    `INSERT INTO user_streaks (passport_id, current_streak, longest_streak, streak_savers, last_completion_date)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       current_streak = VALUES(current_streak), longest_streak = VALUES(longest_streak),
+       streak_savers = VALUES(streak_savers), last_completion_date = VALUES(last_completion_date)`,
+    [passportId, row.current_streak, row.longest_streak, row.streak_savers, row.last_completion_date]
+  );
+}
+
+// Walks forward day-by-day from last_completion_date to today, consuming one
+// Streak Saver per fully-missed day. Breaks the streak (resets to 0) the
+// first time a missed day has no saver left to cover it. A no-op if there's
+// no gap yet (today or yesterday's completion still keeps the streak alive
+// without needing a save).
+function _catchUp(row, today) {
+  if (!row.last_completion_date) return row;
+  const gap = _daysBetween(row.last_completion_date, today);
+  if (gap <= 1) return row;
+  let missedDays = gap - 1;
+  let streak = row.current_streak;
+  let savers = row.streak_savers;
+  while (missedDays > 0) {
+    if (savers > 0) { savers -= 1; missedDays -= 1; }
+    else { streak = 0; break; }
+  }
+  return { ...row, current_streak: streak, streak_savers: savers };
+}
+
+// Read-time evaluation — used to display current state, including catching
+// up (and persisting) a break the learner hasn't triggered by acting yet.
+async function getStreak(passportId, todayYMD) {
+  if (!passportId) return { currentStreak: 0, longestStreak: 0, streakSavers: 0 };
+  const today = _isValidYMD(todayYMD) ? todayYMD : _fallbackToday();
+  try {
+    const before = await _loadStreakRow(passportId);
+    const after  = _catchUp(before, today);
+    if (after.current_streak !== before.current_streak || after.streak_savers !== before.streak_savers) {
+      await _saveStreakRow(passportId, after);
+    }
+    return { currentStreak: after.current_streak, longestStreak: after.longest_streak, streakSavers: after.streak_savers };
+  } catch (err) {
+    console.error('[game/getStreak]', err.message);
+    return { currentStreak: 0, longestStreak: 0, streakSavers: 0 };
+  }
+}
+
+// Called once per knobit completion. A second completion on the same local
+// day is a no-op (already counted) beyond running the same catch-up.
+async function recordKnobitCompletion(passportId, todayYMD) {
+  if (!passportId) return;
+  const today = _isValidYMD(todayYMD) ? todayYMD : _fallbackToday();
+  try {
+    const row = _catchUp(await _loadStreakRow(passportId), today);
+    if (row.last_completion_date !== today) {
+      row.current_streak += 1;
+      row.last_completion_date = today;
+      if (row.current_streak > row.longest_streak) row.longest_streak = row.current_streak;
+    }
+    await _saveStreakRow(passportId, row);
+    return { currentStreak: row.current_streak, longestStreak: row.longest_streak, streakSavers: row.streak_savers };
+  } catch (err) {
+    console.error('[game/recordKnobitCompletion]', err.message);
+  }
+}
+
+// Called when a node's final knobit completes. Awards a Streak Saver (cap
+// MAX_STREAK_SAVERS) if every knobit in the node has a started_at (only true
+// for knobits started after this feature shipped — older ones are silently
+// skipped, never crash) and the elapsed time from the first knobit's start
+// to the last knobit's completion is under 24 hours. Elapsed duration is
+// timezone-invariant, unlike a "same calendar day" check would be — this app
+// has no stored learner timezone, so duration is the only version of "same
+// day" we can actually evaluate correctly server-side.
+async function maybeAwardStreakSaver(passportId, nodeDbId, userId) {
+  if (!passportId || !nodeDbId) return;
+  try {
+    const [[row]] = await db.execute(
+      `SELECT COUNT(*) AS total,
+              SUM(started_at IS NULL) AS missingStart,
+              MIN(started_at) AS firstStart,
+              MAX(kp.completed_at) AS lastDone
+       FROM knobits k
+       JOIN knobit_progress kp ON kp.knobit_id = k.id AND kp.passport_id = ?
+       WHERE k.node_id = ? AND kp.phase_reached = 'done'`,
+      [passportId, nodeDbId]
+    );
+    if (!row || !row.total || row.missingStart > 0 || !row.firstStart || !row.lastDone) return;
+    const elapsedHours = (new Date(row.lastDone) - new Date(row.firstStart)) / 3600000;
+    if (elapsedHours >= 24) return;
+
+    const streakRow = await _loadStreakRow(passportId);
+    if (streakRow.streak_savers >= MAX_STREAK_SAVERS) return;
+    streakRow.streak_savers += 1;
+    await _saveStreakRow(passportId, streakRow);
+
+    if (userId) {
+      const { notify, getUserLocale } = require('./notifications');
+      const locale = await getUserLocale(userId);
+      notify(userId, 'achievement',
+        locale === 'et' ? 'Seeriapäästja teenitud!' : 'Streak Saver earned!',
+        locale === 'et'
+          ? 'Läbisid terve teema ühe istumisega — sinu kontole lisati Seeriapäästja.'
+          : 'You finished an entire topic in one sitting — a Streak Saver has been added to your account.');
+    }
+  } catch (err) {
+    console.error('[game/maybeAwardStreakSaver]', err.message);
+  }
+}
+
+// ── Profile-complete bonus (+10, one-time) ────────────────────────────────────
+// Identity (name, birth year, location, cultural background), learning needs
+// (about), and at least one interest + one value tag — checked after any edit
+// to identity or tags. profile_bonus_awarded guards against re-awarding on
+// later edits once it's already been given.
+async function maybeAwardProfileCompleteBonus(passportId, userId) {
+  if (!passportId) return;
+  try {
+    const [[passport]] = await db.execute(
+      `SELECT display_name, birth_year, location, cultural_background, about, profile_bonus_awarded
+       FROM learner_passports WHERE id = ?`,
+      [passportId]
+    );
+    if (!passport || passport.profile_bonus_awarded) return;
+    const identityDone = !!(passport.display_name && passport.birth_year && passport.location
+      && passport.cultural_background && passport.about);
+    if (!identityDone) return;
+
+    const [[{ interestCnt }]] = await db.execute(
+      `SELECT COUNT(*) AS interestCnt FROM passport_tags WHERE passport_id = ? AND type = 'interest'`,
+      [passportId]
+    );
+    const [[{ valueCnt }]] = await db.execute(
+      `SELECT COUNT(*) AS valueCnt FROM passport_tags WHERE passport_id = ? AND type = 'value'`,
+      [passportId]
+    );
+    if (!(interestCnt > 0 && valueCnt > 0)) return;
+
+    await db.execute('UPDATE learner_passports SET profile_bonus_awarded = 1 WHERE id = ?', [passportId]);
+    const amount = await awardLumens(passportId, userId, 10, 'profile_complete', null);
+    if (userId && amount) {
+      const { notify, getUserLocale } = require('./notifications');
+      const locale = await getUserLocale(userId);
+      notify(userId, 'achievement', `+${amount} ${locale === 'et' ? 'lumenit!' : 'lumens!'}`,
+        locale === 'et' ? 'Sinu õppija pass on täielikult täidetud.' : 'Your Learner Passport profile is complete.');
+    }
+  } catch (err) {
+    console.error('[game/maybeAwardProfileCompleteBonus]', err.message);
+  }
+}
+
+// ── Branch-complete bonus (+100, one-time per branch) ─────────────────────────
+// Fires when the just-finished L5 node is the LAST one under its L4 parent to
+// reach 100% — i.e. the whole branch is now fully learned. Single level only
+// (does not cascade further up to L3/L2/L1). Idempotency reuses the
+// user_achievements unique constraint (INSERT IGNORE — if the row already
+// existed, affectedRows is 0 and nothing is awarded twice), even though this
+// isn't shown as a medal.
+async function maybeAwardBranchBonus(passportId, userId, nodeDbId) {
+  if (!passportId || !nodeDbId) return;
+  try {
+    const [[parent]] = await db.execute(
+      `SELECT p.id AS parentDbId, p.external_id AS parentExtId, p.label AS parentLabel
+       FROM nodes n JOIN nodes p ON n.parent_id = p.id
+       WHERE n.id = ? AND p.level = 4`,
+      [nodeDbId]
+    );
+    if (!parent) return;
+
+    const [[{ total, mastered }]] = await db.execute(
+      `SELECT COUNT(child.id) AS total,
+              COUNT(CASE WHEN unk.percentage = 100 THEN 1 END) AS mastered
+       FROM nodes child
+       LEFT JOIN user_node_knowledge unk
+              ON unk.node_external_id = child.external_id AND unk.passport_id = ?
+       WHERE child.parent_id = ? AND child.level = 5`,
+      [passportId, parent.parentDbId]
+    );
+    if (!(total > 0 && mastered === total)) return;
+
+    const [result] = await db.execute(
+      'INSERT IGNORE INTO user_achievements (passport_id, achievement_key) VALUES (?, ?)',
+      [passportId, 'branch_complete_' + parent.parentExtId]
+    );
+    if (!result.affectedRows) return;
+
+    const amount = await awardLumens(passportId, userId, 100, 'branch_complete', parent.parentExtId);
+    if (userId && amount) {
+      const { notify, getUserLocale } = require('./notifications');
+      const locale = await getUserLocale(userId);
+      notify(userId, 'achievement', `+${amount} ${locale === 'et' ? 'lumenit!' : 'lumens!'}`,
+        locale === 'et'
+          ? `Läbisid kõik teemad valdkonnas "${parent.parentLabel}".`
+          : `You completed every topic under "${parent.parentLabel}".`, parent.parentExtId);
+    }
+  } catch (err) {
+    console.error('[game/maybeAwardBranchBonus]', err.message);
+  }
+}
+
+module.exports = {
+  awardLumens, checkAchievements, getGameState, getMomentum, getRank, RANKS, getAllAchievements,
+  getAchievementsStatus,
+  getStreak, recordKnobitCompletion, maybeAwardStreakSaver,
+  maybeAwardProfileCompleteBonus, maybeAwardBranchBonus,
+};
