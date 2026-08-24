@@ -546,6 +546,150 @@
     if (_backBtnPulseTimer) { clearInterval(_backBtnPulseTimer); _backBtnPulseTimer = null; }
   }
 
+  var _lootboxData = null;
+
+  var LOOTBOX_META = {
+    animation:      { icon: '🎬', key: 'lootbox.animation' },
+    play_a_game:    { icon: '🎮', key: 'lootbox.play_a_game' },
+    treasure_map:   { icon: '🗺️', key: 'lootbox.treasure_map' },
+    podcast:        { icon: '🎙️', key: 'lootbox.podcast' },
+    ancient_scroll: { icon: '📜', key: 'lootbox.ancient_scroll' },
+    fun_fact:       { icon: '💡', key: 'lootbox.fun_fact' },
+    time_machine:   { icon: '⏳', key: 'lootbox.time_machine' },
+    influencer:     { icon: '📱', key: 'lootbox.influencer' },
+    hack_it:        { icon: '🛠️', key: 'lootbox.hack_it' },
+  };
+  var LOOTBOX_ORDER  = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'fun_fact', 'time_machine', 'influencer', 'hack_it'];
+  // The 6 retrieval categories open their URL directly; the rest (generation —
+  // no URL) render as an in-modal detail view instead. See _lootboxItemClicked.
+  var LOOTBOX_LINKED = { animation: 1, play_a_game: 1, treasure_map: 1, podcast: 1, ancient_scroll: 1, influencer: 1 };
+
+  window.openLootBox = function () {
+    var modal = document.getElementById('lootbox-modal');
+    if (!modal || !_node) return;
+    modal.style.display = 'flex';
+    _lootboxShowGridChrome();
+    _renderLootboxStatus('loading');
+
+    fetch('/api/learn/lootbox/' + encodeURIComponent(_node.id))
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (resp) {
+        _lootboxData = (resp && resp.data) || {};
+        _renderLootboxGrid();
+      })
+      .catch(function () {
+        _renderLootboxStatus('error');
+      });
+  };
+
+  window.closeLootBox = function () {
+    var modal = document.getElementById('lootbox-modal');
+    if (modal) modal.style.display = 'none';
+  };
+
+  function _lootboxShowGridChrome() {
+    var back  = document.getElementById('lootbox-modal-back');
+    var title = document.getElementById('lootbox-modal-title');
+    if (back)  back.style.display = 'none';
+    if (title) title.textContent = window.t('lootbox.title');
+  }
+
+  function _renderLootboxStatus(kind) {
+    var body = document.getElementById('lootbox-body');
+    if (!body) return;
+    if (kind === 'loading') {
+      body.innerHTML =
+        '<div class="lootbox-status">' +
+        '<div class="lootbox-status-text">' + _escHtml(window.t('lootbox.loading')) + '</div>' +
+        '<div style="display:flex;gap:5px;">' +
+        '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>' +
+        '</div></div>';
+    } else if (kind === 'error') {
+      body.innerHTML =
+        '<div class="lootbox-status">' +
+        '<div class="lootbox-status-text">' + _escHtml(window.t('msg.connection_error')) + '</div>' +
+        '<button type="button" class="lootbox-retry" id="lootbox-retry-btn">' + _escHtml(window.t('btn.retry')) + '</button>' +
+        '</div>';
+      var retryBtn = document.getElementById('lootbox-retry-btn');
+      if (retryBtn) retryBtn.addEventListener('click', window.openLootBox);
+    } else if (kind === 'empty') {
+      body.innerHTML =
+        '<div class="lootbox-status"><div class="lootbox-status-text">' +
+        _escHtml(window.t('msg.no_content_yet')) + '</div></div>';
+    }
+  }
+
+  function _renderLootboxGrid() {
+    _lootboxShowGridChrome();
+    var body = document.getElementById('lootbox-body');
+    if (!body || !_lootboxData) return;
+
+    var keys = LOOTBOX_ORDER.filter(function (k) { return _lootboxData[k]; });
+    if (!keys.length) { _renderLootboxStatus('empty'); return; }
+
+    var html = '<div class="lootbox-grid">';
+    keys.forEach(function (key) {
+      var item = _lootboxData[key];
+      var meta = LOOTBOX_META[key];
+      var sub  = item.title || item.name || '';
+      html += '<button type="button" class="lootbox-item" data-key="' + key + '">' +
+        '<div class="lootbox-item-icon">' + meta.icon + '</div>' +
+        '<div class="lootbox-item-label">' + _escHtml(window.t(meta.key)) + '</div>' +
+        (sub ? '<div class="lootbox-item-sub">' + _escHtml(sub) + '</div>' : '') +
+        '</button>';
+    });
+    html += '</div>';
+    body.innerHTML = html;
+
+    body.querySelectorAll('.lootbox-item').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        _lootboxItemClicked(btn.getAttribute('data-key'));
+      });
+    });
+  }
+
+  function _lootboxItemClicked(key) {
+    var item = _lootboxData && _lootboxData[key];
+    if (!item) return;
+    if (LOOTBOX_LINKED[key]) {
+      if (item.url) window.open(item.url, '_blank', 'noopener');
+      return;
+    }
+    _renderLootboxDetail(key, item);
+  }
+
+  function _renderLootboxDetail(key, item) {
+    var back  = document.getElementById('lootbox-modal-back');
+    var title = document.getElementById('lootbox-modal-title');
+    var body  = document.getElementById('lootbox-body');
+    if (back)  back.style.display = 'flex';
+    if (title) title.textContent = window.t(LOOTBOX_META[key].key);
+    if (!body) return;
+
+    var html = '<div class="lootbox-detail">';
+    if (key === 'fun_fact') {
+      html += '<div class="lootbox-detail-fact">' + _escHtml(item.text || '') + '</div>';
+    } else if (key === 'time_machine') {
+      html += '<ul class="lootbox-timeline">';
+      (item.entries || []).forEach(function (e) {
+        html += '<li><span class="lb-tm-date">' + _escHtml(e.date || '') + '</span>' +
+          '<span class="lb-tm-text">' + _escHtml(e.text || '') + '</span></li>';
+      });
+      html += '</ul>';
+    } else if (key === 'hack_it') {
+      html += '<div class="lootbox-hack-outcome">' + _escHtml(item.outcome || '') + '</div>';
+      html += '<ol class="lootbox-hack-steps">';
+      (item.steps || []).forEach(function (s) { html += '<li>' + _escHtml(s) + '</li>'; });
+      html += '</ol>';
+      if (item.result) html += '<div class="lootbox-hack-result">' + _escHtml(item.result) + '</div>';
+    }
+    html += '</div>';
+    body.innerHTML = html;
+  }
+
   window.showLmView = function (id) {
     ['lm-path', 'lm-knobit', 'lm-complete', 'lm-tree'].forEach(function (v) {
       var el = document.getElementById(v);
@@ -1984,9 +2128,23 @@
       lightboxEl.style.display = 'none';
     });
 
+    var lootboxEl = document.getElementById('lootbox-modal');
+    if (lootboxEl) lootboxEl.addEventListener('click', function (e) {
+      if (e.target === lootboxEl) window.closeLootBox();
+    });
+
+    var lootboxClose = document.getElementById('lootbox-modal-close');
+    if (lootboxClose) lootboxClose.addEventListener('click', window.closeLootBox);
+
+    var lootboxBack = document.getElementById('lootbox-modal-back');
+    if (lootboxBack) lootboxBack.addEventListener('click', _renderLootboxGrid);
+
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && lightboxEl && lightboxEl.style.display !== 'none') {
         lightboxEl.style.display = 'none';
+      }
+      if (e.key === 'Escape' && lootboxEl && lootboxEl.style.display !== 'none') {
+        window.closeLootBox();
       }
     });
 

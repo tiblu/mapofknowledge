@@ -1159,6 +1159,72 @@ router.get('/learn/knobit/:id/download', async (req, res) => {
   }
 });
 
+// ── Loot Box — further learning resources for a node ─────────────────────────
+// Cached per (node, locale) in lootbox_cache and reused across every learner;
+// only regenerated when missing or older than ~6 months. On a cache hit, the
+// six retrieval categories' URLs are live-checked and silently dropped from
+// the response if dead — the cache row itself is left alone, so a transient
+// failure doesn't force a full, search-heavy regeneration.
+const LOOTBOX_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30 * 6; // ~6 months
+
+async function _checkUrlAlive(url) {
+  try {
+    let resp = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(4000) });
+    if (resp.status === 405 || resp.status === 403) {
+      resp = await fetch(url, { method: 'GET', redirect: 'follow', signal: AbortSignal.timeout(4000) });
+    }
+    return resp.ok;
+  } catch {
+    return false;
+  }
+}
+
+router.get('/learn/lootbox/:nodeId', async (req, res) => {
+  const { nodeId } = req.params;
+  try {
+    const [nodes] = await db.execute(
+      'SELECT id AS db_id, label FROM nodes WHERE external_id = ?', [nodeId]
+    );
+    if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
+    const node   = nodes[0];
+    const locale = await getUserLocale(req.user?.id);
+
+    const [cacheRows] = await db.execute(
+      'SELECT data, generated_at FROM lootbox_cache WHERE node_external_id = ? AND locale = ?',
+      [nodeId, locale]
+    );
+    const fresh = cacheRows.length &&
+      (Date.now() - new Date(cacheRows[0].generated_at).getTime()) < LOOTBOX_MAX_AGE_MS;
+
+    let data;
+    if (fresh) {
+      data = JSON.parse(cacheRows[0].data);
+      const checks = await Promise.all(
+        llm.LOOTBOX_URL_KEYS
+          .filter(key => data[key] && data[key].url)
+          .map(async key => [key, await _checkUrlAlive(data[key].url)])
+      );
+      for (const [key, alive] of checks) {
+        if (!alive) delete data[key];
+      }
+    } else {
+      const breadcrumb = await getNodeBreadcrumb(node.db_id);
+      data = await llm.generateLootBox(node.label, breadcrumb, locale, req.user?.id);
+      await db.execute(
+        `INSERT INTO lootbox_cache (node_external_id, locale, data, generated_at)
+         VALUES (?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE data = VALUES(data), generated_at = NOW()`,
+        [nodeId, locale, JSON.stringify(data)]
+      );
+    }
+
+    res.json({ data });
+  } catch (err) {
+    console.error('[api/learn/lootbox]', err.message);
+    res.status(500).json({ error: 'Failed to load loot box' });
+  }
+});
+
 // ── Mark knobit complete ─────────────────────────────────────────────────────
 router.post('/learn/knobit/:id/complete', async (req, res) => {
   const knobitId   = req.params.id;

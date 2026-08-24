@@ -353,7 +353,7 @@
   <!-- ── VIEW 1: LEARNING PATH ─────────────────── -->
   <div id="lm-path" class="lm-view">
     <div class="lm-path-header">
-      <button class="lm-back-btn" onclick="closeLearningMode()" data-i18n-title="btn.back_to_map" title="Back to map">
+      <button class="lm-back-btn" onclick="openLootBox()" data-i18n-title="btn.loot_box" title="Loot Box">
         <img src="images/box.png" alt="" width="20" height="15">
       </button>
       <div class="lm-path-meta">
@@ -562,6 +562,22 @@
     </button>
     <img class="lm-lightbox-img" id="lm-lightbox-img" src="" alt="">
     <div class="lm-lightbox-caption" id="lm-lightbox-caption"></div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       LOOT BOX — further learning resources
+       ════════════════════════════════════════ -->
+  <div id="lootbox-modal" style="display:none">
+    <div class="lootbox-modal-box">
+      <button class="lootbox-modal-back" id="lootbox-modal-back" style="display:none" data-i18n-title="btn.back_arrow" title="Back" aria-label="Back to loot box">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="lootbox-modal-close" id="lootbox-modal-close" data-i18n-title="btn.close" title="Close" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div class="lootbox-modal-title" id="lootbox-modal-title" data-i18n="lootbox.title">Loot Box</div>
+      <div class="lootbox-body" id="lootbox-body"></div>
+    </div>
   </div>
 
   <!-- Lives inside #learning-mode (not as a page-level sibling) so it still
@@ -819,7 +835,7 @@
 <script src="js/role-nav.js"></script>
 <script src="js/verify-banner.js"></script>
 <script src="js/tour.js"></script>
-<script src="js/learning.js?v=13"></script>
+<script src="js/learning.js?v=14"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/filters.js?v=5"></script>
 <script src="js/anne.js?v=2"></script>

@@ -1322,3 +1322,20 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.no_journey_yet', 'en', 'Nothing here yet — start learning to build your journey.'),
 ('msg.no_journey_yet', 'et', 'Siin pole veel midagi — alusta õppimist, et oma õpitee luua.')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Loot Box (en only — category names bypass i18n, always render in English
+-- regardless of locale, same as on MoK)
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('btn.loot_box', 'en', 'Loot Box'),
+('lootbox.title', 'en', 'Loot Box'),
+('lootbox.loading', 'en', 'Fetching your goodies. This will take a bit. Or two bits :)'),
+('lootbox.animation', 'en', 'Animation'),
+('lootbox.play_a_game', 'en', 'Play a Game'),
+('lootbox.treasure_map', 'en', 'Treasure Map'),
+('lootbox.podcast', 'en', 'Podcast'),
+('lootbox.ancient_scroll', 'en', 'Ancient Scroll'),
+('lootbox.fun_fact', 'en', 'Fun Fact'),
+('lootbox.time_machine', 'en', 'Time Machine'),
+('lootbox.influencer', 'en', 'Influencer'),
+('lootbox.hack_it', 'en', 'Hack It')
+ON DUPLICATE KEY UPDATE value = VALUES(value);

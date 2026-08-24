@@ -337,6 +337,161 @@
 }
 .lm-lightbox-close:hover { background: rgba(255,255,255,0.22); }
 
+/* ── Loot Box — further learning resources, opened from the back button ── */
+#lootbox-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: var(--overlay);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.lootbox-modal-box {
+  position: relative;
+  background: var(--bg);
+  border-radius: 18px;
+  padding: 30px 26px 26px;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 8px 32px var(--i18);
+}
+.lootbox-modal-title {
+  font-size: 17px; font-weight: 700;
+  color: var(--c1); text-align: center;
+  margin-bottom: 20px;
+}
+.lootbox-modal-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--i06);
+  color: var(--c3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.lootbox-modal-close:hover { background: var(--i08); }
+.lootbox-modal-back {
+  position: absolute;
+  top: 16px; left: 16px;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--i06);
+  color: var(--c3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.lootbox-modal-back:hover { background: var(--i08); }
+
+/* ── Grid of filled categories — reflows to however many actually cleared
+   the generation prompt's bar, never padded back up to 9. ── */
+.lootbox-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.lootbox-item {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+  background: rgba(255,255,255,0.5);
+  border: 1.5px solid var(--i08);
+  border-radius: 14px;
+  padding: 14px 8px 10px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.14s, transform 0.14s, box-shadow 0.14s;
+}
+.lootbox-item:hover {
+  border-color: var(--accent, var(--lm-accent));
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px var(--i05);
+}
+.lootbox-item-icon {
+  font-size: 24px; line-height: 1;
+  margin: 4px 0 8px;
+}
+.lootbox-item-label {
+  font-size: 11.5px; font-weight: 600; color: var(--c2);
+  line-height: 1.3;
+}
+.lootbox-item-sub {
+  font-size: 10px; color: var(--c5);
+  line-height: 1.3;
+  margin-top: 3px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── Loading / empty / error states ── */
+.lootbox-status {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px;
+  padding: 30px 10px;
+  text-align: center;
+}
+.lootbox-status-text {
+  font-size: 13px; color: var(--c4);
+  line-height: 1.5;
+}
+.lootbox-status .loading-dot { background: var(--c6); }
+.lootbox-retry {
+  padding: 9px 18px;
+  background: var(--i08);
+  border: none; border-radius: 10px;
+  font-size: 13px; font-weight: 600; font-family: inherit;
+  color: var(--c2); cursor: pointer;
+  transition: background 0.13s;
+}
+.lootbox-retry:hover { background: var(--i14); }
+
+/* ── Detail view for the 3 written categories (Fun Fact / Time Machine / Hack It) ── */
+.lootbox-detail {
+  font-size: 13.5px; color: var(--c2); line-height: 1.65;
+}
+.lootbox-detail-fact { white-space: pre-wrap; }
+.lootbox-timeline {
+  list-style: none; display: flex; flex-direction: column; gap: 10px;
+}
+.lootbox-timeline li {
+  display: flex; gap: 10px;
+  padding: 9px 11px;
+  background: var(--i04);
+  border-radius: 9px;
+}
+.lb-tm-date {
+  flex: 0 0 auto;
+  font-weight: 700; color: var(--c1);
+  font-size: 12.5px; white-space: nowrap;
+}
+.lb-tm-text { font-size: 12.5px; color: var(--c3); }
+.lootbox-hack-outcome {
+  font-weight: 600; color: var(--c1);
+  margin-bottom: 12px;
+}
+.lootbox-hack-steps {
+  margin: 0 0 12px; padding-left: 20px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.lootbox-hack-steps li { font-size: 12.5px; color: var(--c3); }
+.lootbox-hack-result {
+  font-size: 12.5px; color: var(--c4);
+  padding-top: 10px;
+  border-top: 1px solid var(--i08);
+}
+
+@media (max-width: 420px) {
+  .lootbox-item-icon { font-size: 20px; }
+  .lootbox-item-label { font-size: 10.5px; }
+}
+
 /* ── start button (bottom of path view) ── */
 .lm-start-bar {
   flex-shrink: 0;
