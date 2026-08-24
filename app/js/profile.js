@@ -605,49 +605,106 @@
       .then(function() { window.loadProfile(); }).catch(function() {});
   };
 
-  function renderCompetence(competence, mapKnowledge) {
-    // Hide Skills card — no longer shown
-    var skillsCard = document.getElementById('skills-card');
-    if (skillsCard) skillsCard.style.display = 'none';
+  var _allKnowledge  = [];
+  var _knowledgeView = 'pct'; // 'pct' | 'domain'
 
+  var KNOWLEDGE_BAR_COLORS = {
+    tested:        'var(--color-success)',
+    self_reported: 'var(--accent)',
+    estimated:     'var(--c7)',
+  };
+
+  function _knowledgeRow(k) {
+    var pct      = Math.round(k.percentage) || 0;
+    var barColor = KNOWLEDGE_BAR_COLORS[k.source] || KNOWLEDGE_BAR_COLORS.estimated;
+    var srcClass = k.source === 'tested' ? 'tested' : 'self-reported';
+    var srcLabel = k.source === 'tested' ? t('label.tested') : k.source === 'self_reported' ? t('label.self_reported') : t('label.estimated');
+    return `<div class="p-prof-row">
+      <div class="p-prof-info p-flex-1-noclip">
+        <div class="p-prof-name">${esc(k.label)}</div>
+        ${k.breadcrumb ? `<div class="p-prof-sub">${esc(k.breadcrumb)}</div>` : ''}
+        <span class="p-source ${srcClass}">${srcLabel}</span>
+      </div>
+      <div class="p-bar-wrap">
+        <div class="p-bar-track">
+          <div class="p-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+        <span class="p-bar-pct">${pct}%</span>
+      </div>
+    </div>`;
+  }
+
+  function _renderKnowledgeByPct(items) {
+    return items.map(_knowledgeRow).join('');
+  }
+
+  function _renderKnowledgeByDomain(items) {
+    // Items arrive already sorted percentage-desc (server query), so a
+    // plain grouping pass keeps that order within each domain for free.
+    var groups = {};
+    var order  = [];
+    items.forEach(function (k) {
+      var d = k.domain || k.label;
+      if (!groups[d]) { groups[d] = []; order.push(d); }
+      groups[d].push(k);
+    });
+
+    var domains = order.map(function (d) {
+      var members = groups[d];
+      var avg = Math.round(members.reduce(function (s, k) { return s + (Number(k.percentage) || 0); }, 0) / members.length);
+      return { domain: d, members: members, avg: avg };
+    });
+    domains.sort(function (a, b) { return b.avg - a.avg; });
+
+    return domains.map(function (d) {
+      return `<div class="p-domain-group">
+        <div class="p-domain-heading" onclick="this.closest('.p-domain-group').classList.toggle('collapsed')">
+          <span class="p-domain-chevron">
+            <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><path d="M2 3l2.5 3L7 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="p-domain-name">${esc(d.domain)}</span>
+          <span class="p-domain-avg">${t('label.avg_short')} ${d.avg}%</span>
+        </div>
+        <div class="p-domain-members">${d.members.map(_knowledgeRow).join('')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  window._setKnowledgeView = function (view) {
+    _knowledgeView = view;
+    _renderKnowledgeWithState();
+  };
+
+  function _renderKnowledgeWithState() {
     var knowledgeCard = document.getElementById('knowledge-card');
     if (!knowledgeCard) return;
 
-    var items = mapKnowledge || [];
+    var items = _allKnowledge;
     if (!items.length) {
       knowledgeCard.innerHTML = `<div class="p-card-title">${t('section.knowledge')}</div>` +
         empty(t('msg.no_knowledge'));
       return;
     }
 
-    var BAR_COLORS = {
-      tested:        'var(--color-success)',
-      self_reported: 'var(--accent)',
-      estimated:     'var(--c7)',
-    };
+    var toggle = `<div class="p-ev-type-pills p-knowledge-toggle">
+      <button class="p-ev-pill ${_knowledgeView === 'pct' ? 'p-ev-pill-active' : 'p-ev-pill-inactive'}" onclick="window._setKnowledgeView('pct')">${t('btn.view_by_percentage')}</button>
+      <button class="p-ev-pill ${_knowledgeView === 'domain' ? 'p-ev-pill-active' : 'p-ev-pill-inactive'}" onclick="window._setKnowledgeView('domain')">${t('btn.view_by_domain')}</button>
+    </div>`;
 
-    var rows = items.map(function(k) {
-      var pct      = Math.round(k.percentage) || 0;
-      var barColor = BAR_COLORS[k.source] || BAR_COLORS.estimated;
-      var srcClass = k.source === 'tested' ? 'tested' : 'self-reported';
-      var srcLabel = k.source === 'tested' ? t('label.tested') : k.source === 'self_reported' ? t('label.self_reported') : t('label.estimated');
-      return `<div class="p-prof-row">
-        <div class="p-prof-info p-flex-1-noclip">
-          <div class="p-prof-name">${esc(k.label)}</div>
-          ${k.breadcrumb ? `<div class="p-prof-sub">${esc(k.breadcrumb)}</div>` : ''}
-          <span class="p-source ${srcClass}">${srcLabel}</span>
-        </div>
-        <div class="p-bar-wrap">
-          <div class="p-bar-track">
-            <div class="p-bar-fill" style="width:${pct}%;background:${barColor}"></div>
-          </div>
-          <span class="p-bar-pct">${pct}%</span>
-        </div>
-      </div>`;
-    }).join('');
+    var rows = _knowledgeView === 'domain' ? _renderKnowledgeByDomain(items) : _renderKnowledgeByPct(items);
 
     knowledgeCard.innerHTML = `<div class="p-card-title">${t('section.knowledge')}</div>
+      ${toggle}
       <div class="p-scroll-xl">${rows}</div>`;
+  }
+
+  function renderCompetence(competence, mapKnowledge) {
+    // Hide Skills card — no longer shown
+    var skillsCard = document.getElementById('skills-card');
+    if (skillsCard) skillsCard.style.display = 'none';
+
+    _allKnowledge = mapKnowledge || [];
+    _renderKnowledgeWithState();
   }
 
   var _allReflections = [];

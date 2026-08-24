@@ -1286,3 +1286,39 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.download_offer_warn', 'en', 'After you continue, its content — and your notes — are cleared.'),
 ('msg.download_offer_warn', 'et', 'Pärast jätkamist selle sisu — ja su märkmed — kustutatakse.')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- By-domain toggle for the Knowledge card
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('btn.view_by_domain', 'en', 'By domain'),
+('btn.view_by_domain', 'et', 'Valdkonna järgi'),
+('btn.view_by_percentage', 'en', 'By percentage'),
+('btn.view_by_percentage', 'et', 'Protsendi järgi'),
+('label.avg_short', 'en', 'avg'),
+('label.avg_short', 'et', 'kesk')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Learning Journey timeline
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('btn.play', 'en', 'Play'),
+('btn.play', 'et', 'Esita'),
+('btn.restart', 'en', 'Restart'),
+('btn.restart', 'et', 'Alusta uuesti'),
+('btn.speed_fast', 'en', 'Fast'),
+('btn.speed_fast', 'et', 'Kiire'),
+('btn.speed_medium', 'en', 'Medium'),
+('btn.speed_medium', 'et', 'Keskmine'),
+('btn.speed_slow', 'en', 'Slow'),
+('btn.speed_slow', 'et', 'Aeglane'),
+('btn.view_timeline', 'en', 'View timeline'),
+('btn.view_timeline', 'et', 'Vaata ajajoont'),
+('label.journey_title', 'en', 'Your Learning Journey'),
+('label.journey_title', 'et', 'Sinu õpitee'),
+('msg.day_later', 'en', 'day later'),
+('msg.day_later', 'et', 'päev hiljem'),
+('msg.days_later', 'en', 'days later'),
+('msg.days_later', 'et', 'päeva hiljem'),
+('msg.knobit_completed_prefix', 'en', 'Knobit completed: '),
+('msg.knobit_completed_prefix', 'et', 'Knobit lõpetatud: '),
+('msg.no_journey_yet', 'en', 'Nothing here yet — start learning to build your journey.'),
+('msg.no_journey_yet', 'et', 'Siin pole veel midagi — alusta õppimist, et oma õpitee luua.')
+ON DUPLICATE KEY UPDATE value = VALUES(value);

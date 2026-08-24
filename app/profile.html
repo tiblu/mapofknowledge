@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="css/palette.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/profile.css">
+<link rel="stylesheet" href="css/timeline.css">
 <link rel="stylesheet" href="css/anne.css">
 <link rel="stylesheet" href="css/font-scale.css">
 <script src="js/strings.js"></script>
@@ -202,6 +203,13 @@
       <div class="p-section-titles">
         <div class="p-section-title" data-i18n="section.s2_title">Learning Events</div>
       </div>
+      <button id="trigger-timeline-btn" data-i18n-title="btn.view_timeline" title="View timeline" aria-label="View timeline">
+        <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+          <circle cx="8.5" cy="9" r="6.5" stroke="currentColor" stroke-width="1.3"/>
+          <path d="M8.5 5.5V9l3 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6 1.5h5M8.5 1.5V3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
 
     <div class="p-section-body">
@@ -358,6 +366,33 @@
 </main>
 
 <!-- ════════════════════════════════════════
+     LEARNING JOURNEY TIMELINE  (Section 2 lightbox)
+     ════════════════════════════════════════ -->
+<div id="timeline-lightbox" style="display:none">
+  <div id="tl-header">
+    <div><h2 data-i18n="label.journey_title">Your Learning Journey</h2></div>
+    <div class="tl-controls-center">
+      <button class="tl-ctl ghost" id="tl-restart-btn" data-i18n-title="btn.restart" title="Restart">⟲</button>
+      <button class="tl-ctl" id="tl-play-btn" data-i18n-title="btn.play" title="Play">▶</button>
+      <span id="tl-event-counter"></span>
+    </div>
+    <div class="tl-controls-right">
+      <div class="tl-speed-group" id="tl-speed-group">
+        <button class="tl-speed-btn" data-speed="slow" data-i18n="btn.speed_slow">Slow</button>
+        <button class="tl-speed-btn active" data-speed="medium" data-i18n="btn.speed_medium">Medium</button>
+        <button class="tl-speed-btn" data-speed="fast" data-i18n="btn.speed_fast">Fast</button>
+      </div>
+      <button id="tl-close-btn" data-i18n-title="btn.close" title="Close" aria-label="Close">✕</button>
+    </div>
+  </div>
+  <div id="tl-stage">
+    <div id="tl-gutter"></div>
+    <div id="tl-viewport"><svg id="tl-canvas"></svg></div>
+  </div>
+  <div id="tl-empty" style="display:none"></div>
+</div>
+
+<!-- ════════════════════════════════════════
      IQUEST — intro video lightbox
      ════════════════════════════════════════ -->
 <div id="qst-video-lightbox" style="display:none">
@@ -388,6 +423,7 @@
 <script src="js/topbar-notif.js"></script>
 <script src="js/role-nav.js"></script>
 <script src="js/anne.js?v=2"></script>
+<script src="js/timeline.js"></script>
 <script src="js/profile.js"></script>
 </body>
 </html>

@@ -602,6 +602,37 @@ select.p-edit-input { cursor: pointer; }
   width: 34px; text-align: right;
 }
 
+.p-knowledge-toggle { margin-bottom: 12px; }
+.p-domain-group { margin-bottom: 4px; }
+.p-domain-group:not(:first-child) { margin-top: 14px; }
+.p-domain-heading {
+  display: flex; align-items: center; gap: 7px;
+  padding-bottom: 6px; margin-bottom: 2px;
+  border-bottom: 1.5px solid rgba(91,168,216,0.28);
+  cursor: pointer; user-select: none;
+  transition: opacity 0.13s;
+}
+.p-domain-heading:hover { opacity: 0.72; }
+.p-domain-chevron {
+  display: inline-flex; flex-shrink: 0;
+  color: #2068A8;
+  transition: transform 0.15s ease;
+}
+.p-domain-group.collapsed .p-domain-chevron { transform: rotate(-90deg); }
+.p-domain-name {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
+  color: #2068A8;
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.p-domain-avg {
+  font-size: 11px; font-weight: 600; color: var(--c6);
+  white-space: nowrap;
+}
+.p-domain-members { overflow: hidden; }
+.p-domain-group.collapsed .p-domain-members { display: none; }
+.p-domain-group .p-prof-row { padding-left: 4px; }
+
 /* Goal card */
 .p-goal-card {
   border-radius: 12px; padding: 14px 16px;

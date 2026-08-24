@@ -1,0 +1,120 @@
+/* ── LEARNING JOURNEY TIMELINE  —  css/timeline.css ─────────────────────────
+   Full-viewport lightbox opened from Section 2 (Learning Events) of the
+   Learner Passport. Ported from a standalone prototype (docs/timeline_demo.html)
+   — same visual language, wired to live data instead of a fixed sample. */
+
+#trigger-timeline-btn {
+  background: none; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px;
+  color: var(--c6);
+  transition: background 0.13s, color 0.13s;
+  margin-left: auto;
+}
+#trigger-timeline-btn:hover { background: var(--i08); color: var(--c1); }
+
+#timeline-lightbox {
+  position: fixed; inset: 0; z-index: 700;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+}
+
+#tl-header {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--i10);
+  flex-shrink: 0;
+}
+#tl-header h2 { font-size: 16px; font-weight: 720; margin: 0; letter-spacing: -0.3px; color: var(--c1); }
+.tl-controls-center { display: flex; align-items: center; gap: 8px; justify-self: center; }
+.tl-controls-right  { display: flex; align-items: center; gap: 10px; justify-self: end; }
+
+.tl-ctl {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: var(--accent); color: #fff;
+  font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: transform 0.12s, opacity 0.12s;
+}
+.tl-ctl:hover { transform: scale(1.06); }
+.tl-ctl.ghost { background: var(--i08); color: var(--c6); width: 30px; height: 30px; font-size: 11px; }
+#tl-event-counter { font-size: 12px; color: var(--c6); font-variant-numeric: tabular-nums; }
+
+.tl-speed-group { display: flex; gap: 4px; }
+.tl-speed-btn {
+  padding: 5px 11px; border-radius: 20px; border: 1.5px solid var(--i12);
+  background: transparent; color: var(--c6);
+  font-size: 11px; font-weight: 650; font-family: inherit; cursor: pointer;
+  transition: background 0.13s, color 0.13s, border-color 0.13s;
+}
+.tl-speed-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+#tl-close-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: none; background: var(--i08); color: var(--c6);
+  font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.13s, color 0.13s;
+}
+#tl-close-btn:hover { background: var(--i12); color: var(--c1); }
+
+#tl-stage { display: flex; flex: 1; min-height: 0; }
+#tl-gutter {
+  width: 190px; flex-shrink: 0;
+  border-right: 1px solid var(--i10);
+  background: #fff;
+  padding-top: 40px;
+  position: relative;
+}
+.tl-lane-label {
+  position: absolute; left: 16px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 650; color: var(--c1);
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+.tl-lane-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+#tl-viewport { flex: 1; overflow-x: auto; overflow-y: hidden; position: relative; }
+#tl-canvas { display: block; }
+
+#tl-empty {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  color: var(--c6); font-size: 14px; text-align: center; padding: 40px;
+}
+
+.tl-track-fg { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+.tl-evt-dot {
+  opacity: 0; transform-box: fill-box; transform-origin: center;
+  transform: scale(0.2);
+  transition: opacity 0.28s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+.tl-evt-dot.visible { opacity: 1; transform: scale(1); }
+.tl-evt-dot circle.tl-ring { fill: none; stroke-width: 2; opacity: 0; }
+.tl-evt-dot.visible circle.tl-ring { animation: tlRingPulse 0.9s ease-out; }
+@keyframes tlRingPulse {
+  from { opacity: 0.55; r: var(--ring-r0, 7);  }
+  to   { opacity: 0;    r: var(--ring-r1, 20); }
+}
+
+.tl-gap-label  { font-size: 10px; fill: var(--c6); text-anchor: middle; }
+.tl-evt-title  { font-size: 10px; fill: var(--c1); font-weight: 650; text-anchor: middle; }
+
+.tl-knobit-notch { cursor: default; opacity: 0; transition: opacity 0.4s ease; }
+.tl-knobit-notch.visible { opacity: 0.85; }
+.tl-notch-tick {
+  stroke-width: 2.5; stroke-linecap: round;
+  transform-box: fill-box; transform-origin: bottom;
+  transform: scaleY(0);
+  transition: transform 1.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.tl-knobit-notch.visible .tl-notch-tick { transform: scaleY(1); }
+
+.tl-axis-tick  { stroke: var(--i10); stroke-width: 1; }
+.tl-axis-label { font-size: 10px; fill: var(--c6); text-anchor: middle; }
+
+#tl-wavefront { stroke: var(--accent); stroke-width: 2; opacity: 0.55; }
+
+#tl-travel-pill rect { fill: var(--c1); }
+#tl-travel-pill text { fill: #fff; font-size: 11px; font-weight: 700; }
+#tl-travel-pill { transition: opacity 0.15s; }
