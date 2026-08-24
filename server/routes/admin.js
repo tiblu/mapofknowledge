@@ -61,6 +61,7 @@ router.get('/users', async (req, res) => {
         lp.display_name,
         lp.birth_year,
         COALESCE(kp.knobits_done, 0)                                    AS knobits_done,
+        COALESCE(kst.knobits_started, 0)                                AS knobits_started,
         COALESCE(tu.estimated_cost, 0)                                  AS estimated_cost
       FROM users u
       LEFT JOIN learner_passports lp ON lp.id = u.passport_id
@@ -70,6 +71,15 @@ router.get('/users', async (req, res) => {
         WHERE phase_reached = 'done'
         GROUP BY passport_id
       ) kp ON kp.passport_id = u.passport_id
+      LEFT JOIN (
+        SELECT ki.passport_id, COUNT(DISTINCT ki.knobit_id) AS knobits_started
+        FROM knobit_interactions ki
+        LEFT JOIN knobit_progress done ON done.passport_id = ki.passport_id
+                                       AND done.knobit_id = ki.knobit_id
+                                       AND done.phase_reached = 'done'
+        WHERE done.knobit_id IS NULL
+        GROUP BY ki.passport_id
+      ) kst ON kst.passport_id = u.passport_id
       LEFT JOIN (
         SELECT user_id,
                SUM(input_tokens * 3.0 + output_tokens * 15.0) / 1e6 AS estimated_cost

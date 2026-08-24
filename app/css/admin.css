@@ -213,6 +213,9 @@ body { overflow-y: auto; }
   cursor: pointer;
 }
 
+.th-tight { padding-left: 8px; padding-right: 8px; }
+.td-tight { padding-left: 8px; padding-right: 8px; }
+
 /* badges */
 .badge {
   display: inline-block;
