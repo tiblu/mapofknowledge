@@ -354,14 +354,7 @@
   <div id="lm-path" class="lm-view">
     <div class="lm-path-header">
       <button class="lm-back-btn" onclick="closeLearningMode()" data-i18n-title="btn.back_to_map" title="Back to map">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="3.5" r="1.8" stroke="currentColor" stroke-width="1.2"/>
-          <circle cx="2.5" cy="12" r="1.8" stroke="currentColor" stroke-width="1.2"/>
-          <circle cx="13.5" cy="12" r="1.8" stroke="currentColor" stroke-width="1.2"/>
-          <line x1="6.5" y1="5" x2="3.8" y2="10.3" stroke="currentColor" stroke-width="1.1"/>
-          <line x1="9.5" y1="5" x2="12.2" y2="10.3" stroke="currentColor" stroke-width="1.1"/>
-          <line x1="4.3" y1="12" x2="11.7" y2="12" stroke="currentColor" stroke-width="1.1"/>
-        </svg>
+        <img src="images/box.png" alt="" width="20" height="15">
       </button>
       <div class="lm-path-meta">
         <div class="lm-path-crumb" id="lm-path-crumb">Mathematics › Algebra</div>
@@ -371,8 +364,8 @@
 
     <div class="lm-progress-track">
       <div class="lm-progress-fill" id="lm-progress-fill" style="width:0%"></div>
+      <span class="lm-progress-pct" id="lm-progress-pct"></span>
     </div>
-    <div class="lm-progress-label" id="lm-progress-label"></div>
 
     <div class="lm-knobit-list" id="lm-knobit-list">
       <!-- populated by learning.js -->
@@ -826,7 +819,7 @@
 <script src="js/role-nav.js"></script>
 <script src="js/verify-banner.js"></script>
 <script src="js/tour.js"></script>
-<script src="js/learning.js?v=12"></script>
+<script src="js/learning.js?v=13"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/filters.js?v=5"></script>
 <script src="js/anne.js?v=2"></script>

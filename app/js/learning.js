@@ -259,6 +259,7 @@
     if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
     _ambientStop();
     _stopFocusTimer();
+    _stopBackBtnPulse();
     var overlay = document.getElementById('learning-mode');
     if (overlay) overlay.classList.remove('active');
     if (window.Anne) window.Anne.setVisible(true);
@@ -529,11 +530,40 @@
   }
 
   /* ─── View switching ──────────────────────────────────────────── */
+  var _backBtnPulseTimer = null;
+  var _backBtnPulseDelay = null;
+
+  function _pulseBackBtn() {
+    var btn = document.querySelector('#lm-path .lm-back-btn');
+    if (!btn) return;
+    btn.classList.remove('attention');
+    void btn.offsetWidth; // force reflow so the animation restarts
+    btn.classList.add('attention');
+  }
+
+  function _stopBackBtnPulse() {
+    if (_backBtnPulseDelay) { clearTimeout(_backBtnPulseDelay); _backBtnPulseDelay = null; }
+    if (_backBtnPulseTimer) { clearInterval(_backBtnPulseTimer); _backBtnPulseTimer = null; }
+  }
+
   window.showLmView = function (id) {
     ['lm-path', 'lm-knobit', 'lm-complete', 'lm-tree'].forEach(function (v) {
       var el = document.getElementById(v);
       if (el) el.classList.toggle('active', v === id);
     });
+
+    // Calls attention to the back button once on entering the path view,
+    // then every 30s for as long as it stays active.
+    if (id === 'lm-path') {
+      _stopBackBtnPulse();
+      _backBtnPulseDelay = setTimeout(function () {
+        _backBtnPulseDelay = null;
+        _pulseBackBtn();
+        _backBtnPulseTimer = setInterval(_pulseBackBtn, 30000);
+      }, 2000);
+    } else {
+      _stopBackBtnPulse();
+    }
   };
 
   /* ─── View 1 — Learning Path ──────────────────────────────────── */
@@ -541,15 +571,21 @@
     var crumbEl = document.getElementById('lm-path-crumb');
     var titleEl = document.getElementById('lm-path-title');
     var fillEl  = document.getElementById('lm-progress-fill');
-    var labelEl = document.getElementById('lm-progress-label');
+    var pctEl   = document.getElementById('lm-progress-pct');
     var listEl  = document.getElementById('lm-knobit-list');
 
     if (crumbEl) crumbEl.textContent = _crumb;
     if (titleEl) titleEl.textContent = _node ? _node.label : '';
 
     var pct = KNOBIT_TOTAL ? Math.round((KNOBIT_DONE_COUNT / KNOBIT_TOTAL) * 100) : 0;
-    if (fillEl)  fillEl.style.width   = pct + '%';
-    if (labelEl) labelEl.textContent  = pct + t('msg.pct_complete_suffix') + (pct < 100 ? ' ' + t('msg.keep_going') : '');
+    if (fillEl) fillEl.style.width = pct + '%';
+    if (pctEl) {
+      pctEl.textContent = pct + '%';
+      pctEl.classList.toggle('at-zero', pct <= 0);
+      // Tracks the fill's right edge (with a little inset) so the label
+      // always sits on the coloured bar, not the empty track behind it.
+      pctEl.style.right = pct <= 0 ? '' : 'calc(' + (100 - pct) + '% + 6px)';
+    }
 
     if (!listEl) return;
     listEl.innerHTML = '';
