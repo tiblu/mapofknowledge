@@ -148,7 +148,7 @@
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ localDate: _localDateStr() }),
-    }).catch(function () {});
+    }).then(function (r) { return r.json(); }).catch(function () { return {}; });
   }
 
   // Personal note — no LLM involved, just persisted so it survives resume
@@ -1263,11 +1263,16 @@
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
     var completedIdx = CURRENT_KNOBIT_IDX;
     KNOBIT_DONE_COUNT++;
-    apiComplete(k.id).then(function () {
+    apiComplete(k.id).then(function (data) {
       // Documented at the top of this file as a contract, but never actually
       // called anywhere — the map's node-ring overlay and the continue-chip
       // both went stale after a knobit completed, until a hard reload.
       if (window.MapView && window.MapView.refreshProgress) window.MapView.refreshProgress();
+      // Only rendered when the unit-complete screen is showing (this fires
+      // after every knobit, but the stat card stays hidden until then) —
+      // the whole-topic bonus only gets added to lumensEarned on the last
+      // knobit, when the server sees the node is actually fully done.
+      _setLumensEarned(data && data.lumensEarned);
     });
 
     if (CURRENT_KNOBIT_IDX + 1 >= KNOBIT_TOTAL) {
@@ -1293,6 +1298,11 @@
       var cards = stat.querySelectorAll('.lm-complete-stat');
       if (cards[0]) cards[0].innerHTML = '<div class="lm-cstat-num">' + KNOBIT_TOTAL + '</div><div class="lm-cstat-label">' + t('label.knobits') + '</div>';
     }
+    // Hidden until apiComplete's response comes back with the real amount —
+    // see _setLumensEarned, called from _completeKnobit.
+    var lumensCard = document.getElementById('lm-cstat-lumens');
+    if (lumensCard) lumensCard.style.display = 'none';
+
     var reflInp = document.getElementById('lm-reflection-input');
     if (reflInp) reflInp.value = '';
 
@@ -1314,6 +1324,19 @@
     }
 
     showLmView('lm-complete');
+  }
+
+  // Fills in the second stat card once the real amount is known — see the
+  // comment at its call site in _completeKnobit for why this can't just be
+  // computed client-side (the momentum multiplier isn't known here).
+  function _setLumensEarned(amount) {
+    var card = document.getElementById('lm-cstat-lumens');
+    if (!card || !amount) return;
+    var num   = card.querySelector('.lm-cstat-num');
+    var label = card.querySelector('.lm-cstat-label');
+    if (num)   num.textContent   = '+' + amount;
+    if (label) label.textContent = t('label.lumens');
+    card.style.display = '';
   }
 
   window._startRecommendedNode = function () {

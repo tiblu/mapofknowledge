@@ -1131,14 +1131,22 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       }
 
       // ── Gamification ───────────────────────────────────────────────────────
-      game.awardLumens(passportId, userId, 10, 'knobit_complete', knobitId).catch(() => {});
+      // Awaited (unlike the achievement/streak-saver/streak calls below) so the
+      // actual amount — after the learner's real momentum multiplier — can be
+      // sent back and shown on the unit-complete screen's lumens stat card.
+      let lumensEarned = await game.awardLumens(passportId, userId, 10, 'knobit_complete', knobitId).catch(() => 0);
       if (done >= total && total > 0) {
-        game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => {});
+        const [bonusAmount, branchAmount] = await Promise.all([
+          game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => 0),
+          game.maybeAwardBranchBonus(passportId, userId, node_id).catch(() => 0),
+        ]);
+        lumensEarned += (bonusAmount || 0) + (branchAmount || 0);
         game.maybeAwardStreakSaver(passportId, node_id, userId).catch(() => {});
-        game.maybeAwardBranchBonus(passportId, userId, node_id).catch(() => {});
       }
       game.checkAchievements(passportId, userId, 'knobit_complete', { totalEver }).catch(() => {});
       game.recordKnobitCompletion(passportId, localDate).catch(() => {});
+
+      return res.json({ ok: true, lumensEarned });
     }
 
     res.json({ ok: true });

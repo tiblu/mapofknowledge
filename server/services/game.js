@@ -609,7 +609,7 @@ async function maybeAwardProfileCompleteBonus(passportId, userId) {
 // existed, affectedRows is 0 and nothing is awarded twice), even though this
 // isn't shown as a medal.
 async function maybeAwardBranchBonus(passportId, userId, nodeDbId) {
-  if (!passportId || !nodeDbId) return;
+  if (!passportId || !nodeDbId) return 0;
   try {
     const [[parent]] = await db.execute(
       `SELECT p.id AS parentDbId, p.external_id AS parentExtId, p.label AS parentLabel
@@ -617,7 +617,7 @@ async function maybeAwardBranchBonus(passportId, userId, nodeDbId) {
        WHERE n.id = ? AND p.level = 4`,
       [nodeDbId]
     );
-    if (!parent) return;
+    if (!parent) return 0;
 
     const [[{ total, mastered }]] = await db.execute(
       `SELECT COUNT(child.id) AS total,
@@ -628,13 +628,13 @@ async function maybeAwardBranchBonus(passportId, userId, nodeDbId) {
        WHERE child.parent_id = ? AND child.level = 5`,
       [passportId, parent.parentDbId]
     );
-    if (!(total > 0 && mastered === total)) return;
+    if (!(total > 0 && mastered === total)) return 0;
 
     const [result] = await db.execute(
       'INSERT IGNORE INTO user_achievements (passport_id, achievement_key) VALUES (?, ?)',
       [passportId, 'branch_complete_' + parent.parentExtId]
     );
-    if (!result.affectedRows) return;
+    if (!result.affectedRows) return 0;
 
     const amount = await awardLumens(passportId, userId, 100, 'branch_complete', parent.parentExtId);
     if (userId && amount) {
@@ -642,8 +642,10 @@ async function maybeAwardBranchBonus(passportId, userId, nodeDbId) {
       notify(userId, 'achievement', `+${amount} lumens!`,
         `You completed every topic under "${parent.parentLabel}".`, parent.parentExtId);
     }
+    return amount;
   } catch (err) {
     console.error('[game/maybeAwardBranchBonus]', err.message);
+    return 0;
   }
 }
 

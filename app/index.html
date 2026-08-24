@@ -432,9 +432,12 @@
   <!-- ── VIEW 3: UNIT COMPLETE ──────────────────── -->
   <div id="lm-complete" class="lm-view">
     <div class="lm-complete-badge">
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+      <span class="lm-badge-spark s1"></span>
+      <span class="lm-badge-spark s2"></span>
+      <span class="lm-badge-spark s3"></span>
+      <svg width="40" height="40" viewBox="0 0 40 40">
         <path d="M20 6l3.5 8.5L32 16l-6 6 1.5 9L20 27l-7.5 4 1.5-9-6-6 8.5-1.5L20 6z"
-          stroke="#C4826A" stroke-width="1.8" stroke-linejoin="round"/>
+          fill="#fff" fill-opacity="0.9" stroke="#8A6410" stroke-width="1.1" stroke-linejoin="round"/>
       </svg>
     </div>
     <div class="lm-complete-title" data-i18n="msg.unit_complete">Unit complete!</div>
@@ -448,19 +451,23 @@
         <div class="lm-cstat-num">7</div>
         <div class="lm-cstat-label">Knobits<br>mastered</div>
       </div>
-    </div>
-
-    <div class="lm-next-node" id="lm-next-node" style="display:none">
-      <div class="lm-next-node-label" data-i18n="label.up_next">Up next</div>
-      <button class="lm-next-node-btn" id="lm-next-node-btn" onclick="window._startRecommendedNode()">
-        <span class="lm-next-node-name" id="lm-next-node-name"></span>
-        <span class="lm-next-node-cta" data-i18n="btn.start_learning">Start learning</span>
-      </button>
+      <div class="lm-complete-stat" id="lm-cstat-lumens" style="display:none">
+        <div class="lm-cstat-num gold"></div>
+        <div class="lm-cstat-label"></div>
+      </div>
     </div>
 
     <div class="lm-reflection-wrap">
       <div class="lm-reflection-label" data-i18n="label.reflection_prompt">What did you learn?</div>
       <textarea class="lm-reflection-input" id="lm-reflection-input" data-i18n-placeholder="placeholder.reflection" placeholder="Share a short reflection…"></textarea>
+    </div>
+
+    <div class="lm-next-node" id="lm-next-node" style="display:none">
+      <div class="lm-next-node-label" data-i18n="label.recommended_next_node">Recommended next node</div>
+      <button class="lm-next-node-btn" id="lm-next-node-btn" onclick="window._startRecommendedNode()">
+        <span class="lm-next-node-name" id="lm-next-node-name"></span>
+        <span class="lm-next-node-cta" data-i18n="btn.start_learning">Start learning</span>
+      </button>
     </div>
 
     <div class="lm-complete-actions">
@@ -767,7 +774,7 @@
 <script src="js/verify-banner.js"></script>
 <script src="js/nav-menu.js"></script>
 <script src="js/tour.js"></script>
-<script src="js/learning.js?v=19"></script>
+<script src="js/learning.js?v=20"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/layers.js?v=4"></script>
 <script src="js/filters.js?v=5"></script>
