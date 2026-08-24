@@ -205,6 +205,22 @@
   };
 
   window.closeLearningMode = function () {
+    // Save any unsent unit-complete reflection here (not in a specific
+    // button's click handler) so it's captured no matter which of the
+    // several ways of leaving learning mode the learner actually uses —
+    // previously only the "Back to the map" button on lm-complete saved
+    // it, so e.g. leaving via the top-bar logo silently discarded it.
+    var reflInp = document.getElementById('lm-reflection-input');
+    var reflText = reflInp ? reflInp.value.trim() : '';
+    if (reflText) {
+      fetch('/api/profile/reflections', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ text: reflText }),
+      }).catch(function () {});
+      reflInp.value = '';
+    }
+
     _knobitStarted = false;
     if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
     _ambientStop();
@@ -1577,20 +1593,8 @@
 
     var mapBtn = document.getElementById('lm-back-to-map-btn');
     if (mapBtn) mapBtn.addEventListener('click', function () {
-      var inp  = document.getElementById('lm-reflection-input');
-      var text = inp ? inp.value.trim() : '';
-      if (text) {
-        fetch('/api/profile/reflections', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ text: text }),
-        }).catch(function () {});
-      }
       window.closeLearningMode();
     });
-
-    var reviewBtn = document.querySelector('.lm-complete-btn-ghost');
-    if (reviewBtn) reviewBtn.addEventListener('click', function () { showLmView('lm-path'); });
 
     var quitConfirm = document.getElementById('quit-modal-confirm');
     if (quitConfirm) quitConfirm.addEventListener('click', function () {
