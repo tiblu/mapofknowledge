@@ -33,6 +33,8 @@
   var _MAX_AUTO_RETRY   = 3;
   var _pendingPractice = null;
   var _lastDemoBody    = '';   // previous example's body, sent so the next example doesn't repeat it
+  var _hasCorrectPracticeAnswer = false;
+  var CONFETTI_COLORS = ['#5E9052', '#8BAD7E', '#C4826A', '#E0B84D', '#6B9BD1'];
 
   var _PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
   // Fallback for knobits generated before target_bytes existed, and an
@@ -556,6 +558,7 @@
     var locked  = !done && !current;
     var item    = document.createElement('div');
     item.className = 'lm-knobit-item' + (done ? ' done' : '') + (current ? ' current' : '') + (locked ? ' locked' : '');
+    item.setAttribute('data-idx', i);
 
     var num       = document.createElement('div');
     num.className = 'lm-knobit-num';
@@ -800,6 +803,7 @@
     _seenVisualUrls   = [];
     _practiceInputEl  = null;
     _lastDemoBody     = '';
+    _hasCorrectPracticeAnswer = false;
 
     _setPhase('explain');
     _setButtonRow('');
@@ -819,6 +823,7 @@
     _seenVisualUrls   = [];
     _practiceInputEl  = null;
     _lastDemoBody     = '';
+    _hasCorrectPracticeAnswer = false;
 
     var lastPhase = null;
     var lastBlockType = null;
@@ -870,6 +875,7 @@
         }
       } else if (row.block_type === 'feedback') {
         var grade = JSON.parse(row.content || '{}');
+        if (grade.correct) _hasCorrectPracticeAnswer = true;
         _appendBlock({ type: 'feedback', content: (grade.correct ? '✓ ' : '✗ ') + (grade.feedback || '') });
         if (_practiceInputEl) { _practiceInputEl.value = row.answer_text || ''; _practiceInputEl.disabled = true; }
       } else if (row.block_type === 'meaning') {
@@ -891,7 +897,7 @@
     } else if (lastBlockType === 'practice') {
       _setButtonRow('practice-submit');
     } else if (lastBlockType === 'feedback') {
-      _setButtonRow('practice-next');
+      _setButtonRow(_hasCorrectPracticeAnswer ? 'practice-next' : 'practice-next-retry');
     } else if (lastBlockType === 'meaning') {
       _setButtonRow('meaning-options');
     }
@@ -977,8 +983,13 @@
     } else if (type === 'practice-submit') {
       btn(t('btn.submit_answer'), function () { window.practiceSubmit(); });
     } else if (type === 'practice-next') {
-      btn(t('btn.yes_next_problem'), function () { window.practiceNext(); }, 'btn-other');
       btn(t('btn.no_im_done'),       function () { window.practiceDone(); }, 'btn-understand');
+      btn(t('btn.yes_next_problem'), function () { window.practiceNext(); }, 'btn-other');
+    } else if (type === 'practice-next-retry') {
+      // Wrong answer: no "I'm done" escape hatch — only forward to another
+      // problem, so a learner can't move past practice without having
+      // demonstrated the concept at least once.
+      btn(t('btn.yes_next_problem'), function () { window.practiceNext(); }, 'btn-understand');
     } else if (type === 'meaning-options') {
       btn(t('btn.i_understand'),       function () { window.meaningOpt('ok');      }, 'btn-understand');
       btn(t('btn.i_dont_understand'),  function () { window.meaningOpt('no');      }, 'btn-other');
@@ -1127,7 +1138,7 @@
     _retryFn = function () {
       _showLoadingBlock();
       apiInteract({ phase: 'practice', action: 'grade', byteIndex: _practiceIdx, question: capturedProb.question || '', expected: capturedProb.expected || '', userAnswer: capturedAns })
-        .then(function (d) { _retryFn = null; _removeLoadingBlock(); var g = d.grade || {}; _appendBlock({ type: 'feedback', content: (g.correct ? '✓ ' : '✗ ') + (g.feedback || '') }); _setButtonRow('practice-next'); })
+        .then(function (d) { _retryFn = null; _removeLoadingBlock(); var g = d.grade || {}; _appendBlock({ type: 'feedback', content: (g.correct ? '✓ ' : '✗ ') + (g.feedback || '') }); if (g.correct) _hasCorrectPracticeAnswer = true; _setButtonRow(_hasCorrectPracticeAnswer ? 'practice-next' : 'practice-next-retry'); })
         .catch(_onApiError);
     };
     _retryFn();
@@ -1246,6 +1257,62 @@
   };
 
   /* ─── Knobit completion ───────────────────────────────────────── */
+  // Small, non-blocking reward for finishing an individual knobit — deliberately
+  // lighter than _showUnitComplete()'s full-screen treatment, which stays
+  // reserved for the rarer whole-unit milestone. All three pieces (item pop,
+  // toast, confetti) are appended inside #learning-mode's own DOM subtree —
+  // NOT document.body — so they stay visible whether or not the learner is
+  // in the Fullscreen API mode entered via _enterLmFullscreen() (which makes
+  // #learning-mode itself the fullscreen element; anything outside its
+  // subtree, e.g. a body-level toast, would silently never be painted while
+  // it's active — see the knobit-download-modal/focus-break-modal bugs this
+  // pattern was copied from).
+  function _celebrateKnobitComplete(idx) {
+    var listEl = document.getElementById('lm-knobit-list');
+    var item = listEl && listEl.querySelector('.lm-knobit-item[data-idx="' + idx + '"]');
+    if (item) {
+      item.classList.add('lm-just-completed');
+      setTimeout(function () { item.classList.remove('lm-just-completed'); }, 700);
+      _fireConfettiBurst(item);
+    }
+    _showCelebrateToast(t('msg.knobit_complete_toast'));
+  }
+
+  function _showCelebrateToast(text) {
+    var el = document.getElementById('lm-celebrate-toast');
+    if (!el) return;
+    var textEl = el.querySelector('.lm-celebrate-text');
+    if (textEl) textEl.textContent = text;
+    // Restart the rise-and-fade animation even if a prior one is still mid-play
+    // (finishing knobits back-to-back quickly) — re-adding a class that's
+    // already present doesn't retrigger a CSS animation on its own.
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
+  function _fireConfettiBurst(item) {
+    var numEl = item.querySelector('.lm-knobit-num');
+    if (!numEl) return;
+    var burst = document.createElement('div');
+    burst.className = 'lm-confetti-burst';
+    var pieceCount = 10;
+    for (var i = 0; i < pieceCount; i++) {
+      var piece = document.createElement('span');
+      piece.className = 'lm-confetti-piece';
+      var angle = (Math.PI * 2 * i / pieceCount) + (Math.random() * 0.4 - 0.2);
+      var dist  = 24 + Math.random() * 16;
+      piece.style.setProperty('--tx', (Math.cos(angle) * dist).toFixed(1) + 'px');
+      piece.style.setProperty('--ty', (Math.sin(angle) * dist).toFixed(1) + 'px');
+      piece.style.setProperty('--rot', Math.round(Math.random() * 360) + 'deg');
+      piece.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+      piece.style.animationDelay = Math.round(Math.random() * 60) + 'ms';
+      burst.appendChild(piece);
+    }
+    numEl.appendChild(burst);
+    setTimeout(function () { if (burst.parentNode) burst.parentNode.removeChild(burst); }, 750);
+  }
+
   function _completeKnobit() {
     _knobitStarted = false;
     // Deliberately NOT stopping the focus timer here — the learner is very
@@ -1253,6 +1320,7 @@
     // running across that boundary (see _continueOrStartFocusTimer). It
     // still gets stopped properly on a real exit via closeLearningMode().
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
+    var completedIdx = CURRENT_KNOBIT_IDX;
     KNOBIT_DONE_COUNT++;
     apiComplete(k.id);
 
@@ -1270,6 +1338,7 @@
       CURRENT_KNOBIT_IDX++;
       _buildPathView();
       showLmView('lm-path');
+      _celebrateKnobitComplete(completedIdx);
     }
   }
 
@@ -1747,6 +1816,41 @@
       var modal = document.getElementById('knobit-download-modal');
       if (modal) modal.style.display = 'none';
       _completeKnobit();
+    });
+
+    // Image lightbox — delegated so it covers both freshly-generated visuals
+    // and ones replayed from a mid-knobit resume, without a per-image listener.
+    var stream = document.getElementById('kn-stream');
+    if (stream) stream.addEventListener('click', function (e) {
+      var img = e.target.closest('.lm-visual-img');
+      if (!img) return;
+      var lightbox = document.getElementById('lm-lightbox');
+      var lbImg     = document.getElementById('lm-lightbox-img');
+      var lbCaption = document.getElementById('lm-lightbox-caption');
+      if (!lightbox || !lbImg) return;
+      lbImg.src = img.src;
+      lbImg.alt = img.alt || '';
+      if (lbCaption) {
+        var captionEl = img.parentNode && img.parentNode.querySelector('.lm-visual-caption');
+        lbCaption.textContent = captionEl ? captionEl.textContent : '';
+      }
+      lightbox.style.display = 'flex';
+    });
+
+    var lightboxEl = document.getElementById('lm-lightbox');
+    if (lightboxEl) lightboxEl.addEventListener('click', function (e) {
+      if (e.target === lightboxEl) lightboxEl.style.display = 'none';
+    });
+
+    var lightboxClose = document.getElementById('lm-lightbox-close');
+    if (lightboxClose) lightboxClose.addEventListener('click', function () {
+      lightboxEl.style.display = 'none';
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && lightboxEl && lightboxEl.style.display !== 'none') {
+        lightboxEl.style.display = 'none';
+      }
     });
 
     window.addEventListener('beforeunload', function (e) {

@@ -524,6 +524,28 @@
     </div>
   </div><!-- /lm-complete -->
 
+  <!-- Per-knobit completion bubble: rises + fades at center screen, non-blocking,
+       no dismiss needed (see _celebrateKnobitComplete in learning.js). Not shown
+       for the final knobit in a unit; lm-complete's full-screen view covers
+       that, bigger milestone. -->
+  <div id="lm-celebrate-toast" class="lm-celebrate-toast" role="status" aria-live="polite">
+    <svg class="lm-celebrate-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="10" cy="10" r="9" fill="currentColor" opacity="0.18"/>
+      <path d="M6 10.3l2.6 2.6L14.2 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="lm-celebrate-text"></span>
+  </div>
+
+  <!-- Image lightbox for visuals shown in the explain-phase stream — click a
+       .lm-visual-img to enlarge, click backdrop/close/Escape to dismiss. -->
+  <div id="lm-lightbox" class="lm-lightbox" style="display:none">
+    <button class="lm-lightbox-close" id="lm-lightbox-close" data-i18n-title="btn.close" title="Close" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+    <img class="lm-lightbox-img" id="lm-lightbox-img" src="" alt="">
+    <div class="lm-lightbox-caption" id="lm-lightbox-caption"></div>
+  </div>
+
   <!-- Lives inside #learning-mode (not as a page-level sibling) so it still
        renders while #learning-mode is the fullscreened element. -->
   <div id="quit-knobit-modal" style="display:none">
@@ -778,10 +800,10 @@
 <script src="js/role-nav.js"></script>
 <script src="js/verify-banner.js"></script>
 <script src="js/tour.js"></script>
-<script src="js/learning.js?v=9"></script>
+<script src="js/learning.js?v=10"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/filters.js?v=5"></script>
 <script src="js/anne.js?v=2"></script>
-<script src="js/app.js?v=9"></script>
+<script src="js/app.js?v=10"></script>
 </body>
 </html>

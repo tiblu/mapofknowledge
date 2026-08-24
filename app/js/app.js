@@ -1245,7 +1245,7 @@ function init(data) {
     clearKnowledgeFilter: function()         { window.clearKnowledgeFilter(); },
     updateRingColor:      function(fid, c)  { window.updateRingColor(fid, c); },
     resetZoom:            function()         { window.resetMapZoom(); },
-    refreshProgress:      function()         { loadProgress(); refreshStreakIcon(); },
+    refreshProgress:      function()         { loadProgress(); refreshContinueChip(); refreshStreakIcon(); },
     openDemoNode:         function()         {
       var target = simNodes.find(function(n) { return n.level === 4 && n.x; });
       if (!target) return;
@@ -1327,52 +1327,68 @@ function init(data) {
   }());
 
   // ── Continue chip ──────────────────────────────────────────────────────────
-  (function () {
-    const chip        = document.getElementById('continue-chip');
-    const topicEl     = document.getElementById('continue-chip-topic');
-    const progressEl  = document.getElementById('continue-chip-progress');
-    const toggleBtn   = document.getElementById('continue-chip-toggle');
+  // Was a one-shot IIFE that fetched /api/learn/resume once at page load and
+  // never again — so finishing a knobit (or a whole unit) later in the same
+  // session left the chip showing whatever done/total it had at load time,
+  // permanently stale until a hard reload. Split into a refreshable function
+  // (called again from window.MapView.refreshProgress after every knobit
+  // completion) plus a one-time listener setup, so re-running it doesn't
+  // stack duplicate click handlers.
+  let _continueChipNodeId = null;
+  function refreshContinueChip() {
+    const chip       = document.getElementById('continue-chip');
+    const topicEl    = document.getElementById('continue-chip-topic');
+    const progressEl = document.getElementById('continue-chip-progress');
     if (!chip) return;
-
     fetch('/api/learn/resume')
       .then(r => r.json())
       .then(({ nodeId, label, done, total }) => {
-        if (!nodeId) return;
+        _continueChipNodeId = nodeId || null;
+        if (!nodeId) { chip.classList.remove('visible'); return; }
         topicEl.textContent    = label;
         progressEl.textContent = `${done}/${total}`;
         chip.classList.add('visible');
-
-        // Click chip body → open learning mode
-        chip.addEventListener('click', function (e) {
-          if (e.target.closest('.continue-chip-toggle')) return;
-          if (chip.classList.contains('collapsed')) {
-            chip.classList.remove('collapsed');
-            return;
-          }
-          const node = allNodes[nodeId];
-          if (!node) return;
-          const crumb = (function () {
-            const chain = [];
-            let cur = nodeId;
-            while (parentOf[cur] !== undefined) { cur = parentOf[cur]; chain.unshift(allNodes[cur]); }
-            const domain = chain[0];
-            const mid    = chain.slice(1).map(n => n.label);
-            return (domain ? domain.label : '') + (mid.length ? ' › ' + mid.join(' › ') : '');
-          }());
-          fetch(`/api/nodes/${nodeId}/learn`, { method: 'POST' })
-            .then(r => r.json())
-            .then(({ knobits, resumeSession }) => { window.Learn.open(node, crumb, knobits, resumeSession); })
-            .catch(() => { window.Learn.open(node, crumb, null); });
-        });
-
-        // Collapse toggle
-        toggleBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          const collapsed = chip.classList.toggle('collapsed');
-          const chevron   = toggleBtn.querySelector('path');
-          if (chevron) chevron.setAttribute('d', collapsed ? 'M3.5 2l3.5 3-3.5 3' : 'M6.5 2L3 5l3.5 3');
-        });
       }).catch(() => {});
+  }
+
+  (function () {
+    const chip      = document.getElementById('continue-chip');
+    const toggleBtn = document.getElementById('continue-chip-toggle');
+    if (!chip) return;
+
+    // Click chip body → open learning mode
+    chip.addEventListener('click', function (e) {
+      if (e.target.closest('.continue-chip-toggle')) return;
+      if (chip.classList.contains('collapsed')) {
+        chip.classList.remove('collapsed');
+        return;
+      }
+      const nodeId = _continueChipNodeId;
+      const node = nodeId && allNodes[nodeId];
+      if (!node) return;
+      const crumb = (function () {
+        const chain = [];
+        let cur = nodeId;
+        while (parentOf[cur] !== undefined) { cur = parentOf[cur]; chain.unshift(allNodes[cur]); }
+        const domain = chain[0];
+        const mid    = chain.slice(1).map(n => n.label);
+        return (domain ? domain.label : '') + (mid.length ? ' › ' + mid.join(' › ') : '');
+      }());
+      fetch(`/api/nodes/${nodeId}/learn`, { method: 'POST' })
+        .then(r => r.json())
+        .then(({ knobits, resumeSession }) => { window.Learn.open(node, crumb, knobits, resumeSession); })
+        .catch(() => { window.Learn.open(node, crumb, null); });
+    });
+
+    // Collapse toggle
+    if (toggleBtn) toggleBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      const collapsed = chip.classList.toggle('collapsed');
+      const chevron   = toggleBtn.querySelector('path');
+      if (chevron) chevron.setAttribute('d', collapsed ? 'M3.5 2l3.5 3-3.5 3' : 'M6.5 2L3 5l3.5 3');
+    });
+
+    refreshContinueChip();
   }());
 
   // ── Achievement toasts — show on page load for newly-earned achievements ──

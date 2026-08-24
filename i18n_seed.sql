@@ -1258,3 +1258,9 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('achievement.first_goal_complete.desc', 'et', 'Täida oma esimene eesmärk.')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Learning-mode celebration toast
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('msg.knobit_complete_toast', 'en', 'Knobit completed. Well done!'),
+('msg.knobit_complete_toast', 'et', 'Knobit valmis. Tubli töö!')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
