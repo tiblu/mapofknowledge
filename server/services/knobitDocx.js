@@ -16,6 +16,7 @@ const LABELS = {
   your_answer: { en: 'Your answer:', et: 'Sinu vastus:' },
   watch_video: { en: 'Watch video',  et: 'Vaata videot' },
   you_asked:   { en: 'You asked:',   et: 'Sa küsisid:' },
+  your_note:   { en: 'Your note',    et: 'Sinu märkus' },
 };
 
 function _tr(map, locale) {
@@ -79,6 +80,8 @@ async function buildKnobitDocx(rows, nodeLabel, knobitTitle, locale) {
       lastPhase = row.phase;
     }
 
+    var _before = children.length;
+
     if (row.block_type === 'byte' || row.block_type === 'meaning') {
       children = children.concat(_textToParagraphs(row.content));
     } else if (row.block_type === 'visual') {
@@ -129,7 +132,19 @@ async function buildKnobitDocx(rows, nodeLabel, knobitTitle, locale) {
       }));
     } else if (row.block_type === 'note') {
       children = children.concat(_textToParagraphs(row.content));
+    } else if (row.block_type === 'personal_note') {
+      children.push(new Paragraph({
+        shading: { fill: 'FFF6D8' },
+        children: [
+          new TextRun({ text: '📌 ' + _tr(LABELS.your_note, locale) + ': ', bold: true }),
+          new TextRun({ text: row.content || '' }),
+        ],
+      }));
     }
+
+    // One blank line after every block ("textbox") in the thread, so the
+    // download reads with the same visual separation the learner saw.
+    if (children.length > _before) children.push(new Paragraph({ text: '' }));
   });
 
   var doc = new Document({ sections: [{ children: children }] });

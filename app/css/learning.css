@@ -630,6 +630,26 @@
   font-size: 13px; color: #000; line-height: 1.6;
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
+.block-personal_note {
+  position: relative;
+  margin-left: 30px;
+  background: #FFF6D8;
+  border: 1px solid #E8D690;
+  color: #4A3C10;
+  font-size: 13px; line-height: 1.6;
+  box-shadow: 0 1px 6px rgba(120,95,10,0.10);
+}
+.block-personal_note::before {
+  content: '';
+  position: absolute;
+  top: -9px; left: -9px;
+  width: 22px; height: 22px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 17 17' fill='none'%3E%3Cpath d='M9.97 8.19L8.69 9.47L15 14.5Z' fill='%239AA0A6'/%3E%3Ccircle cx='6.5' cy='6' r='4' fill='%23F0B93D' stroke='%23C9941A' stroke-width='0.6'/%3E%3Cellipse cx='5' cy='4.3' rx='1.1' ry='0.7' fill='%23FFF3D0' opacity='0.85'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 20px 20px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35));
+}
 .kn-retry-btn {
   flex-shrink: 0;
   padding: 3px 11px; border-radius: 5px; border: 1px solid var(--i25);
@@ -852,6 +872,28 @@
   background: var(--lm-accent);
   color: #fff;
 }
+.ask-note-toggle {
+  width: 36px; height: 36px; flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--i07);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--c3);
+  transition: background 0.13s, color 0.13s;
+}
+.ask-note-toggle:hover {
+  background: #F0DA8E;
+  color: #7A5E10;
+}
+.ask-bar.note-mode .ask-note-toggle {
+  background: #E8C74E;
+  color: #5C4508;
+}
+.ask-bar.note-mode .ask-input {
+  background: #FFF9E6;
+  border-color: #E8C74E;
+}
+.ask-bar.note-mode .ask-input::placeholder { color: #A8934A; }
 
 
 /* ═══════════════════════════════════════════
@@ -1017,6 +1059,8 @@
 
 /* Demo "What I did" annotation */
 .lm-demo-what-i-did {
+  display: block;
+  margin-top: 12px;
   opacity: 0.55; font-size: 0.95em;
 }
 
@@ -1167,6 +1211,8 @@
   font-size: 14px; color: var(--c3);
   line-height: 1.65; margin-bottom: 22px;
 }
+.quit-modal-text-top { margin-bottom: 6px; }
+.quit-modal-warn { color: var(--lm-accent); font-weight: 600; }
 .lm-break-countdown {
   font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums;
   color: var(--c1); text-align: center;

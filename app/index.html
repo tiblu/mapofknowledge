@@ -485,6 +485,16 @@
             <path d="M13 7.5L2 2l2.5 5.5L2 13l11-5.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
           </svg>
         </button>
+        <button class="ask-note-toggle" id="kn-note-toggle" title="Write a note to yourself" data-i18n-title="btn.note_add" onclick="window._toggleNoteMode()">
+          <svg id="kn-note-icon-pin" width="15" height="15" viewBox="0 0 17 17" fill="none">
+            <path d="M9.97 8.19L8.69 9.47L15 14.5Z" fill="#9AA0A6"/>
+            <circle cx="6.5" cy="6" r="4" fill="#F0B93D" stroke="#C9941A" stroke-width="0.6"/>
+            <ellipse cx="5" cy="4.3" rx="1.1" ry="0.7" fill="#FFF3D0" opacity="0.85"/>
+          </svg>
+          <svg id="kn-note-icon-close" width="13" height="13" viewBox="0 0 13 13" fill="none" style="display:none">
+            <path d="M2.5 2.5l8 8M10.5 2.5l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -579,7 +589,8 @@
   <div id="knobit-download-modal" style="display:none">
     <div class="quit-modal-box">
       <div class="quit-modal-title" data-i18n="msg.download_offer_title">Download this knobit?</div>
-      <div class="quit-modal-text" data-i18n="msg.download_offer_text">You can download this knobit now. After you continue, its content is cleared.</div>
+      <div class="quit-modal-text quit-modal-text-top" data-i18n="msg.download_offer_text">You can download this knobit now, including any notes you wrote.</div>
+      <div class="quit-modal-text quit-modal-warn" data-i18n="msg.download_offer_warn">After you continue, its content — and your notes — are cleared.</div>
       <div class="quit-modal-btns">
         <button class="quit-modal-cancel" id="knobit-download-btn" data-i18n="btn.download">Download</button>
         <button class="quit-modal-confirm" id="knobit-download-continue" data-i18n="label.continue">Continue</button>
@@ -815,7 +826,7 @@
 <script src="js/role-nav.js"></script>
 <script src="js/verify-banner.js"></script>
 <script src="js/tour.js"></script>
-<script src="js/learning.js?v=11"></script>
+<script src="js/learning.js?v=12"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/filters.js?v=5"></script>
 <script src="js/anne.js?v=2"></script>

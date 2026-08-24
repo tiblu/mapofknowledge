@@ -1089,6 +1089,20 @@ router.post('/learn/interact', async (req, res) => {
   }
 });
 
+const _NOTE_PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
+router.post('/learn/knobit/:id/note', async (req, res) => {
+  const knobitId   = req.params.id;
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.status(400).json({ error: 'No passport' });
+
+  const phase = _NOTE_PHASES.includes(req.body.phase) ? req.body.phase : 'explain';
+  const text  = String(req.body.text || '').trim().slice(0, 2000);
+  if (!text) return res.status(400).json({ error: 'text required' });
+
+  await _saveInteraction(passportId, knobitId, phase, 'personal_note', 0, null, null, text);
+  res.json({ ok: true });
+});
+
 // ── Download the in-progress knobit as a .docx (must be called before /complete,
 //    which deletes the knobit_interactions rows this reads) ──────────────────
 router.get('/learn/knobit/:id/download', async (req, res) => {

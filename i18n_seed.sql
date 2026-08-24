@@ -1272,3 +1272,17 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('label.lumens', 'en', 'lumens'),
 ('label.lumens', 'et', 'lumenit')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Personal notes feature (ask-bar pin toggle, download-offer dialog)
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('btn.note_add', 'en', 'Write a note to yourself'),
+('btn.note_add', 'et', 'Kirjuta endale märkus'),
+('btn.note_cancel', 'en', 'Cancel note'),
+('btn.note_cancel', 'et', 'Tühista märkus'),
+('placeholder.write_note', 'en', 'Write a note to yourself…'),
+('placeholder.write_note', 'et', 'Kirjuta endale märkus…'),
+('msg.download_offer_text', 'en', 'You can download this knobit now, including any notes you wrote.'),
+('msg.download_offer_text', 'et', 'Saad selle knobiti nüüd koos kirjutatud märkmetega alla laadida.'),
+('msg.download_offer_warn', 'en', 'After you continue, its content — and your notes — are cleared.'),
+('msg.download_offer_warn', 'et', 'Pärast jätkamist selle sisu — ja su märkmed — kustutatakse.')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
