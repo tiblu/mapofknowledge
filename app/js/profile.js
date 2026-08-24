@@ -39,8 +39,6 @@
     if (avatarCircle) avatarCircle.textContent = initials(name);
     const navName = document.querySelector('.pnav-name');
     if (navName) navName.textContent = name;
-    const navTagline = document.querySelector('.pnav-tagline');
-    if (navTagline) navTagline.textContent = passport.location || '';
 
     // Identity card
     const idCard = document.getElementById('identity-card');
