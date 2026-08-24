@@ -162,8 +162,9 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data && data.goalCompleted) _showGoalCelebration(data.goalCompleted);
+        return data;
       })
-      .catch(function () {});
+      .catch(function () { return {}; });
   }
 
   function _showGoalCelebration(goal) {
@@ -1322,7 +1323,16 @@
     var k = KNOBITS[CURRENT_KNOBIT_IDX];
     var completedIdx = CURRENT_KNOBIT_IDX;
     KNOBIT_DONE_COUNT++;
-    apiComplete(k.id);
+    apiComplete(k.id).then(function (data) {
+      // Documented at the top of this file as a contract, but never actually
+      // called anywhere — the map's node-ring overlay and the continue-chip
+      // both went stale after a knobit completed, until a hard reload.
+      if (window.MapView && window.MapView.refreshProgress) window.MapView.refreshProgress();
+      // Only meaningful (and only rendered) on the last knobit of a unit —
+      // the whole-topic bonus only gets added to lumensEarned once the
+      // server sees the node is actually fully done.
+      _setLumensEarned(data && data.lumensEarned);
+    });
 
     if (_treeMode) {
       // Finishing one L5's knobits doesn't mean the whole tree is done — other
@@ -1342,6 +1352,8 @@
     }
   }
 
+  var _recommendedNodeId = null;
+
   function _showUnitComplete() {
     var titleEl = document.querySelector('.lm-complete-title');
     var s = document.querySelector('.lm-complete-sub');
@@ -1351,12 +1363,53 @@
     var stat = document.querySelector('.lm-complete-stats');
     if (stat) {
       var cards = stat.querySelectorAll('.lm-complete-stat');
-      if (cards[0]) cards[0].innerHTML = '<div class="lm-stat-num">' + KNOBIT_TOTAL + '</div><div class="lm-stat-label">' + t('label.knobits') + '</div>';
+      if (cards[0]) cards[0].innerHTML = '<div class="lm-cstat-num">' + KNOBIT_TOTAL + '</div><div class="lm-cstat-label">' + t('label.knobits') + '</div>';
     }
+    // Hidden until apiComplete's response comes back with the real amount —
+    // see _setLumensEarned, called from _completeKnobit.
+    var lumensCard = document.getElementById('lm-cstat-lumens');
+    if (lumensCard) lumensCard.style.display = 'none';
+
     var reflInp = document.getElementById('lm-reflection-input');
     if (reflInp) reflInp.value = '';
+
+    _recommendedNodeId = null;
+    var nextWrap = document.getElementById('lm-next-node');
+    if (nextWrap) nextWrap.style.display = 'none';
+    if (_node && _node.id) {
+      fetch('/api/nodes/' + _node.id + '/next-recommendation')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var rec = data && data.recommendation;
+          if (!rec || !nextWrap) return;
+          _recommendedNodeId = rec.external_id;
+          var nameEl = document.getElementById('lm-next-node-name');
+          if (nameEl) nameEl.textContent = rec.label;
+          nextWrap.style.display = '';
+        })
+        .catch(function () {});
+    }
+
     showLmView('lm-complete');
   }
+
+  // Fills in the second stat card once the real amount is known — see the
+  // comment at its call site in _completeKnobit for why this can't just be
+  // computed client-side (the momentum multiplier isn't known here).
+  function _setLumensEarned(amount) {
+    var card = document.getElementById('lm-cstat-lumens');
+    if (!card || !amount) return;
+    var num   = card.querySelector('.lm-cstat-num');
+    var label = card.querySelector('.lm-cstat-label');
+    if (num)   num.textContent   = '+' + amount;
+    if (label) label.textContent = t('label.lumens');
+    card.style.display = '';
+  }
+
+  window._startRecommendedNode = function () {
+    if (!_recommendedNodeId || !window.MapView || !window.MapView.startLearningNode) return;
+    window.MapView.startLearningNode(_recommendedNodeId, { autoStart: true }).catch(function () {});
+  };
 
   /* ─── Ask bar ─────────────────────────────────────────────────── */
   window.sendAsk = function () {

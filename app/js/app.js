@@ -1326,6 +1326,31 @@ function init(data) {
     setTimeout(function () { navigateToNode(targetId); }, 1600);
   }());
 
+  // Shared by the continue-chip and the unit-complete screen's "Up next"
+  // recommendation — fetches/generates the node's knobits and opens learning
+  // mode for it. opts.autoStart also immediately starts the first knobit,
+  // instead of just showing the node's path view.
+  function startLearningNode(nodeId, opts) {
+    const node = nodeId && allNodes[nodeId];
+    if (!node) return Promise.reject(new Error('Unknown node'));
+    const crumb = (function () {
+      const chain = [];
+      let cur = nodeId;
+      while (parentOf[cur] !== undefined) { cur = parentOf[cur]; chain.unshift(allNodes[cur]); }
+      const domain = chain[0];
+      const mid    = chain.slice(1).map(n => n.label);
+      return (domain ? domain.label : '') + (mid.length ? ' › ' + mid.join(' › ') : '');
+    }());
+    return fetch(`/api/nodes/${nodeId}/learn`, { method: 'POST' })
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(({ knobits, resumeSession }) => {
+        if (!Array.isArray(knobits) || !knobits.length) throw new Error('No knobits returned');
+        window.Learn.open(node, crumb, knobits, resumeSession);
+        if (opts && opts.autoStart && window.startKnobit) window.startKnobit();
+      });
+  }
+  window.MapView.startLearningNode = startLearningNode;
+
   // ── Continue chip ──────────────────────────────────────────────────────────
   // Was a one-shot IIFE that fetched /api/learn/resume once at page load and
   // never again — so finishing a knobit (or a whole unit) later in the same

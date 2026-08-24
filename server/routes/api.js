@@ -704,6 +704,75 @@ router.post('/nodes/:id/learn', async (req, res) => {
   }
 });
 
+// ── "Up next" recommendation for the unit-complete screen ───────────────────
+// Only fires when the just-finished node itself is L5 — a learner who
+// entered via an L3/L4 structured path stays on that higher-level node the
+// whole way through, so this intentionally returns null for them rather
+// than guessing which leaf they actually just finished.
+router.get('/nodes/:id/next-recommendation', async (req, res) => {
+  const { id } = req.params;
+  const passportId = req.user?.passport_id;
+  if (!passportId) return res.json({ recommendation: null });
+
+  async function pickFrom(parentDbId, excludeExternalId) {
+    const params = [passportId, parentDbId];
+    let excludeClause = '';
+    if (excludeExternalId) { excludeClause = 'AND n.external_id != ?'; params.push(excludeExternalId); }
+    const [siblings] = await db.execute(
+      `SELECT n.external_id, n.label,
+              COUNT(k.id) AS total,
+              COALESCE(SUM(CASE WHEN kp.phase_reached = 'done' THEN 1 ELSE 0 END), 0) AS done
+       FROM nodes n
+       LEFT JOIN knobits k ON k.node_id = n.id
+       LEFT JOIN knobit_progress kp ON kp.knobit_id = k.id AND kp.passport_id = ?
+       WHERE n.parent_id = ? AND n.level = 5 AND n.is_active = 1 ${excludeClause}
+       GROUP BY n.id, n.external_id, n.label`,
+      params
+    );
+    // Not fully done (covers never-generated nodes too, where total = 0).
+    const eligible = siblings.filter(s => !(s.total > 0 && s.done === s.total));
+    if (!eligible.length) return null;
+    const unstudied = eligible.filter(s => s.done === 0);
+    const pool = unstudied.length ? unstudied : eligible;
+    const minDone = Math.min(...pool.map(s => s.done));
+    const best = pool.filter(s => s.done === minDone);
+    return best[Math.floor(Math.random() * best.length)];
+  }
+
+  try {
+    const [nodes] = await db.execute(
+      'SELECT id, parent_id, level FROM nodes WHERE external_id = ?', [id]
+    );
+    if (!nodes.length || nodes[0].level !== 5 || !nodes[0].parent_id) {
+      return res.json({ recommendation: null });
+    }
+    const l4Id = nodes[0].parent_id;
+
+    let picked = await pickFrom(l4Id, id);
+
+    if (!picked) {
+      const [[l4Row]] = await db.execute('SELECT parent_id FROM nodes WHERE id = ?', [l4Id]);
+      const l3Id = l4Row?.parent_id;
+      if (l3Id) {
+        const [l4Siblings] = await db.execute(
+          'SELECT id FROM nodes WHERE parent_id = ? AND level = 4 AND id != ? AND is_active = 1',
+          [l3Id, l4Id]
+        );
+        const shuffled = l4Siblings.sort(() => Math.random() - 0.5);
+        for (const sib of shuffled) {
+          picked = await pickFrom(sib.id, null);
+          if (picked) break;
+        }
+      }
+    }
+
+    res.json({ recommendation: picked ? { external_id: picked.external_id, label: picked.label } : null });
+  } catch (err) {
+    console.error('[api/nodes/next-recommendation]', err.message);
+    res.json({ recommendation: null });
+  }
+});
+
 // ── SSE helper: set headers and run an llm streaming call ───────────────────
 // streamFn receives (write, writeStatus). Real Anthropic-streaming closures only
 // take one param (their onChunk callback) and silently ignore the extra arg.
@@ -1174,11 +1243,17 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
       }
 
       // ── Gamification ───────────────────────────────────────────────────────
-      game.awardLumens(passportId, userId, 10, 'knobit_complete', knobitId).catch(() => {});
+      // Awaited (unlike the achievement/streak-saver/streak calls below) so the
+      // actual amount — after the learner's real momentum multiplier — can be
+      // sent back and shown on the unit-complete screen's lumens stat card.
+      let lumensEarned = await game.awardLumens(passportId, userId, 10, 'knobit_complete', knobitId).catch(() => 0);
       if (done >= total && total > 0) {
-        game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => {});
+        const [bonusAmount, branchAmount] = await Promise.all([
+          game.awardLumens(passportId, userId, 25, 'node_all_knobits', nodeExtId).catch(() => 0),
+          game.maybeAwardBranchBonus(passportId, userId, node_id).catch(() => 0),
+        ]);
+        lumensEarned += (bonusAmount || 0) + (branchAmount || 0);
         game.maybeAwardStreakSaver(passportId, node_id, userId).catch(() => {});
-        game.maybeAwardBranchBonus(passportId, userId, node_id).catch(() => {});
       }
       game.checkAchievements(passportId, userId, 'knobit_complete', { totalEver }).catch(() => {});
       game.recordKnobitCompletion(passportId, localDate).catch(() => {});
@@ -1199,9 +1274,11 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
             locale === 'et' ? 'Eesmärk täidetud! 🎉' : 'Goal completed! 🎉',
             locale === 'et' ? `Läbisid: "${nodeLabel}"` : `You finished: "${nodeLabel}"`, nodeExtId);
           game.checkAchievements(passportId, userId, 'goal_complete', {}).catch(() => {});
-          return res.json({ ok: true, goalCompleted: { nodeLabel, nodeExtId } });
+          return res.json({ ok: true, goalCompleted: { nodeLabel, nodeExtId }, lumensEarned });
         }
       }
+
+      return res.json({ ok: true, lumensEarned });
     }
 
     res.json({ ok: true });

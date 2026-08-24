@@ -1264,3 +1264,11 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.knobit_complete_toast', 'en', 'Knobit completed. Well done!'),
 ('msg.knobit_complete_toast', 'et', 'Knobit valmis. Tubli töö!')
 ON DUPLICATE KEY UPDATE value = VALUES(value);
+
+-- Unit-complete screen: recommendation card + lumens stat
+INSERT INTO ui_strings (key_name, locale, value) VALUES
+('label.recommended_next_node', 'en', 'Recommended next node'),
+('label.recommended_next_node', 'et', 'Soovitatud järgmine sõlm'),
+('label.lumens', 'en', 'lumens'),
+('label.lumens', 'et', 'lumenit')
+ON DUPLICATE KEY UPDATE value = VALUES(value);
