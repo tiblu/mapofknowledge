@@ -134,7 +134,7 @@
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ message: text }),
     }).then(function (r) {
-      if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+      if (!r.ok || !r.body) { var e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
       var reader  = r.body.getReader();
       var decoder = new TextDecoder();
       var lineBuf = '';
@@ -168,9 +168,14 @@
         });
       }
       return pump();
-    }).catch(function () {
+    }).catch(function (err) {
       _removeThinking();
-      if (!replyEl) _appendMessage('assistant', (window.t ? window.t('anne.error') : 'Something went wrong — please try again.'));
+      if (!replyEl) {
+        var msg = err && err.status === 429
+          ? (window.t ? window.t('msg.slow_down') : 'You are sending requests a bit fast. Please wait a few seconds and try again.')
+          : (window.t ? window.t('anne.error') : 'Something went wrong — please try again.');
+        _appendMessage('assistant', msg);
+      }
     }).then(function () {
       _sending = false;
       input.disabled = false;

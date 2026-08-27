@@ -527,7 +527,7 @@ function init(data, emergentData) {
 
         try {
           const r = await fetch(`/api/nodes/${d.id}/learn`, { method: 'POST' });
-          if (!r.ok) throw new Error('HTTP ' + r.status);
+          if (!r.ok) { const e = new Error('HTTP ' + r.status); e.status = r.status; throw e; }
           const { knobits, resumeSession } = await r.json();
           if (!Array.isArray(knobits) || !knobits.length) throw new Error('No knobits returned');
           restore();
@@ -536,7 +536,9 @@ function init(data, emergentData) {
         } catch (err) {
           restore();
           if (learnErrorEl && learnErrorText) {
-            learnErrorText.textContent = t('msg.connection_error');
+            // Rate-limited (per-user LLM cap) gets its own message rather
+            // than the generic connection-error text.
+            learnErrorText.textContent = err && err.status === 429 ? t('msg.slow_down') : t('msg.connection_error');
             learnErrorEl.style.display = 'flex';
           }
         }

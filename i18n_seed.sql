@@ -535,6 +535,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.passwords_dont_match',     'en', 'Passwords don\'t match.'),
 ('msg.wrong_password',           'en', 'Incorrect password.'),
 ('msg.could_not_download',       'en', 'Could not download.'),
-('msg.type_delete_to_confirm',   'en', 'Type DELETE to confirm.')
+('msg.type_delete_to_confirm',   'en', 'Type DELETE to confirm.'),
+
+-- Per-user LLM rate limit (2026-08-28): shown instead of the generic
+-- connection-error message when a request is throttled (429).
+('msg.slow_down',                'en', 'You are sending requests a bit fast. Please wait a few seconds and try again.')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

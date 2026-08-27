@@ -89,6 +89,15 @@
   }
 
   /* ─── API helper ──────────────────────────────────────────────── */
+  // Carries the HTTP status onto the rejected Error so callers can special-case
+  // 429 (per-user LLM rate limit — see server/middleware/llmRateLimit.js) with
+  // a distinct, non-auto-retrying message instead of the generic connection-error path.
+  function _httpError(r) {
+    var e = new Error('HTTP ' + r.status);
+    e.status = r.status;
+    return e;
+  }
+
   function apiInteract(params) {
     var knobit = KNOBITS[CURRENT_KNOBIT_IDX];
     if (!knobit) return Promise.reject(new Error('No knobit'));
@@ -98,7 +107,7 @@
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
     }).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) throw _httpError(r);
       return r.json();
     });
   }
@@ -114,7 +123,7 @@
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
     }).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) throw _httpError(r);
       if (!r.body) throw new Error('No stream');
       var reader  = r.body.getReader();
       var decoder = new TextDecoder();
@@ -550,15 +559,15 @@
 
     fetch('/api/learn/lootbox/' + encodeURIComponent(_node.id))
       .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
+        if (!r.ok) throw _httpError(r);
         return r.json();
       })
       .then(function (resp) {
         _lootboxData = (resp && resp.data) || {};
         _renderLootboxGrid();
       })
-      .catch(function () {
-        _renderLootboxStatus('error');
+      .catch(function (err) {
+        _renderLootboxStatus(err && err.status === 429 ? 'rate_limited' : 'error');
       });
   };
 
@@ -584,10 +593,11 @@
         '<div style="display:flex;gap:5px;">' +
         '<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>' +
         '</div></div>';
-    } else if (kind === 'error') {
+    } else if (kind === 'error' || kind === 'rate_limited') {
+      var msgKey = kind === 'rate_limited' ? 'msg.slow_down' : 'msg.connection_error';
       body.innerHTML =
         '<div class="lootbox-status">' +
-        '<div class="lootbox-status-text">' + _escHtml(window.t('msg.connection_error')) + '</div>' +
+        '<div class="lootbox-status-text">' + _escHtml(window.t(msgKey)) + '</div>' +
         '<button type="button" class="lootbox-retry" id="lootbox-retry-btn">' + _escHtml(window.t('btn.retry')) + '</button>' +
         '</div>';
       var retryBtn = document.getElementById('lootbox-retry-btn');
@@ -1591,8 +1601,18 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  function _onApiError() {
+  function _onApiError(err) {
     _removeLoadingBlock();
+    if (err && err.status === 429) {
+      // Rate-limited — don't auto-retry into the same limit, just offer a
+      // manual retry once the learner has paused for a moment.
+      _autoRetryCount = 0;
+      _appendBlock({ type: 'note', rawHtml:
+        '<span>' + t('msg.slow_down') + '</span>' +
+        (_retryFn ? ' <button class="kn-retry-btn" onclick="window._lmRetry()">' + t('btn.retry') + '</button>' : '')
+      });
+      return;
+    }
     if (_retryFn && _autoRetryCount < _MAX_AUTO_RETRY) {
       _autoRetryCount++;
       _showLoadingBlock();

@@ -35,6 +35,15 @@
   }
 
   /* ─── API helpers ─────────────────────────────────────────────── */
+  // Carries the HTTP status onto the rejected Error so callers can special-case
+  // 429 (per-user LLM rate limit — see server/middleware/llmRateLimit.js) with
+  // a distinct, non-auto-retrying message instead of the generic connection-error path.
+  function _httpError(r) {
+    var e = new Error('HTTP ' + r.status);
+    e.status = r.status;
+    return e;
+  }
+
   // Streams raw JSON tokens, accumulates, parses on [DONE].
   function _apiStream(url, body, onStatus) {
     return fetch(url, {
@@ -42,7 +51,7 @@
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(Object.assign({}, body, { stream: true })),
     }).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) throw _httpError(r);
       if (!r.body) throw new Error('No stream');
       var reader  = r.body.getReader();
       var decoder = new TextDecoder();
@@ -84,7 +93,7 @@
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ nodeId: _node.id, questionNum: questionNum, history: history }),
     }).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) throw _httpError(r);
       return r.json();
     });
   }
@@ -280,11 +289,18 @@
         _currentQuestion = q;
         _appendQuestionBlock(q);
         _setAnswerInputState(true, q.type === 'mcq');
-      }).catch(function () {
+      }).catch(function (err) {
         _questionFetching = false;
         _questionNum--;
         _removeLoadingBlock();
-        if (_autoRetryCount < _MAX_AUTO_RETRY) {
+        if (err && err.status === 429) {
+          // Rate-limited — don't auto-retry into the same limit.
+          _autoRetryCount = 0;
+          _appendBlock({ type: 'note', rawHtml:
+            '<span>' + t('msg.slow_down') + '</span> ' +
+            '<button class="kn-retry-btn" onclick="window._testRetryQuestion()">' + t('btn.retry') + '</button>'
+          });
+        } else if (_autoRetryCount < _MAX_AUTO_RETRY) {
           _autoRetryCount++;
           _showLoadingBlock();
           setTimeout(_advanceQuestion, 2000);
@@ -357,9 +373,15 @@
           } else {
             setTimeout(_advanceQuestion, 1000);
           }
-        }).catch(function () {
+        }).catch(function (err) {
           _removeLoadingBlock();
-          if (_autoRetryCount < _MAX_AUTO_RETRY) {
+          if (err && err.status === 429) {
+            // Rate-limited — don't auto-retry into the same limit.
+            _autoRetryCount = 0;
+            _awaitingAnswer = true;
+            _setAnswerInputState(true, capturedQ.type === 'mcq');
+            _appendBlock({ type: 'note', content: t('msg.slow_down') });
+          } else if (_autoRetryCount < _MAX_AUTO_RETRY) {
             _autoRetryCount++;
             _showLoadingBlock();
             setTimeout(doEvaluate, 2000);

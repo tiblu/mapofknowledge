@@ -6,6 +6,7 @@ const game    = require('../services/game');
 const { notify } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
 const { renderPassportText } = require('../services/passportText');
+const llmRateLimit = require('../middleware/llmRateLimit');
 
 // ── Free-text length cap ─────────────────────────────────────────────────────
 // Applies to every learner-typed field that flows into an LLM prompt (ask-bar
@@ -468,7 +469,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
 });
 
 // ── Generate / return knobits for a node ─────────────────────────────────────
-router.post('/nodes/:id/learn', async (req, res) => {
+router.post('/nodes/:id/learn', llmRateLimit, async (req, res) => {
   const { id }      = req.params;
   const locale      = await getUserLocale(req.user?.id);
   const passportId  = req.user?.passport_id;
@@ -765,7 +766,7 @@ async function _saveInteraction(passportId, knobitId, phase, blockType, blockInd
 }
 
 // ── LLM learning interactions ────────────────────────────────────────────────
-router.post('/learn/interact', async (req, res) => {
+router.post('/learn/interact', llmRateLimit, async (req, res) => {
   const {
     knobitId, phase, action,
     byteIndex = 0, answer, priorChoices = [],
@@ -1003,7 +1004,7 @@ async function _checkUrlAlive(url) {
   }
 }
 
-router.get('/learn/lootbox/:nodeId', async (req, res) => {
+router.get('/learn/lootbox/:nodeId', llmRateLimit, async (req, res) => {
   const { nodeId } = req.params;
   try {
     const [nodes] = await db.execute(
@@ -1349,7 +1350,7 @@ router.get('/anne/messages', async (req, res) => {
   }
 });
 
-router.post('/anne/message', async (req, res) => {
+router.post('/anne/message', llmRateLimit, async (req, res) => {
   const passportId = req.user?.passport_id;
   const uid = req.user?.id;
   if (!passportId) return res.status(400).json({ error: 'No passport' });
@@ -1802,7 +1803,7 @@ async function getNodeBreadcrumb(nodeDbId) {
 }
 
 // ── 4-tier diagnostic: generate question ─────────────────────────────────────
-router.post('/test/question', async (req, res) => {
+router.post('/test/question', llmRateLimit, async (req, res) => {
   const { nodeId, questionNum, history = [], stream: wantStream = false } = req.body;
   try {
     const [nodes] = await db.execute(
@@ -1864,7 +1865,7 @@ async function _saveTestResult(passportId, userId, nodeId, label, evaluation) {
 }
 
 // ── 4-tier diagnostic: evaluate answer ───────────────────────────────────────
-router.post('/test/evaluate', async (req, res) => {
+router.post('/test/evaluate', llmRateLimit, async (req, res) => {
   const { nodeId, questionNum, question, options, userAnswer, correctIndex, history = [], stream: wantStream = false } = req.body;
   const passportId = req.user?.passport_id;
 
