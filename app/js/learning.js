@@ -61,6 +61,33 @@
 
   var CONFETTI_COLORS = ['#5E9052', '#8BAD7E', '#C4826A', '#E0B84D', '#6B9BD1'];
 
+  // Matches MAX_FREE_TEXT_CHARS in server/routes/api.js — keeps a good-faith
+  // learner from ever reaching the server-side rejection in the first place.
+  var MAX_TEXT_CHARS = 4000;
+  function _wireCharCounter(inputEl, counterEl) {
+    if (!inputEl || !counterEl) return;
+    function update() {
+      var len = inputEl.value.length;
+      counterEl.textContent = len + ' / ' + MAX_TEXT_CHARS;
+      counterEl.classList.toggle('char-counter-near-limit', len > MAX_TEXT_CHARS * 0.9);
+    }
+    inputEl.addEventListener('input', update);
+    update();
+  }
+  function _resetCharCounter(counterId) {
+    var el = document.getElementById(counterId);
+    if (el) { el.textContent = '0 / ' + MAX_TEXT_CHARS; el.classList.remove('char-counter-near-limit'); }
+  }
+  // Appends a live char-counter after a freshly-created textarea (practice
+  // answer — a new element each round, so no static markup to attach to).
+  function _appendCharCounter(inp, wrapper) {
+    inp.maxLength = MAX_TEXT_CHARS;
+    var counter = document.createElement('div');
+    counter.className = 'char-counter';
+    wrapper.appendChild(counter);
+    _wireCharCounter(inp, counter);
+  }
+
   /* ─── API helper ──────────────────────────────────────────────── */
   function apiInteract(params) {
     var knobit = KNOBITS[CURRENT_KNOBIT_IDX];
@@ -219,6 +246,7 @@
         body:    JSON.stringify({ text: reflText }),
       }).catch(function () {});
       reflInp.value = '';
+      _resetCharCounter('lm-reflection-counter');
     }
 
     _knobitStarted = false;
@@ -826,6 +854,7 @@
           inp.placeholder = t('placeholder.your_answer');
           inp.rows        = 2;
           wrapper.appendChild(inp);
+          _appendCharCounter(inp, wrapper);
           _practiceInputEl = inp;
         }
       } else if (row.block_type === 'feedback') {
@@ -1067,6 +1096,7 @@
           inp.placeholder = t('placeholder.your_answer');
           inp.rows        = 2;
           wrapper.appendChild(inp);
+          _appendCharCounter(inp, wrapper);
           // Old rounds' textareas are never removed (kept visible as thread
           // history), so this id is never unique in the DOM after the first
           // problem — track this exact element instead of relying on
@@ -1305,6 +1335,7 @@
 
     var reflInp = document.getElementById('lm-reflection-input');
     if (reflInp) reflInp.value = '';
+    _resetCharCounter('lm-reflection-counter');
 
     _recommendedNodeId = null;
     var nextWrap = document.getElementById('lm-next-node');
@@ -1607,6 +1638,8 @@
     if (askInp) askInp.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendAsk(); }
     });
+
+    _wireCharCounter(document.getElementById('lm-reflection-input'), document.getElementById('lm-reflection-counter'));
 
     var askSend = document.getElementById('kn-ask-send');
     if (askSend) askSend.addEventListener('click', window.sendAsk);

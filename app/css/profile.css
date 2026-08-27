@@ -562,6 +562,15 @@ select.p-edit-input { cursor: pointer; }
   width: 100%; min-height: 140px; resize: vertical;
 }
 
+/* free-text character counter — shown on any capped textarea */
+.char-counter {
+  display: block; text-align: right;
+  font-size: 10.5px; font-weight: 600;
+  color: var(--c7);
+  margin: 3px 2px 0;
+}
+.char-counter.char-counter-near-limit { color: #C4574D; }
+
 /* Button with no top margin (used inline in forms) */
 .p-edit-btn-inline { margin-top: 0; }
 

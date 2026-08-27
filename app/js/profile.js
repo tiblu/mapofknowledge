@@ -11,6 +11,22 @@
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  // Matches MAX_FREE_TEXT_CHARS in server/routes/api.js — keeps a good-faith
+  // learner from ever reaching the server-side rejection in the first place.
+  var MAX_TEXT_CHARS = 4000;
+  function wireCharCounter(textareaId, counterId) {
+    var inp = document.getElementById(textareaId);
+    var counter = document.getElementById(counterId);
+    if (!inp || !counter) return;
+    function update() {
+      var len = inp.value.length;
+      counter.textContent = len + ' / ' + MAX_TEXT_CHARS;
+      counter.classList.toggle('char-counter-near-limit', len > MAX_TEXT_CHARS * 0.9);
+    }
+    inp.addEventListener('input', update);
+    update();
+  }
+
   function initials(name) {
     if (!name) return '?';
     return name.trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join('');
@@ -284,14 +300,16 @@
             <input id="ev-date" type="date" class="p-edit-input p-flex-1" value="${today}">
             <input id="ev-notes" class="p-edit-input p-flex-2" placeholder="${esc(t('placeholder.event_notes'))}">
           </div>
-          <textarea id="ev-reflection" class="p-edit-input p-textarea-full"
+          <textarea id="ev-reflection" class="p-edit-input p-textarea-full" maxlength="${MAX_TEXT_CHARS}"
             placeholder="${esc(t('placeholder.event_reflection'))}"></textarea>
+          <div class="char-counter" id="ev-reflection-counter"></div>
           <div class="p-form-btn-row">
             <button class="p-edit-btn primary p-edit-btn-inline" onclick="window.saveManualEvent()">${t('btn.add')}</button>
             <button class="p-edit-btn p-edit-btn-inline" onclick="document.getElementById('ev-form').style.display='none';document.getElementById('ev-add-btn').style.display=''">${t('btn.cancel')}</button>
           </div>
         </div>
       </div>`;
+    wireCharCounter('ev-reflection', 'ev-reflection-counter');
   }
 
   function renderEvents(events) {
@@ -793,8 +811,9 @@
         ${t('btn.add_goal')}
       </button>
       <div id="goal-form" style="display:none" class="p-rel-form">
-        <textarea id="goal-textarea" class="p-edit-input p-textarea-full"
+        <textarea id="goal-textarea" class="p-edit-input p-textarea-full" maxlength="${MAX_TEXT_CHARS}"
           placeholder="${esc(t('placeholder.goal_text'))}"></textarea>
+        <div class="char-counter" id="goal-textarea-counter"></div>
         <div class="p-goal-smart-hint">${t('msg.smart_hint')}</div>
         <div class="p-flex-row-sm">
           <button class="p-edit-btn primary p-edit-btn-inline" onclick="window.saveGoal()">${t('btn.add')}</button>
@@ -804,6 +823,7 @@
 
     card.innerHTML = `<div class="p-card-title">${t('section.goals')}</div>` +
       warning + activeRows + doneRows + addForm;
+    wireCharCounter('goal-textarea', 'goal-textarea-counter');
   }
 
   window.saveGoal = function() {
@@ -908,9 +928,11 @@
     if (!card) return;
     const current = card.querySelector('.p-about-text')?.textContent.trim() || '';
     card.innerHTML = `
-      <textarea class="p-edit-input p-about-edit-textarea" placeholder="${esc(t('placeholder.about'))}">${esc(current)}</textarea>
+      <textarea id="about-edit-textarea" class="p-edit-input p-about-edit-textarea" maxlength="${MAX_TEXT_CHARS}" placeholder="${esc(t('placeholder.about'))}">${esc(current)}</textarea>
+      <div class="char-counter" id="about-edit-textarea-counter"></div>
       <button class="p-edit-btn primary" onclick="window.saveAbout(this)">${t('btn.save')}</button>
       <button class="p-edit-btn" onclick="window.loadProfile()">${t('btn.cancel')}</button>`;
+    wireCharCounter('about-edit-textarea', 'about-edit-textarea-counter');
   };
 
   window.saveAbout = function (btn) {

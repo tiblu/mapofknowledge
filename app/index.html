@@ -407,7 +407,7 @@
     <!-- sticky action area -->
     <div class="kn-action-area" id="kn-action-area">
       <div class="ask-bar" id="kn-ask-bar">
-        <input type="text" class="ask-input" id="kn-ask-input" placeholder="Ask anything about this knobit…" data-i18n-placeholder="placeholder.ask_knobit" autocomplete="off">
+        <input type="text" class="ask-input" id="kn-ask-input" maxlength="4000" placeholder="Ask anything about this knobit…" data-i18n-placeholder="placeholder.ask_knobit" autocomplete="off">
         <button class="ask-send" id="kn-ask-send" title="Send">
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
             <path d="M13 7.5L2 2l2.5 5.5L2 13l11-5.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
@@ -459,7 +459,8 @@
 
     <div class="lm-reflection-wrap">
       <div class="lm-reflection-label" data-i18n="label.reflection_prompt">What did you learn?</div>
-      <textarea class="lm-reflection-input" id="lm-reflection-input" data-i18n-placeholder="placeholder.reflection" placeholder="Share a short reflection…"></textarea>
+      <textarea class="lm-reflection-input" id="lm-reflection-input" maxlength="4000" data-i18n-placeholder="placeholder.reflection" placeholder="Share a short reflection…"></textarea>
+      <div class="char-counter" id="lm-reflection-counter"></div>
     </div>
 
     <div class="lm-next-node" id="lm-next-node" style="display:none">
@@ -742,7 +743,7 @@
     </div>
     <div class="anne-messages" id="anne-messages"></div>
     <div class="anne-input-row">
-      <input id="anne-input" type="text" data-i18n-placeholder="anne.input_placeholder" placeholder="Ask Anne...">
+      <input id="anne-input" type="text" maxlength="4000" data-i18n-placeholder="anne.input_placeholder" placeholder="Ask Anne...">
       <button id="anne-send" aria-label="Send">➤</button>
     </div>
   </div>

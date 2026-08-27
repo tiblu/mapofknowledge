@@ -425,6 +425,16 @@
   flex-shrink: 0;
 }
 
+/* ── free-text character counter — shown on any capped textarea ── */
+.char-counter {
+  display: block; text-align: right;
+  font-size: 10.5px; font-weight: 600;
+  color: var(--lm-accent);
+  opacity: 0.45;
+  margin: 3px 2px 0;
+}
+.char-counter.char-counter-near-limit { opacity: 0.85; color: #C4574D; }
+
 /* ── block base ── */
 @keyframes blockAppear {
   from { opacity: 0; transform: translateY(8px); }

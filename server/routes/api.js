@@ -7,6 +7,21 @@ const { notify } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
 const { renderPassportText } = require('../services/passportText');
 
+// ── Free-text length cap ─────────────────────────────────────────────────────
+// Applies to every learner-typed field that flows into an LLM prompt (ask-bar
+// questions, practice answers, personal notes, reflections, goals, the
+// passport "about" field, Anne chat messages). Client-side maxlength on each
+// input already prevents a good-faith user from ever reaching this — this is
+// the server-side backstop for anyone calling the API directly, so a single
+// huge field can't multiply LLM token cost on every call it's fed into.
+const MAX_FREE_TEXT_CHARS = 4000;
+function _tooLong(text) {
+  return typeof text === 'string' && text.length > MAX_FREE_TEXT_CHARS;
+}
+function _rejectTooLong(res) {
+  return res.status(400).json({ error: 'text_too_long', max: MAX_FREE_TEXT_CHARS });
+}
+
 // ── User locale helper ───────────────────────────────────────────────────────
 async function getUserLocale(userId) {
   if (!userId) return 'en';
@@ -759,6 +774,8 @@ router.post('/learn/interact', async (req, res) => {
     stream: wantStream = false,
   } = req.body;
 
+  if (_tooLong(question) || _tooLong(userAnswer)) return _rejectTooLong(res);
+
   try {
     const [rows] = await db.execute(
       `SELECT k.title, n.label AS nodeLabel
@@ -913,8 +930,9 @@ router.post('/learn/knobit/:id/note', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
 
   const phase = _NOTE_PHASES.includes(req.body.phase) ? req.body.phase : 'explain';
-  const text  = String(req.body.text || '').trim().slice(0, 2000);
+  const text  = String(req.body.text || '').trim();
   if (!text) return res.status(400).json({ error: 'text required' });
+  if (_tooLong(text)) return _rejectTooLong(res);
 
   await _saveInteraction(passportId, knobitId, phase, 'personal_note', 0, null, null, text);
   res.json({ ok: true });
@@ -1337,6 +1355,7 @@ router.post('/anne/message', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
   const { message } = req.body;
   if (!message || !message.trim()) return res.status(400).json({ error: 'message required' });
+  if (_tooLong(message)) return _rejectTooLong(res);
 
   try {
     const locale = await getUserLocale(uid);
@@ -1379,6 +1398,7 @@ router.post('/profile/events', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
   const { title, institution, result, event_date, reflection } = req.body;
   if (!title?.trim()) return res.status(400).json({ error: 'title required' });
+  if (_tooLong(reflection)) return _rejectTooLong(res);
   try {
     const [evResult] = await db.execute(
       `INSERT INTO passport_events (passport_id, event_date, title, institution, result, type, user_created, sort_order)
@@ -1406,6 +1426,7 @@ router.post('/profile/reflections', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
   const { text, event_id } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'text required' });
+  if (_tooLong(text)) return _rejectTooLong(res);
   try {
     const [result] = await db.execute(
       `INSERT INTO passport_reflections (passport_id, event_id, text, created_at)
@@ -1440,6 +1461,7 @@ router.post('/profile/goals', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ error: 'text required' });
+  if (_tooLong(text)) return _rejectTooLong(res);
   try {
     const [result] = await db.execute(
       `INSERT INTO passport_goals (passport_id, text, status, created_at) VALUES (?, ?, 'in_progress', NOW())`,
@@ -1601,6 +1623,11 @@ router.post('/profile/identity', async (req, res) => {
   const updates = {};
   ALLOWED.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f] || null; });
   if (!Object.keys(updates).length) return res.json({ ok: true });
+  // "about" is the only free-form field here (the rest are short VARCHAR
+  // identity fields) and it's fed into every learning-prompt call as
+  // grounding context via getUserProfile() — capped for the same reason as
+  // the other LLM-facing fields above.
+  if (_tooLong(updates.about)) return _rejectTooLong(res);
   try {
     const sets = Object.keys(updates).map(f => `${f} = ?`).join(', ');
     await db.execute(
