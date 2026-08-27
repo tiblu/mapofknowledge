@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZD3FXS60X0"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-ZD3FXS60X0');
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account — Map of Knowledge</title>
+<link rel="stylesheet" href="css/palette.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/font-scale.css">
+<link rel="stylesheet" href="css/settings.css">
+<link rel="stylesheet" href="css/account.css">
+<link rel="stylesheet" href="css/anne.css">
+<script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}window._loadedSettings=s;if(window._onSettingsLoaded)window._onSettingsLoaded(s);}).catch(function(){});</script>
+<script src="js/strings.js"></script>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     TOP BAR
+     ════════════════════════════════════════ -->
+<header id="top-bar">
+
+  <a class="topbar-logo" href="index.html" onclick="if(window.parent!==window&&typeof window.parent.closeOverlay==='function'){window.parent.closeOverlay();return false;}">
+    <div class="topbar-logo-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="5.5" stroke="white" stroke-width="1.3"/>
+        <circle cx="8" cy="8" r="1.4" fill="white"/>
+        <line x1="8" y1="2.5" x2="8" y2="4.6" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="8" y1="11.4" x2="8" y2="13.5" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="2.5" y1="8" x2="4.6" y2="8" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+        <line x1="11.4" y1="8" x2="13.5" y2="8" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="topbar-logo-text">Map of Knowledge</span>
+  </a>
+
+  <div class="topbar-right">
+    <div class="topbar-burger-wrap">
+      <button class="topbar-icon-btn topbar-burger" id="nav-menu" title="Menu">
+        <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+          <path d="M1 1h14M1 7h14M1 13h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span id="topbar-notif-dot"></span>
+      </button>
+
+      <div id="nav-dropdown" class="nav-dropdown"></div>
+    </div>
+  </div>
+
+</header>
+
+
+<!-- ════════════════════════════════════════
+     ACCOUNT CONTENT
+     ════════════════════════════════════════ -->
+<main class="settings-page">
+
+  <h1 class="settings-title" data-i18n="nav.account">Account</h1>
+
+  <!-- SECURITY AND SIGN-IN -->
+  <div class="settings-section">
+    <div class="settings-section-label" data-i18n="account.section_security">Security and sign-in</div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="label.email">Email</div>
+        <div class="settings-row-desc" id="acct-email">—</div>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="account.login_method">Sign-in method</div>
+        <div class="settings-row-desc" id="acct-login-methods">—</div>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" id="acct-password-label" data-i18n="account.change_password">Change password</div>
+        <div class="settings-row-desc" id="acct-password-desc" data-i18n="account.change_password_desc">Update the password you use to sign in.</div>
+      </div>
+      <button class="acct-btn" id="acct-password-btn" data-i18n="account.change_password">Change password</button>
+    </div>
+  </div>
+
+  <!-- DATA AND PRIVACY -->
+  <div class="settings-section">
+    <div class="settings-section-label" data-i18n="account.section_privacy">Data and privacy</div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="account.download_data">Download your data</div>
+        <div class="settings-row-desc" data-i18n="account.download_data_desc">Get a copy of everything stored about you — profile, learning history, achievements, and more.</div>
+      </div>
+      <button class="acct-btn" id="acct-export-btn" data-i18n="btn.download">Download</button>
+    </div>
+
+    <div class="settings-row acct-danger-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="account.delete_account">Delete my account</div>
+        <div class="settings-row-desc" data-i18n="account.delete_account_desc">Permanently deletes your account, Learner Passport, and all learning history, erasing your personal data in line with GDPR. This can't be undone.</div>
+      </div>
+      <button class="acct-btn acct-btn-danger" id="acct-delete-btn" data-i18n="account.delete_account">Delete my account</button>
+    </div>
+  </div>
+
+  <!-- ACCOUNT AND BILLING -->
+  <div class="settings-section">
+    <div class="settings-section-label" data-i18n="account.section_billing">Account and billing</div>
+
+    <div class="settings-row">
+      <div class="settings-row-text">
+        <div class="settings-row-label" data-i18n="account.current_plan">Current plan</div>
+        <div class="settings-row-desc" id="acct-plan-desc">—</div>
+      </div>
+      <span class="acct-badge acct-badge-plan" id="acct-plan-badge">Free</span>
+    </div>
+
+    <div class="acct-plan-grid" id="acct-plan-grid"></div>
+
+    <div class="acct-billing-note" data-i18n="account.billing_not_enabled">Billing isn't set up yet — every account is Free and you will never be charged. Plans above are shown for reference only.</div>
+  </div>
+
+</main>
+
+<!-- ════════════════════════════════════════
+     CHANGE / SET PASSWORD MODAL
+     ════════════════════════════════════════ -->
+<div id="password-modal" class="acct-modal">
+  <div class="acct-modal-box">
+    <div class="acct-modal-title" id="password-modal-title" data-i18n="account.change_password">Change password</div>
+    <div class="acct-modal-field" id="current-password-field">
+      <label data-i18n="account.current_password">Current password</label>
+      <input type="password" id="current-password-input" autocomplete="current-password">
+    </div>
+    <div class="acct-modal-field">
+      <label data-i18n="account.new_password">New password</label>
+      <input type="password" id="new-password-input" autocomplete="new-password">
+    </div>
+    <div class="acct-modal-field">
+      <label data-i18n="account.confirm_password">Confirm new password</label>
+      <input type="password" id="confirm-password-input" autocomplete="new-password">
+    </div>
+    <div class="acct-modal-error" id="password-modal-error"></div>
+    <div class="acct-modal-btns">
+      <button class="acct-modal-confirm" id="password-modal-save" data-i18n="btn.save">Save</button>
+      <button class="acct-modal-cancel" id="password-modal-cancel" data-i18n="btn.cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     DELETE ACCOUNT MODAL
+     ════════════════════════════════════════ -->
+<div id="delete-modal" class="acct-modal">
+  <div class="acct-modal-box">
+    <div class="acct-modal-title" data-i18n="account.delete_account">Delete my account</div>
+    <div class="acct-modal-text" data-i18n="account.delete_confirm_text">This permanently deletes your account, Learner Passport, and all learning history — erasing your personal data in line with GDPR. This cannot be undone.</div>
+    <div class="acct-modal-field" id="delete-password-field">
+      <label data-i18n="account.current_password">Current password</label>
+      <input type="password" id="delete-password-input" autocomplete="current-password">
+    </div>
+    <div class="acct-modal-field">
+      <label data-i18n="account.delete_type_confirm">Type DELETE to confirm</label>
+      <input type="text" id="delete-confirm-input" autocomplete="off">
+    </div>
+    <div class="acct-modal-error" id="delete-modal-error"></div>
+    <div class="acct-modal-btns">
+      <button class="acct-modal-confirm acct-modal-confirm-danger" id="delete-modal-confirm" data-i18n="account.delete_account">Delete my account</button>
+      <button class="acct-modal-cancel" id="delete-modal-cancel" data-i18n="btn.cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     ANNE — MENTOR CHAT WIDGET
+     ════════════════════════════════════════ -->
+<div id="anne-widget">
+  <button id="anne-avatar" style="background-image:url(images/anne.png)" aria-label="Anne"></button>
+  <div id="anne-panel">
+    <div class="anne-panel-header">
+      <span class="anne-panel-title">Anne</span>
+      <button id="anne-minimize" aria-label="Minimize">▾</button>
+    </div>
+    <div class="anne-messages" id="anne-messages"></div>
+    <div class="anne-input-row">
+      <input id="anne-input" type="text" data-i18n-placeholder="anne.input_placeholder" placeholder="Ask Anne...">
+      <button id="anne-send" aria-label="Send">➤</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Burger dropdown ── */
+  document.getElementById('nav-menu').addEventListener('click', function (e) {
+    e.stopPropagation();
+    document.getElementById('nav-dropdown').classList.toggle('open');
+  });
+  document.addEventListener('click', function () {
+    document.getElementById('nav-dropdown').classList.remove('open');
+  });
+
+  /* ── Plan reference cards (cosmetic only — no billing wired up) ── */
+  var PLANS = [
+    { key: 'free',    price: '€0 / forever', features: 3 },
+    { key: 'learner', price: '€9 / month',   features: 3 },
+    { key: 'scholar', price: '€19 / month',  features: 3 },
+  ];
+  (function renderPlans() {
+    var grid = document.getElementById('acct-plan-grid');
+    PLANS.forEach(function (p) {
+      var card = document.createElement('div');
+      card.className = 'acct-plan-card';
+      card.innerHTML =
+        '<div class="acct-plan-name" data-i18n="plan.' + p.key + '_name">' + t('plan.' + p.key + '_name') + '</div>' +
+        '<div class="acct-plan-price">' + p.price + '</div>' +
+        '<div class="acct-plan-desc" data-i18n="plan.' + p.key + '_desc">' + t('plan.' + p.key + '_desc') + '</div>';
+      grid.appendChild(card);
+    });
+  })();
+
+  /* ── Load account info ── */
+  var _hasPassword = false;
+  function loadAccount() {
+    fetch('/api/account').then(function (r) { return r.json(); }).then(function (a) {
+      document.getElementById('acct-email').textContent = a.email || '—';
+      _hasPassword = !!a.hasPassword;
+
+      var methods = ['Google'];
+      if (_hasPassword) methods.push(t('account.login_method_password'));
+      document.getElementById('acct-login-methods').innerHTML = methods.map(function (m) {
+        return '<span class="acct-badge">' + m + '</span>';
+      }).join(' ');
+
+      var label = _hasPassword ? t('account.change_password') : t('account.set_password');
+      document.getElementById('acct-password-label').textContent = label;
+      document.getElementById('acct-password-btn').textContent = label;
+      document.getElementById('acct-password-desc').textContent =
+        _hasPassword ? t('account.change_password_desc') : t('account.set_password_desc');
+      document.getElementById('current-password-field').style.display = _hasPassword ? '' : 'none';
+
+      var planName = t('plan.' + (a.subscriptionStatus === 'subscriber' ? 'learner' : 'free') + '_name');
+      document.getElementById('acct-plan-badge').textContent = planName;
+      document.getElementById('acct-plan-desc').textContent = t('account.plan_since') + ' ' +
+        new Date(a.memberSince).toLocaleDateString();
+    }).catch(function () {});
+  }
+  loadAccount();
+
+  /* ── Change / set password ── */
+  var pwModal = document.getElementById('password-modal');
+  document.getElementById('acct-password-btn').addEventListener('click', function () {
+    document.getElementById('current-password-input').value = '';
+    document.getElementById('new-password-input').value = '';
+    document.getElementById('confirm-password-input').value = '';
+    document.getElementById('password-modal-error').textContent = '';
+    document.getElementById('password-modal-title').textContent = _hasPassword ? t('account.change_password') : t('account.set_password');
+    pwModal.classList.add('active');
+  });
+  document.getElementById('password-modal-cancel').addEventListener('click', function () {
+    pwModal.classList.remove('active');
+  });
+  document.getElementById('password-modal-save').addEventListener('click', function () {
+    var errEl = document.getElementById('password-modal-error');
+    var currentPassword = document.getElementById('current-password-input').value;
+    var newPassword     = document.getElementById('new-password-input').value;
+    var confirmPassword = document.getElementById('confirm-password-input').value;
+    errEl.textContent = '';
+
+    if (newPassword.length < 8) { errEl.textContent = t('msg.weak_password'); return; }
+    if (newPassword !== confirmPassword) { errEl.textContent = t('msg.passwords_dont_match'); return; }
+
+    var btn = document.getElementById('password-modal-save');
+    btn.disabled = true;
+    fetch('/api/account/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: currentPassword, newPassword: newPassword }),
+    }).then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          errEl.textContent = res.body.error === 'wrong_password' ? t('msg.wrong_password') : t('msg.could_not_update');
+          return;
+        }
+        pwModal.classList.remove('active');
+        loadAccount();
+      })
+      .catch(function () { errEl.textContent = t('msg.could_not_update'); })
+      .finally(function () { btn.disabled = false; });
+  });
+
+  /* ── Download my data ── */
+  document.getElementById('acct-export-btn').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    fetch('/api/account/export')
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.blob();
+      })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'map-of-knowledge-data-export.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      })
+      .catch(function () { alert(t('msg.could_not_download')); })
+      .finally(function () { btn.disabled = false; });
+  });
+
+  /* ── Delete account ── */
+  var delModal = document.getElementById('delete-modal');
+  document.getElementById('acct-delete-btn').addEventListener('click', function () {
+    document.getElementById('delete-password-input').value = '';
+    document.getElementById('delete-confirm-input').value = '';
+    document.getElementById('delete-modal-error').textContent = '';
+    document.getElementById('delete-password-field').style.display = _hasPassword ? '' : 'none';
+    delModal.classList.add('active');
+  });
+  document.getElementById('delete-modal-cancel').addEventListener('click', function () {
+    delModal.classList.remove('active');
+  });
+  document.getElementById('delete-modal-confirm').addEventListener('click', function () {
+    var errEl = document.getElementById('delete-modal-error');
+    var password = document.getElementById('delete-password-input').value;
+    var confirmText = document.getElementById('delete-confirm-input').value;
+    errEl.textContent = '';
+
+    if (confirmText.trim().toUpperCase() !== 'DELETE') {
+      errEl.textContent = t('msg.type_delete_to_confirm');
+      return;
+    }
+
+    var btn = document.getElementById('delete-modal-confirm');
+    btn.disabled = true;
+    fetch('/api/account', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: password }),
+    }).then(function (r) { return r.json().then(function (body) { return { ok: r.ok, body: body }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          errEl.textContent = res.body.error === 'wrong_password' ? t('msg.wrong_password') : t('msg.could_not_update');
+          return;
+        }
+        window.top.location = '/';
+      })
+      .catch(function () { errEl.textContent = t('msg.could_not_update'); })
+      .finally(function () { btn.disabled = false; });
+  });
+</script>
+<script src="js/topbar-notif.js?v=2"></script>
+<script src="js/nav-menu.js"></script>
+<script src="js/anne.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,133 @@
+/* ── account-specific controls (extends settings.css's .settings-* base) ── */
+
+.acct-btn {
+  padding: 9px 16px; border-radius: 10px;
+  border: 1.5px solid var(--i12);
+  background: rgba(255,255,255,0.6);
+  font-size: 12.5px; font-weight: 600; font-family: inherit;
+  color: var(--c2); cursor: pointer; flex-shrink: 0;
+  transition: background 0.13s, border-color 0.13s;
+}
+.acct-btn:hover { background: rgba(255,255,255,0.9); }
+
+.acct-danger-row { border-color: rgba(196,90,90,0.25); }
+.acct-btn-danger {
+  border-color: rgba(196,90,90,0.4);
+  color: #B5453D;
+}
+.acct-btn-danger:hover { background: rgba(196,90,90,0.08); }
+
+.acct-badge {
+  display: inline-block;
+  font-size: 11px; font-weight: 600;
+  color: var(--c5);
+  background: rgba(58,48,40,0.06);
+  border-radius: 6px;
+  padding: 3px 9px;
+  margin-top: 4px;
+}
+.acct-badge-plan {
+  font-size: 12px; font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  border-radius: 8px;
+  padding: 5px 12px;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+/* ── plan reference cards ── */
+.acct-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+.acct-plan-card {
+  background: rgba(255,255,255,0.55);
+  border: 1px solid var(--i08);
+  border-radius: 12px;
+  padding: 12px 12px 14px;
+}
+.acct-plan-name { font-size: 12.5px; font-weight: 700; color: var(--c1); }
+.acct-plan-price { font-size: 11px; color: var(--c5); margin: 2px 0 6px; }
+.acct-plan-desc { font-size: 11px; color: var(--c5); line-height: 1.5; }
+.acct-billing-note {
+  font-size: 11.5px; color: var(--c7);
+  margin-top: 10px; padding: 0 4px;
+  line-height: 1.5;
+}
+
+@media (max-width: 480px) {
+  .acct-plan-grid { grid-template-columns: 1fr; }
+}
+
+/* ── modals (password / delete) — same visual language as #know-this-modal ── */
+.acct-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: var(--overlay);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.acct-modal.active { display: flex; }
+.acct-modal-box {
+  background: var(--bg);
+  border-radius: 18px;
+  padding: 26px 26px 22px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 8px 32px var(--i18);
+}
+.acct-modal-title {
+  font-size: 16px; font-weight: 700;
+  color: var(--c1); margin-bottom: 8px;
+}
+.acct-modal-text {
+  font-size: 13px; color: var(--c3);
+  line-height: 1.6; margin-bottom: 16px;
+}
+.acct-modal-field { margin-bottom: 12px; }
+.acct-modal-field label {
+  display: block;
+  font-size: 11.5px; font-weight: 600; color: var(--c5);
+  margin-bottom: 5px;
+}
+.acct-modal-field input {
+  width: 100%; box-sizing: border-box;
+  padding: 9px 12px; border-radius: 9px;
+  border: 1.5px solid var(--i12);
+  background: rgba(255,255,255,0.7);
+  font-size: 13px; font-family: inherit; color: var(--c1);
+}
+.acct-modal-field input:focus { outline: none; border-color: var(--accent); }
+.acct-modal-error {
+  font-size: 12px; color: #B5453D;
+  min-height: 16px; margin-bottom: 6px;
+}
+.acct-modal-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.acct-modal-confirm {
+  padding: 12px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  border: none; border-radius: 12px;
+  font-size: 14px; font-weight: 600; font-family: inherit;
+  color: #fff; cursor: pointer;
+  transition: opacity 0.13s;
+}
+.acct-modal-confirm:hover { opacity: 0.90; }
+.acct-modal-confirm:disabled { opacity: 0.6; cursor: default; }
+.acct-modal-confirm-danger {
+  background: linear-gradient(135deg, #C4574D 0%, #A83F36 100%);
+}
+.acct-modal-cancel {
+  padding: 12px;
+  background: var(--i08);
+  border: none; border-radius: 12px;
+  font-size: 14px; font-weight: 600; font-family: inherit;
+  color: var(--c2); cursor: pointer;
+  transition: background 0.13s;
+}
+.acct-modal-cancel:hover { background: var(--i14); }

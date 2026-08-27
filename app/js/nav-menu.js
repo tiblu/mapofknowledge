@@ -53,6 +53,10 @@
       + '<circle cx="2.2" cy="7.5" r="1" fill="currentColor" opacity="0.5"/>'
       + '<circle cx="12.8" cy="7.5" r="1" fill="currentColor" opacity="0.5"/>'
       + '</svg>',
+    passport: '<svg width="15" height="15" viewBox="0 0 15 15" fill="none">'
+      + '<path d="M7.5 3.2c-1.3-.9-3-1.1-5-.8v9.3c2-.3 3.7-.1 5 .8 1.3-.9 3-1.1 5-.8V2.4c-2-.3-3.7-.1-5 .8z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>'
+      + '<path d="M7.5 3.2v9.3" stroke="currentColor" stroke-width="1.1"/>'
+      + '</svg>',
   };
 
   var current = (window.location.pathname.split('/').pop() || 'index.html');
@@ -99,10 +103,15 @@
   }
 
   // ── Static items (no role check needed) ─────────────────────────────────────
-  // Order: Notifications, Map, Account, (Admin), divider, Settings, Help, divider, Log out
-  var notifItem   = makeItem({ page: 'notifications.html', i18nKey: 'nav.notifications', fallback: 'Notifications', iconHtml: ICONS.notifications, badge: true });
-  var mapItem     = makeItem({ page: 'index.html', i18nKey: 'nav.map', fallback: 'Map', iconHtml: ICONS.map });
-  var accountItem = makeItem({ page: 'profile.html', i18nKey: 'nav.account', fallback: 'Account', iconHtml: ICONS.account });
+  // Order: Notifications, Map, Learner Passport, Account, (Admin), divider, Settings, Help, divider, Log out
+  // Learner Passport (profile.html) and Account (account.html) used to be a single
+  // "Account" item pointing at the passport — split 2026-08-27 since that was
+  // misleading (the passport isn't an account-management page). Account keeps
+  // the original person icon; Learner Passport gets a new passport-booklet icon.
+  var notifItem    = makeItem({ page: 'notifications.html', i18nKey: 'nav.notifications', fallback: 'Notifications', iconHtml: ICONS.notifications, badge: true });
+  var mapItem      = makeItem({ page: 'index.html', i18nKey: 'nav.map', fallback: 'Map', iconHtml: ICONS.map });
+  var passportItem = makeItem({ page: 'profile.html', i18nKey: 'label.learner_passport', fallback: 'Learner Passport', iconHtml: ICONS.passport });
+  var accountItem  = makeItem({ page: 'account.html', i18nKey: 'nav.account', fallback: 'Account', iconHtml: ICONS.account });
 
   var settingsBtn = document.createElement('button');
   settingsBtn.className = 'nav-dropdown-item';
@@ -115,6 +124,7 @@
 
   dropdown.appendChild(notifItem);
   dropdown.appendChild(mapItem);
+  dropdown.appendChild(passportItem);
   dropdown.appendChild(accountItem);
   dropdown.appendChild(divider());
   dropdown.appendChild(settingsBtn);

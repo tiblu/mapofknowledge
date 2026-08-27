@@ -100,7 +100,7 @@
       target:   '.topbar-burger-wrap',
       position: 'bottom-left',
       title:    'Your Learner Passport',
-      text:     'Tap the menu icon above, then click <strong>Account</strong> to open your Learner Passport — a living record of everything you learn. It stores credentials, your knowledge map, reflections, and goals.<br><br>Exportable in internationally recognised formats and verifiable via blockchain.',
+      text:     'Tap the menu icon above, then click <strong>Learner Passport</strong> — a living record of everything you learn. It stores credentials, your knowledge map, reflections, and goals.<br><br>Exportable in internationally recognised formats and verifiable via blockchain.',
       padding:  10,
     },
   ];

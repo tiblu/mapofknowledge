@@ -428,7 +428,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('help.test_title',             'en', 'Testing'),
 ('help.test_body',              'en', 'On an individual concept (L5), the "Test me" button starts a 4-question adaptive diagnostic test that adjusts to your answers and gives you a read on how well you know the topic.'),
 ('help.goals_title',            'en', 'Goals and your Learner Passport'),
-('help.goals_body',             'en', 'Your progress, achievements, and goals are all on your Learner Passport — open it from the menu (☰ icon, top right) under "Account." Goals are your own free-text notes on what you\'re working toward — add one with "+ Add goal" on your Passport, and mark it complete whenever you like.'),
+('help.goals_body',             'en', 'Your progress, achievements, and goals are all on your Learner Passport — open it from the menu (☰ icon, top right) under "Learner Passport." Goals are your own free-text notes on what you\'re working toward — add one with "+ Add goal" on your Passport, and mark it complete whenever you like.'),
 ('help.notif_settings_title',   'en', 'Notifications and settings'),
 ('help.notif_settings_body',    'en', 'The same menu has Notifications (reminders and achievements) and Settings (font size, colour palette, map animation, focus timer, café ambience, screen saver).'),
 
@@ -497,6 +497,44 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 
 -- Unit-complete "next node" recommendation (2026-08-20): suggests an
 -- unstudied sibling L5 node (or an adjacent L4's) after finishing a unit.
-('label.up_next',                'en', 'Up next')
+('label.up_next',                'en', 'Up next'),
+
+-- Account page (2026-08-27): the old single "Account" menu item (which
+-- actually opened the Learner Passport) was split into two — Learner
+-- Passport (reuses label.learner_passport) and a real Account page for
+-- login/security, data/privacy, and billing.
+('label.email',                  'en', 'Email'),
+('account.section_security',     'en', 'Security and sign-in'),
+('account.section_privacy',      'en', 'Data and privacy'),
+('account.section_billing',      'en', 'Account and billing'),
+('account.login_method',         'en', 'Sign-in method'),
+('account.login_method_password','en', 'Password'),
+('account.change_password',      'en', 'Change password'),
+('account.change_password_desc', 'en', 'Update the password you use to sign in.'),
+('account.set_password',         'en', 'Set a password'),
+('account.set_password_desc',    'en', 'Add a password so you can also sign in without Google.'),
+('account.current_password',     'en', 'Current password'),
+('account.new_password',         'en', 'New password'),
+('account.confirm_password',     'en', 'Confirm new password'),
+('account.download_data',        'en', 'Download your data'),
+('account.download_data_desc',   'en', 'Get a copy of everything stored about you — profile, learning history, achievements, and more.'),
+('account.delete_account',       'en', 'Delete my account'),
+('account.delete_account_desc',  'en', 'Permanently deletes your account, Learner Passport, and all learning history, erasing your personal data in line with GDPR. This can\'t be undone.'),
+('account.delete_confirm_text',  'en', 'This permanently deletes your account, Learner Passport, and all learning history — erasing your personal data in line with GDPR. This cannot be undone.'),
+('account.delete_type_confirm',  'en', 'Type DELETE to confirm'),
+('account.current_plan',         'en', 'Current plan'),
+('account.plan_since',           'en', 'Member since'),
+('account.billing_not_enabled',  'en', 'Billing isn\'t set up yet — every account is Free and you will never be charged. Plans above are shown for reference only.'),
+('plan.free_name',               'en', 'Free'),
+('plan.free_desc',               'en', 'The full map, always free.'),
+('plan.learner_name',            'en', 'Learner'),
+('plan.learner_desc',            'en', 'The complete learning experience.'),
+('plan.scholar_name',            'en', 'Scholar'),
+('plan.scholar_desc',            'en', 'For serious learners who want every capability.'),
+('msg.weak_password',            'en', 'Password must be at least 8 characters.'),
+('msg.passwords_dont_match',     'en', 'Passwords don\'t match.'),
+('msg.wrong_password',           'en', 'Incorrect password.'),
+('msg.could_not_download',       'en', 'Could not download.'),
+('msg.type_delete_to_confirm',   'en', 'Type DELETE to confirm.')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);
