@@ -471,7 +471,7 @@ a { color: inherit; text-decoration: none; }
       <input class="su-input" id="signup-password-input" type="password"
              placeholder="Password (at least 8 characters)" autocomplete="new-password">
       <div class="field-error" id="password-signup-error"></div>
-      <div class="cf-turnstile" id="turnstile-signup" data-sitekey="0x4AAAAAAEePtb0M5x8ykETN" style="margin:10px 0;"></div>
+      <div class="cf-turnstile" id="turnstile-signup" data-sitekey="0x4AAAAAAEePtb0M5x8ykETN" data-callback="_onTurnstileSignup" style="margin:10px 0;"></div>
       <button class="btn-primary btn-block" id="password-signup-btn">Create account with email</button>
 
       <div class="step-actions" style="justify-content:flex-start; margin-top:14px;">
@@ -513,7 +513,7 @@ a { color: inherit; text-decoration: none; }
     <input class="su-input" id="login-password-input" type="password"
            placeholder="Password" autocomplete="current-password">
     <div class="field-error" id="login-error"></div>
-    <div class="cf-turnstile" id="turnstile-login" data-sitekey="0x4AAAAAAEePtb0M5x8ykETN" style="margin:10px 0;"></div>
+    <div class="cf-turnstile" id="turnstile-login" data-sitekey="0x4AAAAAAEePtb0M5x8ykETN" data-callback="_onTurnstileLogin" style="margin:10px 0;"></div>
     <button class="btn-primary btn-block" id="login-btn">Log in</button>
 
     <button type="button" class="su-login-link" id="back-to-signup-link" style="display:block;margin-top:16px;text-align:center;width:100%;">← Don't have an account? Start here</button>
@@ -730,15 +730,15 @@ a { color: inherit; text-decoration: none; }
     el.innerHTML = lines.join('');
   }
 
-  // Reads the widget's token by container reference — avoids tracking the
-  // numeric widget id Turnstile assigns on auto-render. Empty string if the
-  // widget hasn't loaded/been solved yet (server fails the request either
-  // way once TURNSTILE_SECRET_KEY is actually configured).
-  function _turnstileToken(containerId) {
-    try {
-      return (window.turnstile && window.turnstile.getResponse(containerId)) || '';
-    } catch (e) { return ''; }
-  }
+  // Cloudflare's own recommended pattern — data-callback on each widget fires
+  // these the moment it solves, so the token is just a plain variable read at
+  // submit time rather than a reactive window.turnstile.getResponse() call
+  // (which was hitting some widget/browser-specific failure on the Google
+  // button's path — this sidesteps it by never calling into Turnstile's API
+  // at click-time at all).
+  var _turnstileTokens = { signup: '', login: '' };
+  window._onTurnstileSignup = function (token) { _turnstileTokens.signup = token; };
+  window._onTurnstileLogin  = function (token) { _turnstileTokens.login  = token; };
 
   function buildSignupPayload() {
     return {
@@ -746,7 +746,7 @@ a { color: inherit; text-decoration: none; }
       displayName:    state.displayName,
       interests:      buildInterests(),
       values:         buildValues(),
-      turnstileToken: _turnstileToken('turnstile-signup'),
+      turnstileToken: _turnstileTokens.signup,
     };
   }
 
@@ -779,6 +779,7 @@ a { color: inherit; text-decoration: none; }
       btn.innerHTML = orig;
       r.json().then(function (d) {
         if (d && d.error === 'flagged_content') { showFlaggedContentError(d.flagged); return; }
+        _turnstileTokens.signup = '';
         if (window.turnstile) window.turnstile.reset('turnstile-signup');
         if (r.status === 429) {
           goTo('interests');
@@ -851,6 +852,7 @@ a { color: inherit; text-decoration: none; }
         rate_limited:   'Too many attempts — please wait a few minutes and try again.',
         captcha_failed: 'Verification failed — please try again.',
       };
+      _turnstileTokens.signup = '';
       if (window.turnstile) window.turnstile.reset('turnstile-signup');
       passwordSignupError.textContent = messages[res.d && res.d.error] || 'Could not create your account. Please try again.';
       passwordSignupError.classList.add('show');
@@ -903,7 +905,7 @@ a { color: inherit; text-decoration: none; }
     fetch('/auth/login', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email: email, password: password, turnstileToken: _turnstileToken('turnstile-login') }),
+      body:    JSON.stringify({ email: email, password: password, turnstileToken: _turnstileTokens.login }),
     })
     .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
     .then(function (res) {
@@ -913,6 +915,7 @@ a { color: inherit; text-decoration: none; }
       }
       loginBtn.disabled = false;
       loginBtn.textContent = orig;
+      _turnstileTokens.login = '';
       if (window.turnstile) window.turnstile.reset('turnstile-login');
       loginError.textContent = res.status === 429
         ? 'Too many attempts — please wait a few minutes and try again.'
