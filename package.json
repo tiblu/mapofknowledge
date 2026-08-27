@@ -15,7 +15,7 @@
     "express": "^4.21.2",
     "cookie-session": "^2.1.0",
     "mysql2": "^3.22.4",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^9.0.5",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
   }
