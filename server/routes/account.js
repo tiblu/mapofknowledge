@@ -165,8 +165,7 @@ router.delete('/', async (req, res) => {
       conn.release();
     }
 
-    req.logout(() => {});
-    res.json({ ok: true });
+    req.logout(() => res.json({ ok: true }));
   } catch (err) {
     console.error('[api/account DELETE]', err.message);
     res.status(500).json({ error: 'delete_failed' });
