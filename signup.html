@@ -10,6 +10,10 @@
   gtag('js', new Date());
   gtag('config', 'G-ZD3FXS60X0');
 </script>
+<!-- Cloudflare Turnstile — site key is public by design (like the GA id above);
+     REPLACE_WITH_TURNSTILE_SITE_KEY until a real widget is created in the
+     Cloudflare dashboard (Turnstile → Add widget → Managed mode). -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Create your account — Map of Knowledge</title>
 <style>
@@ -469,6 +473,7 @@ a { color: inherit; text-decoration: none; }
       <input class="su-input" id="signup-password-input" type="password"
              placeholder="Password (at least 8 characters)" autocomplete="new-password">
       <div class="field-error" id="password-signup-error"></div>
+      <div class="cf-turnstile" id="turnstile-signup" data-sitekey="REPLACE_WITH_TURNSTILE_SITE_KEY" style="margin:10px 0;"></div>
       <button class="btn-primary btn-block" id="password-signup-btn">Create account with email</button>
 
       <div class="step-actions" style="justify-content:flex-start; margin-top:14px;">
@@ -510,6 +515,7 @@ a { color: inherit; text-decoration: none; }
     <input class="su-input" id="login-password-input" type="password"
            placeholder="Password" autocomplete="current-password">
     <div class="field-error" id="login-error"></div>
+    <div class="cf-turnstile" id="turnstile-login" data-sitekey="REPLACE_WITH_TURNSTILE_SITE_KEY" style="margin:10px 0;"></div>
     <button class="btn-primary btn-block" id="login-btn">Log in</button>
 
     <button type="button" class="su-login-link" id="back-to-signup-link" style="display:block;margin-top:16px;text-align:center;width:100%;">← Don't have an account? Start here</button>
@@ -726,12 +732,23 @@ a { color: inherit; text-decoration: none; }
     el.innerHTML = lines.join('');
   }
 
+  // Reads the widget's token by container reference — avoids tracking the
+  // numeric widget id Turnstile assigns on auto-render. Empty string if the
+  // widget hasn't loaded/been solved yet (server fails the request either
+  // way once TURNSTILE_SECRET_KEY is actually configured).
+  function _turnstileToken(containerId) {
+    try {
+      return (window.turnstile && window.turnstile.getResponse(containerId)) || '';
+    } catch (e) { return ''; }
+  }
+
   function buildSignupPayload() {
     return {
-      birthYear:   state.birthYear,
-      displayName: state.displayName,
-      interests:   buildInterests(),
-      values:      buildValues(),
+      birthYear:      state.birthYear,
+      displayName:    state.displayName,
+      interests:      buildInterests(),
+      values:         buildValues(),
+      turnstileToken: _turnstileToken('turnstile-signup'),
     };
   }
 
@@ -764,9 +781,14 @@ a { color: inherit; text-decoration: none; }
       btn.innerHTML = orig;
       r.json().then(function (d) {
         if (d && d.error === 'flagged_content') { showFlaggedContentError(d.flagged); return; }
+        if (window.turnstile) window.turnstile.reset('turnstile-signup');
         if (r.status === 429) {
           goTo('interests');
           interestsError.textContent = 'Too many attempts — please wait a few minutes and try again.';
+          interestsError.classList.add('show');
+        } else if (d && d.error === 'captcha_failed') {
+          goTo('interests');
+          interestsError.textContent = 'Verification failed — please try again.';
           interestsError.classList.add('show');
         }
       }).catch(function () {});
@@ -825,11 +847,13 @@ a { color: inherit; text-decoration: none; }
         return;
       }
       var messages = {
-        invalid_email: 'Enter a valid email address.',
-        weak_password: 'Password must be at least 8 characters.',
-        email_taken:   'That email is already in use. Try logging in instead.',
-        rate_limited:  'Too many attempts — please wait a few minutes and try again.',
+        invalid_email:  'Enter a valid email address.',
+        weak_password:  'Password must be at least 8 characters.',
+        email_taken:    'That email is already in use. Try logging in instead.',
+        rate_limited:   'Too many attempts — please wait a few minutes and try again.',
+        captcha_failed: 'Verification failed — please try again.',
       };
+      if (window.turnstile) window.turnstile.reset('turnstile-signup');
       passwordSignupError.textContent = messages[res.d && res.d.error] || 'Could not create your account. Please try again.';
       passwordSignupError.classList.add('show');
     })
@@ -881,7 +905,7 @@ a { color: inherit; text-decoration: none; }
     fetch('/auth/login', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email: email, password: password }),
+      body:    JSON.stringify({ email: email, password: password, turnstileToken: _turnstileToken('turnstile-login') }),
     })
     .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
     .then(function (res) {
@@ -891,8 +915,11 @@ a { color: inherit; text-decoration: none; }
       }
       loginBtn.disabled = false;
       loginBtn.textContent = orig;
+      if (window.turnstile) window.turnstile.reset('turnstile-login');
       loginError.textContent = res.status === 429
         ? 'Too many attempts — please wait a few minutes and try again.'
+        : (res.d && res.d.error === 'captcha_failed')
+        ? 'Verification failed — please try again.'
         : 'Incorrect email or password.';
       loginError.classList.add('show');
     })

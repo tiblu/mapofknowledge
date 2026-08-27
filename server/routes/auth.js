@@ -10,6 +10,38 @@ const { sendVerificationEmail } = require('../services/mailer');
 const { loginRateLimit, signupRateLimit, resendVerifyRateLimit } = require('../middleware/authRateLimit');
 const router   = express.Router();
 
+// ── Cloudflare Turnstile ─────────────────────────────────────────────────────
+// Verifies the widget token on signup/login. TURNSTILE_SECRET_KEY isn't set
+// yet as of this commit — until it is, this fails OPEN (logs a warning,
+// lets the request through) so deploying this code can't itself lock
+// anyone out of signing up or logging in. Once the key is added to .env,
+// a missing/invalid token starts failing closed as intended. A genuine
+// network error reaching Cloudflare also fails open — an outage on their
+// side shouldn't take down login for this app.
+async function _verifyTurnstile(token, remoteip) {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    console.warn('[turnstile] TURNSTILE_SECRET_KEY not set — skipping verification');
+    return true;
+  }
+  if (typeof token !== 'string' || !token) return false;
+
+  try {
+    const params = new URLSearchParams({ secret, response: token });
+    if (remoteip) params.set('remoteip', remoteip);
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+    const data = await r.json();
+    return !!data.success;
+  } catch (err) {
+    console.error('[turnstile] verify request failed, failing open:', err.message);
+    return true;
+  }
+}
+
 // Mirrors getUserLocale in server/routes/api.js — not imported from there
 // since api.js only exports the router itself, not this helper.
 async function _getUserLocale(userId) {
@@ -191,6 +223,9 @@ router.get('/me', (req, res) => {
 
 // ── Signup prepare — stores intent in session before Google OAuth ─────────────
 router.post('/signup/prepare', signupRateLimit, async (req, res) => {
+  if (!(await _verifyTurnstile(req.body.turnstileToken, req.ip))) {
+    return res.status(400).json({ error: 'captcha_failed' });
+  }
   const built = await buildPendingSignup(req.body);
   if (!built.ok) return res.status(built.status).json(built.body);
   req.session.pendingSignup = built.pending;
@@ -199,6 +234,9 @@ router.post('/signup/prepare', signupRateLimit, async (req, res) => {
 
 // ── Signup with email + password — creates the account immediately ───────────
 router.post('/signup/password', signupRateLimit, async (req, res) => {
+  if (!(await _verifyTurnstile(req.body.turnstileToken, req.ip))) {
+    return res.status(400).json({ error: 'captcha_failed' });
+  }
   const { email, password } = req.body;
   if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return res.status(400).json({ error: 'invalid_email' });
@@ -250,6 +288,9 @@ router.post('/signup/password', signupRateLimit, async (req, res) => {
 
 // ── Login with email + password ───────────────────────────────────────────────
 router.post('/login', loginRateLimit, async (req, res) => {
+  if (!(await _verifyTurnstile(req.body.turnstileToken, req.ip))) {
+    return res.status(400).json({ error: 'captcha_failed' });
+  }
   const { email, password } = req.body;
   if (typeof email !== 'string' || typeof password !== 'string') {
     return res.status(400).json({ error: 'invalid_credentials' });
