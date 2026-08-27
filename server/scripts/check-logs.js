@@ -13,8 +13,10 @@
 //   2. Repeated 429s from one IP                 (already hitting our own
 //                                                  rate limits — confirmed
 //                                                  bot/abuse behaviour)
-//   3. Any hit on a known vulnerability-scanner   (the app never serves
-//      path (wp-login.php, .env, etc.)            these — one hit is enough)
+//   3. 2+ hits on known vulnerability-scanner     (the app never serves these —
+//      paths from one IP (wp-login.php, .env...)   but a single drive-by probe
+//                                                   is routine internet noise,
+//                                                   not a signal worth an email)
 //   4. Unusually high total request volume from one IP (scraping / basic DoS)
 //
 // Cron command (zone.ee panel):
@@ -33,6 +35,11 @@ const ALERT_TO   = 'margo.loor@gmail.com';
 const LOGIN_FAIL_THRESHOLD   = 10;   // 401s on POST /auth/login from one IP
 const RATE_LIMITED_THRESHOLD = 15;   // 429s (any route) from one IP
 const HIGH_VOLUME_THRESHOLD  = 300;  // total requests from one IP
+// A lone hit on one scanner path (e.g. the ubiquitous /wp-login.php drive-by
+// probe every public site on the internet gets constantly) is background
+// noise, not a signal — require a couple of hits (same path twice, or two
+// different paths) before it's worth an email.
+const SCANNER_HIT_THRESHOLD  = 2;
 
 // The app never serves any of these — a single hit is a scanner, not a user.
 const SCANNER_PATH_PATTERNS = [
@@ -114,11 +121,13 @@ function _analyze(lines) {
   if (scannerHits.length) {
     const byIp = new Map();
     scannerHits.forEach(({ ip, path: p }) => {
-      if (!byIp.has(ip)) byIp.set(ip, new Set());
-      byIp.get(ip).add(p);
+      if (!byIp.has(ip)) byIp.set(ip, []);
+      byIp.get(ip).push(p);
     });
     for (const [ip, paths] of byIp) {
-      findings.push(`Vulnerability-scanner probe: ${ip} requested ${[...paths].slice(0, 5).join(', ')}${paths.size > 5 ? ', ...' : ''}.`);
+      if (paths.length < SCANNER_HIT_THRESHOLD) continue; // one-off drive-by probe — not worth an email
+      const distinct = [...new Set(paths)];
+      findings.push(`Vulnerability-scanner probe: ${ip} requested ${distinct.slice(0, 5).join(', ')}${distinct.length > 5 ? ', ...' : ''} (${paths.length} hits).`);
     }
   }
 
