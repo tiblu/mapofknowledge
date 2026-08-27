@@ -10,6 +10,19 @@ const { sendVerificationEmail } = require('../services/mailer');
 const { loginRateLimit, signupRateLimit, resendVerifyRateLimit } = require('../middleware/authRateLimit');
 const router   = express.Router();
 
+// Mirrors getUserLocale in server/routes/api.js — not imported from there
+// since api.js only exports the router itself, not this helper.
+async function _getUserLocale(userId) {
+  if (!userId) return 'en';
+  try {
+    const [rows] = await db.execute(
+      'SELECT value FROM user_settings WHERE user_id = ? AND key_name = ?',
+      [userId, 'ui_locale']
+    );
+    return (rows.length && rows[0].value) ? rows[0].value : 'en';
+  } catch { return 'en'; }
+}
+
 // Accounts that get elevated roles on first login.
 const ROLE_MAP = {
   'margo.loor@gmail.com':      'super_admin',
@@ -292,7 +305,8 @@ router.post('/verify-email/resend', resendVerifyRateLimit, async (req, res) => {
       'UPDATE users SET email_verify_token = ?, email_verify_expires = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id = ?',
       [verifyToken, req.user.id]
     );
-    await sendVerificationEmail(req.user.email, verifyToken, 'en');
+    const locale = await _getUserLocale(req.user.id);
+    await sendVerificationEmail(req.user.email, verifyToken, locale);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'resend_failed' });
