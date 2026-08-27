@@ -42,9 +42,10 @@
       var orig = btn.textContent;
       btn.textContent = window.t('msg.sending');
       fetch('/auth/verify-email/resend', { method: 'POST' })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          btn.textContent = d && d.ok ? window.t('msg.sent') : window.t('msg.save_failed_short');
+        .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
+        .then(function (res) {
+          if (res.d && res.d.ok) { btn.textContent = window.t('msg.sent'); return; }
+          btn.textContent = res.status === 429 ? window.t('msg.slow_down') : window.t('msg.save_failed_short');
         })
         .catch(function () {
           btn.textContent = window.t('msg.save_failed_short');

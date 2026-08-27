@@ -7,6 +7,7 @@ const db       = require('../db');
 const { notify } = require('../services/notifications');
 const { moderateTags } = require('../services/llm');
 const { sendVerificationEmail } = require('../services/mailer');
+const { loginRateLimit, signupRateLimit, resendVerifyRateLimit } = require('../middleware/authRateLimit');
 const router   = express.Router();
 
 // Accounts that get elevated roles on first login.
@@ -176,7 +177,7 @@ router.get('/me', (req, res) => {
 });
 
 // ── Signup prepare — stores intent in session before Google OAuth ─────────────
-router.post('/signup/prepare', async (req, res) => {
+router.post('/signup/prepare', signupRateLimit, async (req, res) => {
   const built = await buildPendingSignup(req.body);
   if (!built.ok) return res.status(built.status).json(built.body);
   req.session.pendingSignup = built.pending;
@@ -184,7 +185,7 @@ router.post('/signup/prepare', async (req, res) => {
 });
 
 // ── Signup with email + password — creates the account immediately ───────────
-router.post('/signup/password', async (req, res) => {
+router.post('/signup/password', signupRateLimit, async (req, res) => {
   const { email, password } = req.body;
   if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
     return res.status(400).json({ error: 'invalid_email' });
@@ -235,7 +236,7 @@ router.post('/signup/password', async (req, res) => {
 });
 
 // ── Login with email + password ───────────────────────────────────────────────
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimit, async (req, res) => {
   const { email, password } = req.body;
   if (typeof email !== 'string' || typeof password !== 'string') {
     return res.status(400).json({ error: 'invalid_credentials' });
@@ -282,7 +283,7 @@ router.get('/verify-email', async (req, res) => {
   }
 });
 
-router.post('/verify-email/resend', async (req, res) => {
+router.post('/verify-email/resend', resendVerifyRateLimit, async (req, res) => {
   if (!req.isAuthenticated()) return res.status(401).json({ error: 'not_authenticated' });
   if (req.user.email_verified) return res.json({ ok: true });
   try {

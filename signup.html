@@ -763,7 +763,12 @@ a { color: inherit; text-decoration: none; }
       btn.disabled = false;
       btn.innerHTML = orig;
       r.json().then(function (d) {
-        if (d && d.error === 'flagged_content') showFlaggedContentError(d.flagged);
+        if (d && d.error === 'flagged_content') { showFlaggedContentError(d.flagged); return; }
+        if (r.status === 429) {
+          goTo('interests');
+          interestsError.textContent = 'Too many attempts — please wait a few minutes and try again.';
+          interestsError.classList.add('show');
+        }
       }).catch(function () {});
     })
     .catch(function () {
@@ -823,6 +828,7 @@ a { color: inherit; text-decoration: none; }
         invalid_email: 'Enter a valid email address.',
         weak_password: 'Password must be at least 8 characters.',
         email_taken:   'That email is already in use. Try logging in instead.',
+        rate_limited:  'Too many attempts — please wait a few minutes and try again.',
       };
       passwordSignupError.textContent = messages[res.d && res.d.error] || 'Could not create your account. Please try again.';
       passwordSignupError.classList.add('show');
@@ -877,7 +883,7 @@ a { color: inherit; text-decoration: none; }
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ email: email, password: password }),
     })
-    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
     .then(function (res) {
       if (res.ok) {
         window.location.href = res.d.redirect || '/app/';
@@ -885,7 +891,9 @@ a { color: inherit; text-decoration: none; }
       }
       loginBtn.disabled = false;
       loginBtn.textContent = orig;
-      loginError.textContent = 'Incorrect email or password.';
+      loginError.textContent = res.status === 429
+        ? 'Too many attempts — please wait a few minutes and try again.'
+        : 'Incorrect email or password.';
       loginError.classList.add('show');
     })
     .catch(function () {

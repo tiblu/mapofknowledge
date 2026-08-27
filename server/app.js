@@ -14,6 +14,13 @@ const requireAuth = require('./middleware/requireAuth');
 
 const app = express();
 
+// Node listens on a Unix socket (Apache proxies to it via .htaccess), so
+// req.socket.remoteAddress has no meaningful value on its own — trust the
+// single Apache hop's X-Forwarded-For (added automatically by mod_proxy_http)
+// so req.ip resolves to the real client IP. Needed for per-IP rate limiting
+// on the pre-auth routes in auth.js (login/signup have no req.user yet).
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
