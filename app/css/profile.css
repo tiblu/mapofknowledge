@@ -784,6 +784,7 @@ select.p-edit-input { cursor: pointer; }
 
 /* Relationship add form */
 .p-rel-form { display: none; margin-top: 10px; }
+.p-rel-form.open { display: block; }
 
 /* Add-event form wrapper */
 .p-ev-form {

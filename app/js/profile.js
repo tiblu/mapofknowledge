@@ -370,14 +370,14 @@
       }).join('');
       return `
         <button class="p-edit-btn p-rel-add-btn" id="rel-add-btn-${type}"
-          onclick="document.getElementById('rel-form-${type}').style.display='';this.style.display='none';document.getElementById('rel-f0-${type}').focus()">
+          onclick="document.getElementById('rel-form-${type}').classList.add('open');this.style.display='none';document.getElementById('rel-f0-${type}').focus()">
           + ${t('btn.add')}
         </button>
-        <div id="rel-form-${type}" style="display:none" class="p-rel-form">
+        <div id="rel-form-${type}" class="p-rel-form">
           <div class="p-form-grid-sm">${inputs}
             <div class="p-flex-row-sm">
               <button class="p-edit-btn primary p-edit-btn-inline" onclick="window.saveRelationship('${type}')">${btnLabel}</button>
-              <button class="p-edit-btn p-edit-btn-inline" onclick="document.getElementById('rel-form-${type}').style.display='none';document.getElementById('rel-add-btn-${type}').style.display=''">${t('btn.cancel')}</button>
+              <button class="p-edit-btn p-edit-btn-inline" onclick="document.getElementById('rel-form-${type}').classList.remove('open');document.getElementById('rel-add-btn-${type}').style.display=''">${t('btn.cancel')}</button>
             </div>
           </div>
         </div>`;
@@ -494,17 +494,17 @@
         : `<input id="cred-date-${type}" type="number" class="p-edit-input p-cred-date-year" min="1900" max="2099" placeholder="Year">`;
       return `
         <button class="p-edit-btn p-rel-add-btn" id="cred-add-btn-${type}"
-          onclick="document.getElementById('cred-form-${type}').style.display='';this.style.display='none';document.getElementById('cred-title-${type}').focus()">
+          onclick="document.getElementById('cred-form-${type}').classList.add('open');this.style.display='none';document.getElementById('cred-title-${type}').focus()">
           + ${t('btn.add')}
         </button>
-        <div id="cred-form-${type}" style="display:none" class="p-rel-form">
+        <div id="cred-form-${type}" class="p-rel-form">
           <div class="p-form-grid-sm">
             <input id="cred-title-${type}" class="p-edit-input" placeholder="${esc(t('placeholder.cred_title'))}">
             <input id="cred-issuer-${type}" class="p-edit-input" placeholder="${esc(t('placeholder.cred_issuer'))}">
             <div>${dateField}</div>
             <div class="p-flex-row-sm">
               <button class="p-edit-btn primary p-edit-btn-inline" onclick="window.saveCredential('${type}')">${t('btn.add')}</button>
-              <button class="p-edit-btn p-edit-btn-inline" onclick="document.getElementById('cred-form-${type}').style.display='none';document.getElementById('cred-add-btn-${type}').style.display=''">${t('btn.cancel')}</button>
+              <button class="p-edit-btn p-edit-btn-inline" onclick="document.getElementById('cred-form-${type}').classList.remove('open');document.getElementById('cred-add-btn-${type}').style.display=''">${t('btn.cancel')}</button>
             </div>
           </div>
         </div>`;
@@ -807,17 +807,17 @@
 
     var addForm = `
       <button class="p-edit-btn p-rel-add-btn" id="goal-add-btn"
-        onclick="document.getElementById('goal-form').style.display='';this.style.display='none';document.getElementById('goal-textarea').focus()">
+        onclick="document.getElementById('goal-form').classList.add('open');this.style.display='none';document.getElementById('goal-textarea').focus()">
         ${t('btn.add_goal')}
       </button>
-      <div id="goal-form" style="display:none" class="p-rel-form">
+      <div id="goal-form" class="p-rel-form">
         <textarea id="goal-textarea" class="p-edit-input p-textarea-full" maxlength="${MAX_TEXT_CHARS}"
           placeholder="${esc(t('placeholder.goal_text'))}"></textarea>
         <div class="char-counter" id="goal-textarea-counter"></div>
         <div class="p-goal-smart-hint">${t('msg.smart_hint')}</div>
         <div class="p-flex-row-sm">
           <button class="p-edit-btn primary p-edit-btn-inline" onclick="window.saveGoal()">${t('btn.add')}</button>
-          <button class="p-edit-btn p-edit-btn-inline" onclick="document.getElementById('goal-form').style.display='none';document.getElementById('goal-add-btn').style.display=''">${t('btn.cancel')}</button>
+          <button class="p-edit-btn p-edit-btn-inline" onclick="document.getElementById('goal-form').classList.remove('open');document.getElementById('goal-add-btn').style.display=''">${t('btn.cancel')}</button>
         </div>
       </div>`;
 
