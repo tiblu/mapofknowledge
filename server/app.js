@@ -10,6 +10,7 @@ const apiRouter      = require('./routes/api');
 const subsetsRouter  = require('./routes/subsets');
 const adminRouter    = require('./routes/admin');
 const accountRouter  = require('./routes/account');
+const knowledgeEstimateRouter = require('./routes/knowledgeEstimate');
 const requireAuth = require('./middleware/requireAuth');
 
 const app = express();
@@ -52,6 +53,7 @@ app.use('/api', requireAuth, apiRouter);
 app.use('/api/subsets', requireAuth, subsetsRouter);
 app.use('/api/admin', requireAuth, adminRouter);
 app.use('/api/account', requireAuth, accountRouter);
+app.use('/api/knowledge-estimate', requireAuth, knowledgeEstimateRouter);
 
 // Protected app (the D3 knowledge map)
 app.use('/app', requireAuth, express.static(path.join(__dirname, '../app')));

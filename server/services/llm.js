@@ -1127,6 +1127,101 @@ function streamAnneReply(passportText, history, userMessage, locale, userId, onC
   }, userId, 'anne_reply', onChunk);
 }
 
+// ── Knowledge estimation from qualifications ────────────────────────────────
+// Two-pass design, validated against real map data before being built into
+// the product (see docs/orientation.md's "Knowledge estimation" section):
+// pass 1 does a cheap scan across L4 topic areas (~1700 nodes) to find broad
+// candidates; pass 2 fetches only the L5 CHILDREN of those candidates and
+// judges leaf-by-leaf plausibility + retention tier. Matching at L4 alone and
+// blanket-applying to every L5 child was tried and rejected — an L4 node's
+// children are sometimes themselves specialized sub-topics (e.g. "Islam"'s
+// only children ARE its specific denominations), so a coarse "shallow survey"
+// match at L4 doesn't safely cascade down without a leaf-level plausibility
+// check landing at the same granularity where the write actually happens.
+const CURRICULUM_GUIDANCE = `- Broad general-education qualifications (e.g. secondary school diplomas) can reasonably cover MANY areas across many top-level subjects — a multi-year general education genuinely does cover a wide range, even if shallowly and now partly forgotten. Don't under-match these out of caution.
+- Infer the country/education system from the issuer (e.g. an Estonian institution implies the Estonian national curriculum) and judge plausibility against what that system would typically teach at that level.
+- Specialized qualifications (a degree, a vocational/technical certification) should match narrowly and precisely.
+- A short introductory course (check any provided duration/format details) covers far less ground than a multi-year program, regardless of recency.`;
+
+function _qualificationLines(qualifications) {
+  return qualifications.map((q, i) =>
+    `${i + 1}. "${q.title}" — ${q.issuer || 'unknown issuer'}, ${q.year}${q.details ? ` (${q.details})` : ''}`
+  ).join('\n');
+}
+
+// Pass 1 — qualifications x L4 breadcrumb list -> candidate L4 areas per qualification.
+async function estimateKnowledgeAreas(qualifications, l4List, userId) {
+  const system = `You estimate a learner's baseline familiarity with topics in a knowledge map, based on formal qualifications they've completed. You'll be given qualifications and a list of Level-4 topic areas (id + full breadcrumb).
+
+Identify which topic areas each qualification would plausibly give someone baseline familiarity with (be broad/generous for general education, narrow/precise for specialized qualifications).
+${CURRICULUM_GUIDANCE}
+
+Respond with ONLY minified JSON: {"results":[{"qualification":"<title verbatim>","matches":[{"id":"<external_id>","confidence":<0-100>,"why":"<3-8 word reason>"}]}]}`;
+
+  const msg = await client.messages.create({
+    model: SONNET,
+    max_tokens: 8000,
+    system,
+    messages: [{ role: 'user', content: `QUALIFICATIONS:\n${_qualificationLines(qualifications)}\n\nL4 TOPIC AREAS (id, then full breadcrumb):\n${l4List}` }],
+  });
+  _logUsage(userId, 'knowledge_estimate_areas', msg.usage, SONNET);
+  return _extractJSON(msg.content[0].text);
+}
+
+// Pass 2 — qualifications x their candidate L5 leaves (grouped by parent L4) ->
+// final leaf-level matches, each with a confidence and a retention tier.
+async function estimateKnowledgeLeaves(qualifications, perQualGroups, userId) {
+  const system = `You previously identified broad topic AREAS each qualification plausibly touches. Now decide, leaf by leaf, which SPECIFIC topics within those areas the qualification would realistically cover — this is the actual depth that matters.
+${CURRICULUM_GUIDANCE}
+
+Critical: an area can be a good broad match while most of its specific leaves are still too deep/specialized for the qualification actually completed — e.g. a general secondary education's "world religions" survey covers major religions at an overview level, but NOT their internal denominations/sects (a specific school like Sufism or a specific branch like Shia Islam requires dedicated study, not a survey unit) — exclude those leaves even though the parent area (Islam) is a reasonable broad match. Apply this same "would a real course/programme at this depth actually teach this exact leaf-level thing" test to every leaf, in every subject, not just religion.
+
+For each surviving leaf, also classify its RETENTION tier — how much time and disuse would erode this specific knowledge, independent of how long ago it was learned:
+- "core": an automatized skill that gets constantly reinforced in ordinary adult life for almost everyone, regardless of career — basic arithmetic operations, native-language spelling/reading/grammar, telling time, everyday counting/money. These barely fade even decades later.
+- "practiced": revisited occasionally in normal adult life (news, casual conversation, general awareness) but not used automatically every day — general history/geography facts, basic science concepts, civics. Fades meaningfully over years without reinforcement.
+- "specialized": rarely revisited by anyone who doesn't work directly in that field after finishing the qualification — deep theorems, specific technical formulas, narrow doctrinal or theoretical detail, niche facts. Fades fastest.
+A native language's spelling/grammar is "core"; the same skill in a foreign language learned but not used since is "practiced" at best. Most K-12/general-education leaves are "practiced" unless they're a rote skill drilled into automaticity (arithmetic tables, reading). Most degree/specialized-course leaves are "specialized" unless the field is one the person plausibly kept using daily (judge from the qualification itself, you don't know their career).
+
+For each qualification you are given candidate leaves grouped by their matched parent area. Return ONLY the leaves that pass the plausibility test, each with a confidence 0-100 and a retention tier.
+
+Respond with ONLY minified JSON: {"results":[{"qualification":"<title verbatim>","leaves":[{"id":"<external_id>","confidence":<0-100>,"retention":"core|practiced|specialized"}]}]}`;
+
+  const userMsg = qualifications.map((q, i) => {
+    const groups = perQualGroups[q.title] || [];
+    const groupText = groups.map(g =>
+      `  Area: ${g.crumb} (matched because: ${g.why})\n` +
+      g.leaves.map(l => `    ${l.external_id}\t${l.label}`).join('\n')
+    ).join('\n');
+    return `${i + 1}. "${q.title}" — ${q.issuer || 'unknown issuer'}, ${q.year}${q.details ? ` (${q.details})` : ''}\n${groupText}`;
+  }).join('\n\n');
+
+  const msg = await client.messages.create({
+    model: SONNET,
+    max_tokens: 16000,
+    system,
+    messages: [{ role: 'user', content: userMsg }],
+  });
+  _logUsage(userId, 'knowledge_estimate_leaves', msg.usage, SONNET);
+  return _extractJSON(msg.content[0].text);
+}
+
+// Percentage-by-retention-tier: retention isn't just a function of years --
+// it's a function of how automatized the skill is. Multiplication tables get
+// reinforced constantly for life; a chemistry formula from one course usually
+// isn't. Validated interactively against real qualifications before being
+// hardcoded — see docs/orientation.md.
+const RETENTION_TIERS = {
+  core:        { base: 95, halfLife: 60, floor: 85 },
+  practiced:   { base: 80, halfLife: 10, floor: 15 },
+  specialized: { base: 75, halfLife: 6,  floor: 10 },
+};
+
+function knowledgeEstimatePercentage(awardedYear, retentionTier) {
+  const tier = RETENTION_TIERS[retentionTier] || RETENTION_TIERS.practiced;
+  const yearsAgo = Math.max(0, new Date().getFullYear() - awardedYear);
+  return Math.max(tier.floor, Math.round(tier.base * Math.pow(0.5, yearsAgo / tier.halfLife)));
+}
+
 module.exports = {
   generateOverview,
   generateKnobits,
@@ -1153,4 +1248,7 @@ module.exports = {
   streamAnneReply,
   generateLootBox,
   LOOTBOX_URL_KEYS,
+  estimateKnowledgeAreas,
+  estimateKnowledgeLeaves,
+  knowledgeEstimatePercentage,
 };
