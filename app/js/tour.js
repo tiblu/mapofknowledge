@@ -267,6 +267,7 @@
         _hide();
         _restoreAnne();
         _markDone(true);
+        _maybeShowKnowledgeEstimate();
       }
     },
     prev: function () {
@@ -277,8 +278,19 @@
       _hide();
       _restoreAnne();
       _markDone(true);
+      _maybeShowKnowledgeEstimate();
     },
   };
+
+  // One-time knowledge-estimation add-on prompt, right after the tour ends
+  // (finished or skipped) — see app/js/knowledge-estimate.js. A short delay
+  // lets the tour's own closing state settle first. No-ops on its own if
+  // already prompted before, or if the role gate excludes this user.
+  function _maybeShowKnowledgeEstimate() {
+    if (window.KnowledgeEstimate && window.KnowledgeEstimate.maybePromptFirstTime) {
+      setTimeout(function () { window.KnowledgeEstimate.maybePromptFirstTime(); }, 600);
+    }
+  }
 
   /* ─── Auto-start logic ─────────────────────────────────────── */
   // Called by app.js after settings are loaded

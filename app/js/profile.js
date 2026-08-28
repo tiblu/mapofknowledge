@@ -549,6 +549,20 @@
           }).join('');
       qualCard.innerHTML = `<div class="p-card-title">${t('section.qualifications')}</div>
         <div class="p-scroll-sm">${qualRows}</div>` + credAddForm('qualification', false);
+
+      // Knowledge Estimation add-on trigger — role-gated (see
+      // knowledge-estimate.js's ROLE_GATE_ENABLED) while under review.
+      fetch('/auth/me').then(function(r) { return r.json(); }).then(function(user) {
+        if (!user || !window.KnowledgeEstimate || !window.KnowledgeEstimate.isRoleAllowed(user.role)) return;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ke-manual-trigger';
+        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 20 20" fill="none">'
+          + '<path d="M10 2L3 6v5c0 4 3 6.5 7 7 4-0.5 7-3 7-7V6l-7-4z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>'
+          + '</svg><span>' + t('btn.ke_manual_trigger') + '</span>';
+        btn.addEventListener('click', function () { window.KnowledgeEstimate.openManual(); });
+        qualCard.appendChild(btn);
+      }).catch(function() {});
     }
 
     // ── Awards & Endorsements ──

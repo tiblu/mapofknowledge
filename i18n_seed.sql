@@ -539,6 +539,37 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 
 -- Per-user LLM rate limit (2026-08-28): shown instead of the generic
 -- connection-error message when a request is throttled (429).
-('msg.slow_down',                'en', 'You are sending requests a bit fast. Please wait a few seconds and try again.')
+('msg.slow_down',                'en', 'You are sending requests a bit fast. Please wait a few seconds and try again.'),
+
+-- Knowledge Estimation add-on (2026-08-28) — app/js/knowledge-estimate.js.
+('btn.ke_add_another',           'en', '+ Add another'),
+('btn.ke_add_education',         'en', 'Add my education'),
+('btn.ke_add_to_knowledge',      'en', 'Add to My Knowledge'),
+('btn.ke_collapse_all',          'en', 'Collapse all'),
+('btn.ke_estimate',              'en', 'Estimate my knowledge'),
+('btn.ke_expand_all',            'en', 'Expand all'),
+('btn.ke_manual_trigger',        'en', 'Estimate knowledge from qualifications'),
+('btn.ke_skip_for_now',          'en', 'Skip for now'),
+('label.ke_done_title',          'en', 'All set!'),
+('label.ke_empty_title',         'en', 'Nothing new to estimate'),
+('label.ke_entry_title',         'en', 'Add your previous education'),
+('label.ke_error_title',        'en', 'Something went wrong'),
+('label.ke_intro_firsttime_title','en', 'Estimate your starting knowledge?'),
+('label.ke_intro_manual_title',  'en', 'Estimate knowledge from qualifications'),
+('label.ke_of',                  'en', 'of'),
+('label.ke_review_title',        'en', 'Review your estimated knowledge'),
+('label.ke_selected',            'en', 'selected'),
+('msg.ke_done_text_suffix',      'en', 'topics added to your Knowledge map.'),
+('msg.ke_empty_text',            'en', 'We could not find any new topics to estimate from what you entered — everything may already be marked in your Knowledge map.'),
+('msg.ke_entry_text',            'en', 'Add any qualifications you have completed — school, university, courses, certifications, military or vocational training. We will estimate your starting knowledge from them; you will be able to review and adjust everything before it is added.'),
+('msg.ke_error_text',            'en', 'Could not complete the estimate. Please try again in a moment.'),
+('msg.ke_intro_firsttime_text',  'en', 'Add your previous education — school, university, courses, certifications — and we will estimate your current knowledge from it, so your Knowledge map does not start empty. You can skip this and start fresh instead.'),
+('msg.ke_intro_manual_text',     'en', 'Add qualifications you have not entered yet, and we will estimate what they add to your Knowledge map. You will review everything before anything changes.'),
+('msg.ke_loading_text',          'en', 'This can take up to a minute — we are comparing your qualifications against the whole knowledge map.'),
+('msg.ke_loading_title',         'en', 'Estimating your knowledge...'),
+('placeholder.ke_details',       'en', 'Details (e.g. online course, 6 months)'),
+('placeholder.ke_issuer',        'en', 'Issuer (e.g. University of Tartu)'),
+('placeholder.ke_qualification', 'en', 'Qualification'),
+('placeholder.ke_year',          'en', 'Year')
 
 ON DUPLICATE KEY UPDATE value = VALUES(value);

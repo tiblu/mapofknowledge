@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/profile.css">
 <link rel="stylesheet" href="css/timeline.css">
+<link rel="stylesheet" href="css/knowledge-estimate.css">
 <link rel="stylesheet" href="css/font-scale.css">
 <link rel="stylesheet" href="css/anne.css">
 <script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}}).catch(function(){});</script>
@@ -411,5 +412,6 @@
 <script src="js/anne.js"></script>
 <script src="js/profile.js"></script>
 <script src="js/timeline.js"></script>
+<script src="js/knowledge-estimate.js"></script>
 </body>
 </html>

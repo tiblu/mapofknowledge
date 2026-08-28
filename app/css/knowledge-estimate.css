@@ -1,0 +1,160 @@
+/* ── Knowledge Estimation add-on — self-contained modal ──────────────────── */
+.ke-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: var(--overlay);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.ke-modal.active { display: flex; }
+.ke-box {
+  background: var(--bg);
+  border-radius: 18px;
+  padding: 26px 26px 22px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px var(--i18);
+}
+.ke-step { display: none; flex-direction: column; min-height: 0; }
+.ke-step.active { display: flex; }
+
+.ke-icon-wrap {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; margin-bottom: 14px; flex-shrink: 0;
+}
+.ke-title { font-size: 17px; font-weight: 700; color: var(--c1); margin-bottom: 8px; }
+.ke-text { font-size: 13.5px; color: var(--c3); line-height: 1.6; margin-bottom: 18px; }
+
+/* ── qualification entry rows ── */
+.ke-qual-rows { overflow-y: auto; margin-bottom: 14px; }
+.ke-qual-row {
+  background: rgba(255,255,255,0.5);
+  border: 1px solid var(--i08);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  position: relative;
+}
+.ke-qual-row input, .ke-qual-row textarea {
+  width: 100%; box-sizing: border-box;
+  padding: 8px 10px; border-radius: 8px;
+  border: 1.5px solid var(--i12);
+  background: rgba(255,255,255,0.7);
+  font-size: 13px; font-family: inherit; color: var(--c1);
+  margin-bottom: 6px;
+}
+.ke-qual-row input:last-child, .ke-qual-row textarea:last-child { margin-bottom: 0; }
+.ke-qual-row input:focus, .ke-qual-row textarea:focus { outline: none; border-color: var(--accent); }
+.ke-qual-row-remove {
+  position: absolute; top: 8px; right: 8px;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: none; background: rgba(58,48,40,0.08);
+  color: var(--c5); font-size: 13px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.ke-qual-row-remove:hover { background: rgba(196,90,90,0.15); color: #B5453D; }
+.ke-add-row-btn {
+  padding: 9px 14px; border-radius: 10px;
+  border: 1.5px dashed var(--i14);
+  background: none; color: var(--c5);
+  font-size: 12.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; width: 100%; margin-bottom: 4px;
+}
+.ke-add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── loading step ── */
+.ke-loading-wrap { align-items: center; text-align: center; padding: 30px 0; }
+.ke-loading-dots { display: flex; gap: 6px; margin-top: 14px; }
+.ke-loading-dots span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  animation: ke-pulse 1.1s infinite ease-in-out;
+}
+.ke-loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+.ke-loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes ke-pulse { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+/* ── review step ── */
+.ke-review-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px; flex-shrink: 0;
+}
+.ke-counter { font-size: 12px; font-weight: 700; color: var(--c1); }
+.ke-collapse-links { display: flex; gap: 10px; }
+.ke-collapse-links button {
+  background: none; border: none; padding: 0;
+  font-size: 11.5px; font-weight: 600; color: var(--accent);
+  cursor: pointer;
+}
+.ke-review-list { overflow-y: auto; flex: 1; min-height: 0; margin-bottom: 14px; }
+
+.ke-domain-group { margin-bottom: 4px; }
+.ke-domain-group:not(:first-child) { margin-top: 12px; }
+.ke-domain-heading {
+  display: flex; align-items: center; gap: 7px;
+  padding-bottom: 6px; margin-bottom: 4px;
+  border-bottom: 1.5px solid rgba(91,168,216,0.28);
+  cursor: pointer; user-select: none;
+}
+.ke-domain-heading:hover { opacity: 0.75; }
+.ke-domain-chevron { display: inline-flex; flex-shrink: 0; color: #2068A8; transition: transform 0.15s ease; }
+.ke-domain-group.collapsed .ke-domain-chevron { transform: rotate(-90deg); }
+.ke-domain-name { font-size: 12px; font-weight: 700; color: #2068A8; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ke-domain-count { font-size: 10.5px; font-weight: 600; color: var(--c7); white-space: nowrap; }
+.ke-domain-members { overflow: hidden; }
+.ke-domain-group.collapsed .ke-domain-members { display: none; }
+
+.ke-leaf-row { display: flex; align-items: center; gap: 8px; padding: 5px 2px; }
+.ke-leaf-label { flex: 1; min-width: 0; font-size: 12px; color: var(--c2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ke-leaf-pct { font-size: 11px; font-weight: 600; color: var(--c6); flex-shrink: 0; width: 32px; text-align: right; }
+
+.ke-toggle {
+  width: 32px; height: 18px; border-radius: 9px;
+  background: var(--i12);
+  position: relative; flex-shrink: 0; cursor: pointer;
+  border: none; padding: 0; transition: background 0.15s;
+}
+.ke-toggle.on { background: #8BAD7E; }
+.ke-toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.15s;
+}
+.ke-toggle.on .ke-toggle-thumb { transform: translateX(14px); }
+
+/* ── shared action buttons ── */
+.ke-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.ke-actions-row { display: flex; gap: 8px; }
+.ke-actions-row .ke-btn { flex: 1; }
+.ke-btn {
+  padding: 12px; border-radius: 12px;
+  font-size: 13.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; text-align: center; border: none;
+  transition: opacity 0.13s, background 0.13s;
+}
+.ke-btn-primary {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  color: #fff;
+}
+.ke-btn-primary:hover { opacity: 0.9; }
+.ke-btn-primary:disabled { opacity: 0.5; cursor: default; }
+.ke-btn-secondary { background: var(--i08); color: var(--c2); }
+.ke-btn-secondary:hover { background: var(--i14); }
+
+/* ── manual trigger icon in the Qualifications card ── */
+.ke-manual-trigger {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; color: var(--accent);
+  background: none; border: none; cursor: pointer;
+  padding: 4px 0; margin-top: 6px;
+}
+.ke-manual-trigger:hover { opacity: 0.8; }
