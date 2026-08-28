@@ -21,7 +21,7 @@
       dynamic:         true,
       isOverlay:       true,
       displayMode:     'ring',
-      backgroundHidden: false,
+      backgroundHidden: true,
       ringColor:       '#9B8FB5',
       labels:          new Set()
     }
