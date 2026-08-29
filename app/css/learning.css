@@ -1330,21 +1330,91 @@
   font-size: 13.5px; color: var(--c2); line-height: 1.65;
 }
 .lootbox-detail-fact { white-space: pre-wrap; }
-.lootbox-timeline {
-  list-style: none; display: flex; flex-direction: column; gap: 10px;
+/* ── Time Machine — horizontal fade carousel ──
+   .lb-tm-viewport scroll-snaps one full-width era at a time; opacity per
+   era is set in JS by distance from viewport-center, so only the centered
+   one is ever fully visible and neighbours fade in/out mid-scroll. ── */
+.lb-tm-wrap {
+  display: flex; align-items: center; gap: 6px;
 }
-.lootbox-timeline li {
-  display: flex; gap: 10px;
-  padding: 9px 11px;
+.lb-tm-viewport {
+  position: relative;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-width: 0;
+  min-height: 140px;
+  border-radius: 12px;
   background: var(--i04);
-  border-radius: 9px;
+  scrollbar-width: none;
 }
-.lb-tm-date {
-  flex: 0 0 auto;
-  font-weight: 700; color: var(--c1);
-  font-size: 12.5px; white-space: nowrap;
+.lb-tm-viewport::-webkit-scrollbar { display: none; }
+.lb-tm-era {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 14px 24px;
+  box-sizing: border-box;
+  transition: opacity 0.15s linear;
 }
-.lb-tm-text { font-size: 12.5px; color: var(--c3); }
+.lb-tm-era-date { font-weight: 700; color: var(--c1); font-size: 13.5px; margin-bottom: 6px; }
+.lb-tm-era-text { font-size: 12.5px; color: var(--c3); line-height: 1.5; }
+.lb-tm-prologue .lb-tm-era-date,
+.lb-tm-prologue .lb-tm-era-text { color: var(--c5); font-style: italic; }
+.lb-tm-nav {
+  flex-shrink: 0;
+  width: 26px; height: 26px;
+  border-radius: 50%; border: none;
+  background: var(--i06); color: var(--c3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background 0.14s;
+}
+.lb-tm-nav:hover { background: var(--i08); }
+
+/* Persistent progress line at the bottom, always showing current era */
+.lb-tm-track {
+  position: relative;
+  display: flex; align-items: center;
+  height: 20px;
+  margin: 10px 4px 0;
+}
+.lb-tm-track-line {
+  position: absolute; left: 0; right: 0; top: 50%;
+  height: 2px; margin-top: -1px;
+  background: var(--i08);
+  border-radius: 2px;
+}
+.lb-tm-track-fill {
+  position: absolute; left: 0; top: 50%;
+  height: 2px; margin-top: -1px;
+  background: var(--accent, var(--lm-accent));
+  border-radius: 2px;
+  transition: width 0.15s linear;
+}
+.lb-tm-tick {
+  position: relative;
+  flex: 1;
+  height: 20px;
+  border: none; background: none; padding: 0; cursor: pointer;
+}
+.lb-tm-tick::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--i14);
+  transition: background 0.15s, transform 0.15s;
+}
+.lb-tm-tick.active::after {
+  background: var(--accent, var(--lm-accent));
+  transform: translate(-50%, -50%) scale(1.4);
+}
 .lootbox-hack-outcome {
   font-weight: 600; color: var(--c1);
   margin-bottom: 12px;

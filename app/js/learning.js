@@ -661,12 +661,32 @@
     if (key === 'fun_fact') {
       html += '<div class="lootbox-detail-fact">' + _escHtml(item.text || '') + '</div>';
     } else if (key === 'time_machine') {
-      html += '<ul class="lootbox-timeline">';
+      var eras = [];
+      if (item.prologue && item.prologue.text) {
+        eras.push({ date: item.prologue.era || '', text: item.prologue.text, prologue: true });
+      }
       (item.entries || []).forEach(function (e) {
-        html += '<li><span class="lb-tm-date">' + _escHtml(e.date || '') + '</span>' +
-          '<span class="lb-tm-text">' + _escHtml(e.text || '') + '</span></li>';
+        eras.push({ date: e.date || '', text: e.text || '', prologue: false });
       });
-      html += '</ul>';
+      html += '<div class="lb-tm-wrap">';
+      html += '<button type="button" class="lb-tm-nav lb-tm-nav-prev" id="lb-tm-prev" aria-label="Previous era">' +
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+      html += '<div class="lb-tm-viewport" id="lb-tm-viewport" tabindex="0">';
+      eras.forEach(function (e) {
+        html += '<div class="lb-tm-era' + (e.prologue ? ' lb-tm-prologue' : '') + '">' +
+          '<div class="lb-tm-era-date">' + _escHtml(e.date) + '</div>' +
+          '<div class="lb-tm-era-text">' + _escHtml(e.text) + '</div>' +
+          '</div>';
+      });
+      html += '</div>';
+      html += '<button type="button" class="lb-tm-nav lb-tm-nav-next" id="lb-tm-next" aria-label="Next era">' +
+        '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3l6 5-6 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+      html += '</div>';
+      html += '<div class="lb-tm-track" id="lb-tm-track"><div class="lb-tm-track-line"></div><div class="lb-tm-track-fill" id="lb-tm-track-fill"></div>';
+      eras.forEach(function (e, i) {
+        html += '<button type="button" class="lb-tm-tick' + (i === 0 ? ' active' : '') + '" data-i="' + i + '" aria-label="Go to era ' + (i + 1) + '"></button>';
+      });
+      html += '</div>';
     } else if (key === 'hack_it') {
       html += '<div class="lootbox-hack-outcome">' + _escHtml(item.outcome || '') + '</div>';
       html += '<ol class="lootbox-hack-steps">';
@@ -676,6 +696,71 @@
     }
     html += '</div>';
     body.innerHTML = html;
+    if (key === 'time_machine') _wireTimeMachine();
+  }
+
+  // Horizontal fade-carousel for the Time Machine detail view: native
+  // scroll-snap drives the index (touch/trackpad/drag all just work), a
+  // scroll listener fades each era by distance from viewport-center so only
+  // the centered one is ever fully opaque, and a mouse wheel (vertical by
+  // default) is remapped to horizontal scroll for desktop users.
+  function _wireTimeMachine() {
+    var viewport = document.getElementById('lb-tm-viewport');
+    var track    = document.getElementById('lb-tm-track');
+    var fill     = document.getElementById('lb-tm-track-fill');
+    var prevBtn  = document.getElementById('lb-tm-prev');
+    var nextBtn  = document.getElementById('lb-tm-next');
+    if (!viewport) return;
+
+    var eraEls = Array.prototype.slice.call(viewport.querySelectorAll('.lb-tm-era'));
+    var ticks  = track ? Array.prototype.slice.call(track.querySelectorAll('.lb-tm-tick')) : [];
+    var n = eraEls.length;
+    if (!n) return;
+
+    var currentIndex = 0;
+    var rafPending = false;
+
+    function update() {
+      rafPending = false;
+      var vpRect = viewport.getBoundingClientRect();
+      var center = vpRect.left + vpRect.width / 2;
+      var bestIdx = 0, bestDist = Infinity;
+      eraEls.forEach(function (el, i) {
+        var r = el.getBoundingClientRect();
+        var dist = Math.abs((r.left + r.width / 2) - center);
+        var ratio = Math.min(1, dist / (vpRect.width * 0.6));
+        el.style.opacity = Math.max(0, 1 - ratio).toFixed(3);
+        if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+      });
+      currentIndex = bestIdx;
+      ticks.forEach(function (t, i) { t.classList.toggle('active', i === bestIdx); });
+      if (fill) fill.style.width = (n > 1 ? (bestIdx / (n - 1)) * 100 : 100) + '%';
+    }
+
+    function onScroll() {
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(update);
+    }
+    viewport.addEventListener('scroll', onScroll, { passive: true });
+
+    viewport.addEventListener('wheel', function (e) {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+        viewport.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+
+    function goTo(i) {
+      i = Math.max(0, Math.min(n - 1, i));
+      viewport.scrollTo({ left: eraEls[i].offsetLeft, behavior: 'smooth' });
+    }
+
+    ticks.forEach(function (t, i) { t.addEventListener('click', function () { goTo(i); }); });
+    if (prevBtn) prevBtn.addEventListener('click', function () { goTo(currentIndex - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', function () { goTo(currentIndex + 1); });
+
+    update();
   }
 
   function _stopBackBtnPulse() {

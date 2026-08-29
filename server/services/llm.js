@@ -973,7 +973,7 @@ The ten categories
 
 7. Fun Fact — generation. Two to four sentences. A surprising fact, an origin story, a good argument between two researchers, a wrong idea people held for a long time. It must be true and it must be about ${nodeLabel} specifically. Search to check anything you are not certain of. Discard anything that smells like a widely repeated myth. No "scientists were baffled" framing — just tell it.
 
-8. Time Machine — generation. Four to seven dated entries, chronological, one line each. Include at least one entry that is a wrong turn, an abandoned idea, or a dispute — those are what make a timeline memorable rather than a list. Every date must be one you are confident in; drop the entry rather than approximate. If the topic has no meaningful history, omit.
+8. Time Machine — generation. Four to seven dated entries, chronological, one line each. Include at least one entry that is a wrong turn, an abandoned idea, or a dispute — those are what make a timeline memorable rather than a list. Every date must be one you are confident in; drop the entry rather than approximate. If the topic has no meaningful history, omit the whole category. Also write a "prologue": one line dated to clearly before your earliest entry, saying that ${nodeLabel} — as a concept, field, or practice — simply didn't exist or wasn't understood yet. Pick a distance that fits the timeline's own scale (decades before a 20th-century timeline, centuries before an ancient one) — it only needs to feel like "before the story starts," not be precise. Omit the prologue only in the rare case where your earliest entry already is the origin of the concept itself (its invention, discovery, or coining), since there is nothing true to say about "before" then.
 
 9. Influencer — retrieval. One living person actively producing work a learner can follow: a researcher, writer, teacher, or channel. Name them, say in one line what they do and why they are worth following, and link to where their output actually appears — their channel, blog, or site, not a Wikipedia article. Prefer someone specific to ${nodeLabel} over a general science-communication celebrity. Say nothing about them beyond their public professional work.
 
@@ -991,7 +991,7 @@ Return ONLY a single JSON object — no markdown fences, no commentary outside t
   "ancient_scroll": { "title": "...", "author": "...", "year": 1999, "url": "...", "note": "...", "lang": "..." },
   "breaking_news":  { "title": "...", "source": "...", "date": "...", "url": "...", "note": "one line on why this is relevant right now", "lang": "..." },
   "fun_fact":       { "text": "2-4 sentences" },
-  "time_machine":   { "entries": [ { "date": "...", "text": "one line" }, ... ] },
+  "time_machine":   { "prologue": { "era": "one short label for the before-time, e.g. 'Before 1850'", "text": "one line on ${nodeLabel} not existing/being understood yet" }, "entries": [ { "date": "...", "text": "one line" }, ... ] },
   "influencer":     { "name": "...", "role": "one line on what they do and why worth following", "url": "..." },
   "hack_it":        { "outcome": "what the learner will end up with", "steps": [ "...", "..." ], "result": "what they'll have noticed or built by the end" }
 }
