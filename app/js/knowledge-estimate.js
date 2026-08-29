@@ -38,10 +38,7 @@
   var _approved = null; // Set of candidate ids currently toggled on
 
   function _icon() {
-    return '<svg width="20" height="20" viewBox="0 0 20 20" fill="none">'
-      + '<path d="M10 2L3 6v5c0 4 3 6.5 7 7 4-0.5 7-3 7-7V6l-7-4z" stroke="white" stroke-width="1.3" stroke-linejoin="round"/>'
-      + '<path d="M7 10l2 2 4-4" stroke="white" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>'
-      + '</svg>';
+    return '🔮'; // matches the "Read My Mind" trigger icon in the Qualifications card
   }
 
   function _qualRowHtml(id) {
