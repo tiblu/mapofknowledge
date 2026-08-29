@@ -19,6 +19,14 @@
 //                   still at 0%), logs every write to knowledge_estimate_log
 //                   for manual rollback if needed, and marks the credential
 //                   ids the client echoes back as knowledge_estimated = 1.
+// /prepare's response also carries newCredentialIds — just the qualification
+// rows THIS call inserted, distinct from credentialIds' full pending set
+// (which can include older qualifications that were already sitting there
+// unestimated). If the learner cancels at the review step instead of
+// committing, the client deletes newCredentialIds via the existing
+// DELETE /api/profile/credentials/:id route — never the older ones, which
+// were real qualifications the learner had already added independently of
+// this flow and must survive a cancel untouched.
 // ══════════════════════════════════════════════════════════════════════════
 const express = require('express');
 const router  = express.Router();
@@ -53,6 +61,11 @@ router.post('/prepare', llmRateLimit, async (req, res) => {
 
   try {
     // ── Insert any newly-entered qualifications ──────────────────────────
+    // newCredentialIds (as opposed to the full pending set below) are the
+    // rows THIS call created — the only ones safe to delete if the learner
+    // cancels at the review step, since the rest may be older qualifications
+    // that were already sitting there unestimated and must not be touched.
+    const newCredentialIds = [];
     for (const q of newQualifications) {
       const title = typeof q.title === 'string' ? q.title.trim().slice(0, MAX_TITLE_LEN) : '';
       if (!title) continue;
@@ -61,11 +74,12 @@ router.post('/prepare', llmRateLimit, async (req, res) => {
       const year = parseInt(q.year, 10);
       const awardedDate = (Number.isInteger(year) && year > 1900 && year <= new Date().getFullYear() + 1)
         ? `${year}-01-01` : null;
-      await db.execute(
+      const [result] = await db.execute(
         `INSERT INTO passport_credentials (passport_id, type, title, issuer, details, awarded_date, sort_order)
          VALUES (?, 'qualification', ?, ?, ?, ?, 0)`,
         [passportId, title, issuer, details, awardedDate]
       );
+      newCredentialIds.push(result.insertId);
     }
 
     // ── Gather every not-yet-estimated qualification on this passport —
@@ -75,7 +89,7 @@ router.post('/prepare', llmRateLimit, async (req, res) => {
        WHERE passport_id = ? AND type = 'qualification' AND knowledge_estimated = 0`,
       [passportId]
     );
-    if (!pending.length) return res.json({ credentialIds: [], candidates: [] });
+    if (!pending.length) return res.json({ credentialIds: [], newCredentialIds: [], candidates: [] });
 
     const currentYear = new Date().getFullYear();
     const qualifications = pending.map(p => ({
@@ -180,7 +194,7 @@ router.post('/prepare', llmRateLimit, async (req, res) => {
       })
       .sort((a, b) => b.percentage - a.percentage);
 
-    res.json({ credentialIds: pending.map(p => p.id), candidates });
+    res.json({ credentialIds: pending.map(p => p.id), newCredentialIds, candidates });
   } catch (err) {
     console.error('[knowledge-estimate/prepare]', err.message);
     res.status(500).json({ error: 'estimate_failed' });

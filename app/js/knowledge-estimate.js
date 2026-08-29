@@ -33,6 +33,7 @@
   var _mode = 'manual'; // 'firsttime' | 'manual'
   var _rowSeq = 0;
   var _credentialIds = [];
+  var _newCredentialIds = []; // subset of _credentialIds this /prepare call itself inserted
   var _candidates = [];
   var _approved = null; // Set of candidate ids currently toggled on
 
@@ -186,6 +187,7 @@
       .then(function (res) {
         if (!res.ok) { _showStep('error'); return; }
         _credentialIds = res.d.credentialIds || [];
+        _newCredentialIds = res.d.newCredentialIds || [];
         _candidates = res.d.candidates || [];
         if (!_candidates.length) { _showStep('empty'); return; }
         _approved = new Set(_candidates.map(function (c) { return c.id; }));
@@ -257,10 +259,28 @@
         if (!res.ok) { _showStep('error'); return; }
         document.getElementById('ke-done-text').textContent =
           (res.d.written || 0) + ' ' + t('msg.ke_done_text_suffix');
+        _newCredentialIds = []; // committed successfully — nothing left to undo on a later cancel
         _showStep('done');
         if (window.MapView && window.MapView.refreshProgress) window.MapView.refreshProgress();
       })
       .catch(function () { btn.disabled = false; _showStep('error'); });
+  }
+
+  // Cancelling at the review step must undo the qualification(s) this run
+  // itself just inserted (prepare writes them immediately, before the user
+  // has approved anything) — but never the older, already-pending ones that
+  // happened to be swept into this run, since those are real qualifications
+  // the learner added independently and must survive a cancel untouched.
+  function _cancelReview() {
+    var ids = _newCredentialIds.slice();
+    _newCredentialIds = [];
+    _close();
+    if (!ids.length) return;
+    Promise.all(ids.map(function (id) {
+      return fetch('/api/profile/credentials/' + id, { method: 'DELETE' }).catch(function () {});
+    })).then(function () {
+      if (typeof window.loadProfile === 'function') window.loadProfile();
+    });
   }
 
   function _markPrompted() {
@@ -284,7 +304,7 @@
 
     document.getElementById('ke-entry-cancel').addEventListener('click', _close);
     document.getElementById('ke-entry-submit').addEventListener('click', _submitEntry);
-    document.getElementById('ke-review-cancel').addEventListener('click', _close);
+    document.getElementById('ke-review-cancel').addEventListener('click', _cancelReview);
     document.getElementById('ke-review-confirm').addEventListener('click', _submitReview);
     document.getElementById('ke-empty-close').addEventListener('click', _close);
     document.getElementById('ke-error-close').addEventListener('click', _close);
