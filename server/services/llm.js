@@ -917,8 +917,8 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
 // ── Loot Box — further learning resources, opened from the learning-path back
 //    button. Search-heavy (6 of 9 categories need a live URL) — always called
 //    through the /api/learn/lootbox cache, never per view. ─────────────────
-const LOOTBOX_KEYS     = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'fun_fact', 'time_machine', 'influencer', 'hack_it'];
-const LOOTBOX_URL_KEYS = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'influencer'];
+const LOOTBOX_KEYS     = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'breaking_news', 'fun_fact', 'time_machine', 'influencer', 'hack_it'];
+const LOOTBOX_URL_KEYS = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'breaking_news', 'influencer'];
 
 function _langNameFor(locale) {
   if (!locale || locale === 'en') return 'English';
@@ -927,7 +927,7 @@ function _langNameFor(locale) {
 
 async function generateLootBox(nodeLabel, breadcrumb, locale, userId) {
   const langName = _langNameFor(locale);
-  const prompt = `You are a resource scout for Map of Knowledge, a learning environment. A learner is working through a node on a learning path. Your job is to fill a "Loot Box" — optional extra material that sits alongside the main lesson, in nine fixed categories.
+  const prompt = `You are a resource scout for Map of Knowledge, a learning environment. A learner is working through a node on a learning path. Your job is to fill a "Loot Box" — optional extra material that sits alongside the main lesson, in ten fixed categories.
 
 Topic: ${nodeLabel} Where it sits: ${breadcrumb} Learning language: ${langName}
 
@@ -939,9 +939,9 @@ An empty slot is a good outcome. A wrong, dead, generic, or invented item is a b
 
 Two kinds of category
 
-Six categories are retrieval: they need a real, live, specific URL. Search for these. Do not produce a URL from memory — URLs from memory are frequently wrong or dead. If your searches do not return something that clears the bar, omit the category.
+Seven categories are retrieval: they need a real, live, specific URL. Search for these. Do not produce a URL from memory — URLs from memory are frequently wrong or dead. If your searches do not return something that clears the bar, omit the category.
 
-Categories 6, 7 and 9 are generation: you write them yourself. No URL is required. These will almost always be fillable, so the Loot Box is rarely empty even when search goes badly. But they must be factually correct — search to verify any date, name, or claim you are not certain of, and drop any detail you cannot confirm.
+Categories 7, 8 and 10 are generation: you write them yourself. No URL is required. These will almost always be fillable, so the Loot Box is rarely empty even when search goes badly. But they must be factually correct — search to verify any date, name, or claim you are not certain of, and drop any detail you cannot confirm.
 
 Specificity bar
 
@@ -957,7 +957,7 @@ If ${langName} is a smaller language, good material may simply not exist for thi
 
 Special case: if ${nodeLabel} is itself a language being learned, ${langName} is the language of instruction, not the target. Resources about the target language should be in ${langName}; resources that are examples of the target language (a podcast for listening practice, a story to read) should be in the target language and pitched at a beginner in that language.
 
-The nine categories
+The ten categories
 
 1. Animation — retrieval. A YouTube animation or explainer video. Wants visual explanation, not a lecture recording of someone talking at a whiteboard for 50 minutes. Under ~25 minutes. Check upload date and view count in results; a video with 40 views from an abandoned channel is usually not the one. Best for anything with a mechanism, a process, or a spatial structure.
 
@@ -969,13 +969,15 @@ The nine categories
 
 5. Ancient Scroll — retrieval. One book: popular science, a classic text, a memoir, or fiction that treats the topic seriously. Give author and year. Verify it exists and that the author is right — misattributed books are a common failure. Link to a publisher page, a library record, or Goodreads; no affiliate links. If a short, readable primary source exists — an original paper or essay of a few pages — that is often a better pick than a 400-page overview, and can go here.
 
-6. Fun Fact — generation. Two to four sentences. A surprising fact, an origin story, a good argument between two researchers, a wrong idea people held for a long time. It must be true and it must be about ${nodeLabel} specifically. Search to check anything you are not certain of. Discard anything that smells like a widely repeated myth. No "scientists were baffled" framing — just tell it.
+6. Breaking News — retrieval. A genuinely recent news story — ideally from the last few months, at most the last couple of years — about ${nodeLabel} specifically, or about a very closely related development if nothing exists on the exact topic itself. Search real news sources: established outlets, wire services, dedicated science/tech press. Not blogs, press-release mills, or SEO content farms. The story must be substantively about the topic, not a passing mention in an article about something else. If nothing recent and genuinely on-topic exists, omit — most topics will not have breaking news at any given moment, and that is the expected, common case, not a failure. Give the outlet name and a rough publication date, and link directly to the article.
 
-7. Time Machine — generation. Four to seven dated entries, chronological, one line each. Include at least one entry that is a wrong turn, an abandoned idea, or a dispute — those are what make a timeline memorable rather than a list. Every date must be one you are confident in; drop the entry rather than approximate. If the topic has no meaningful history, omit.
+7. Fun Fact — generation. Two to four sentences. A surprising fact, an origin story, a good argument between two researchers, a wrong idea people held for a long time. It must be true and it must be about ${nodeLabel} specifically. Search to check anything you are not certain of. Discard anything that smells like a widely repeated myth. No "scientists were baffled" framing — just tell it.
 
-8. Influencer — retrieval. One living person actively producing work a learner can follow: a researcher, writer, teacher, or channel. Name them, say in one line what they do and why they are worth following, and link to where their output actually appears — their channel, blog, or site, not a Wikipedia article. Prefer someone specific to ${nodeLabel} over a general science-communication celebrity. Say nothing about them beyond their public professional work.
+8. Time Machine — generation. Four to seven dated entries, chronological, one line each. Include at least one entry that is a wrong turn, an abandoned idea, or a dispute — those are what make a timeline memorable rather than a list. Every date must be one you are confident in; drop the entry rather than approximate. If the topic has no meaningful history, omit.
 
-9. Hack It — generation. One concrete project doable in an evening or a weekend with things a normal person has: a computer, a phone, a notebook, household objects, free software. State the outcome first, then 3–6 steps, then what the learner will have noticed or built by the end. It must produce a result the learner can look at. "Read about X and reflect" is not a project. For abstract topics, good shapes are: collect and analyse a small data set, build a tiny working model, run a self-experiment, or apply the idea to something the learner already has.
+9. Influencer — retrieval. One living person actively producing work a learner can follow: a researcher, writer, teacher, or channel. Name them, say in one line what they do and why they are worth following, and link to where their output actually appears — their channel, blog, or site, not a Wikipedia article. Prefer someone specific to ${nodeLabel} over a general science-communication celebrity. Say nothing about them beyond their public professional work.
+
+10. Hack It — generation. One concrete project doable in an evening or a weekend with things a normal person has: a computer, a phone, a notebook, household objects, free software. State the outcome first, then 3–6 steps, then what the learner will have noticed or built by the end. It must produce a result the learner can look at. "Read about X and reflect" is not a project. For abstract topics, good shapes are: collect and analyse a small data set, build a tiny working model, run a self-experiment, or apply the idea to something the learner already has.
 
 Output
 
@@ -987,13 +989,14 @@ Return ONLY a single JSON object — no markdown fences, no commentary outside t
   "treasure_map":   { "title": "...", "url": "...", "note": "one line on why this place matters to the topic", "lang": "..." },
   "podcast":        { "title": "...", "url": "...", "note": "episode/show name and why it's the pick", "lang": "..." },
   "ancient_scroll": { "title": "...", "author": "...", "year": 1999, "url": "...", "note": "...", "lang": "..." },
+  "breaking_news":  { "title": "...", "source": "...", "date": "...", "url": "...", "note": "one line on why this is relevant right now", "lang": "..." },
   "fun_fact":       { "text": "2-4 sentences" },
   "time_machine":   { "entries": [ { "date": "...", "text": "one line" }, ... ] },
   "influencer":     { "name": "...", "role": "one line on what they do and why worth following", "url": "..." },
   "hack_it":        { "outcome": "what the learner will end up with", "steps": [ "...", "..." ], "result": "what they'll have noticed or built by the end" }
 }
 
-"lang" on the six retrieval categories: omit it when the resource is in ${langName}; set it to "en" only when you had to fall back to English material per the Language section above.
+"lang" on the seven retrieval categories: omit it when the resource is in ${langName}; set it to "en" only when you had to fall back to English material per the Language section above.
 
 Before you return
 
@@ -1046,7 +1049,7 @@ SÕLME KLIKKIMINE: Kui õppija klikib mõistel, avaneb külgpaneel. Nupud sõltu
 - L4: "Tean seda" lüliti lubab õppijal ise märkida, et ta juba oskab seda teemat. "Õpin seda" ja "Teen testi" on siin veel halliks tehtud — need vajavad üksikmõistet (L5).
 - L5 (üksikmõiste): "Õpin seda" avab õppetunni, "Teen testi" käivitab 4-küsimuselise diagnostilise testi, ja "Tean seda" on siin samuti saadaval.
 
-ÕPPETUND: Neli osa — selgitus, näide, harjutus, tähendus (miks see oluline on). Õppija saab igal hetkel öelda "liiga lihtne" või "liiga keeruline", paluda teistsugust selgitust, või küsida küsimusi otse tunni sees (küsimuste riba). Õpiraja vaates (tunni juures) on nupp mõiste nime kõrval, mis avab "Loot Box" — täiendavate õppematerjalide komplekti selle konkreetse teema jaoks: video ("Animation"), mäng ("Play a Game"), teemaga seotud päris koht ("Treasure Map"), taskuhäälingu osa ("Podcast"), raamat ("Ancient Scroll"), põnev fakt ("Fun Fact"), ajajoon ("Time Machine"), kellegi jälgimiseks ("Influencer") ja käed-külge projekt ("Hack It"). Mitte igal teemal pole kõiki üheksat — näidatakse ainult neid, mis päriselt sobivad; osad avanevad uues vahekaardis, kolm kirjutatud kategooriat (Fun Fact, Time Machine, Hack It) avanevad samas aknas.
+ÕPPETUND: Neli osa — selgitus, näide, harjutus, tähendus (miks see oluline on). Õppija saab igal hetkel öelda "liiga lihtne" või "liiga keeruline", paluda teistsugust selgitust, või küsida küsimusi otse tunni sees (küsimuste riba). Õpiraja vaates (tunni juures) on nupp mõiste nime kõrval, mis avab "Loot Box" — täiendavate õppematerjalide komplekti selle konkreetse teema jaoks: video ("Animation"), mäng ("Play a Game"), teemaga seotud päris koht ("Treasure Map"), taskuhäälingu osa ("Podcast"), raamat ("Ancient Scroll"), värske uudis teemal ("Breaking News"), põnev fakt ("Fun Fact"), ajajoon ("Time Machine"), kellegi jälgimiseks ("Influencer") ja käed-külge projekt ("Hack It"). Mitte igal teemal pole kõiki kümmet — näidatakse ainult neid, mis päriselt sobivad; osad avanevad uues vahekaardis, kolm kirjutatud kategooriat (Fun Fact, Time Machine, Hack It) avanevad samas aknas.
 
 EESMÄRGID JA EDU: Edenemine ja eesmärgid on koos näha Õppijapassis — see avaneb menüüst (☰ ikoon üleval paremal) valikust "Konto". Eesmärgid on õppija enda vabas vormis märkmed selle kohta, mille nimel ta töötab — uue saab lisada Õppijapassil nupuga "+ Lisa eesmärk" ja märkida valmis olevaks igal ajal.
 
@@ -1071,7 +1074,7 @@ CLICKING A NODE: Clicking a concept opens a side panel. Which buttons appear dep
 - L4: the "I know this" toggle lets them self-report that they already know a topic. "Learn this" and "Test me" are still grayed out — those need an individual concept (L5).
 - L5 (individual concept): "Learn this" opens the lesson, "Test me" starts a 4-question adaptive diagnostic test, and "I know this" is also available here.
 
-THE LESSON: Four parts — explanation, example, practice, and meaning (why it matters). At any point they can say "too simple" or "too complex," ask for a different explanation, or ask questions directly inside the lesson (the ask bar). On the learning-path screen (surrounding the lesson), a button next to the topic name opens the "Loot Box" — further-learning resources for that specific topic: a video (Animation), a game (Play a Game), a real place tied to the topic (Treasure Map), a podcast episode (Podcast), a book (Ancient Scroll), a fun fact (Fun Fact), a timeline (Time Machine), someone to follow (Influencer), and a hands-on project (Hack It). Not every topic has all nine — only ones that genuinely fit are shown; most open in a new tab, but the three written ones (Fun Fact, Time Machine, Hack It) open inside the same dialog.
+THE LESSON: Four parts — explanation, example, practice, and meaning (why it matters). At any point they can say "too simple" or "too complex," ask for a different explanation, or ask questions directly inside the lesson (the ask bar). On the learning-path screen (surrounding the lesson), a button next to the topic name opens the "Loot Box" — further-learning resources for that specific topic: a video (Animation), a game (Play a Game), a real place tied to the topic (Treasure Map), a podcast episode (Podcast), a book (Ancient Scroll), a recent news story (Breaking News), a fun fact (Fun Fact), a timeline (Time Machine), someone to follow (Influencer), and a hands-on project (Hack It). Not every topic has all ten — only ones that genuinely fit are shown; most open in a new tab, but the three written ones (Fun Fact, Time Machine, Hack It) open inside the same dialog.
 
 GOALS AND PROGRESS: Progress and goals are visible on their Learner Passport — opened from the menu (☰ icon, top right) under "Account." Goals are the learner's own free-text notes on what they're working toward — they add one with "+ Add goal" on their Passport, and can mark it complete whenever they like.
 

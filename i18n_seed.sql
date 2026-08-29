@@ -29,6 +29,7 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('lootbox.treasure_map',    'en', 'Treasure Map'),
 ('lootbox.podcast',         'en', 'Podcast'),
 ('lootbox.ancient_scroll',  'en', 'Ancient Scroll'),
+('lootbox.breaking_news',   'en', 'Breaking News'),
 ('lootbox.fun_fact',        'en', 'Fun Fact'),
 ('lootbox.time_machine',    'en', 'Time Machine'),
 ('lootbox.influencer',      'en', 'Influencer'),

@@ -540,15 +540,16 @@
     treasure_map:   { icon: '🗺️', key: 'lootbox.treasure_map' },
     podcast:        { icon: '🎙️', key: 'lootbox.podcast' },
     ancient_scroll: { icon: '📜', key: 'lootbox.ancient_scroll' },
+    breaking_news:  { icon: '📰', key: 'lootbox.breaking_news' },
     fun_fact:       { icon: '💡', key: 'lootbox.fun_fact' },
     time_machine:   { icon: '⏳', key: 'lootbox.time_machine' },
     influencer:     { icon: '📱', key: 'lootbox.influencer' },
     hack_it:        { icon: '🛠️', key: 'lootbox.hack_it' },
   };
-  var LOOTBOX_ORDER  = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'fun_fact', 'time_machine', 'influencer', 'hack_it'];
-  // The 6 retrieval categories open their URL directly; the rest (generation —
+  var LOOTBOX_ORDER  = ['animation', 'play_a_game', 'treasure_map', 'podcast', 'ancient_scroll', 'breaking_news', 'fun_fact', 'time_machine', 'influencer', 'hack_it'];
+  // The 7 retrieval categories open their URL directly; the rest (generation —
   // no URL) render as an in-modal detail view instead. See _lootboxItemClicked.
-  var LOOTBOX_LINKED = { animation: 1, play_a_game: 1, treasure_map: 1, podcast: 1, ancient_scroll: 1, influencer: 1 };
+  var LOOTBOX_LINKED = { animation: 1, play_a_game: 1, treasure_map: 1, podcast: 1, ancient_scroll: 1, breaking_news: 1, influencer: 1 };
 
   window.openLootBox = function () {
     var modal = document.getElementById('lootbox-modal');
