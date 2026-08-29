@@ -58,6 +58,10 @@ function _readNewLines() {
   try {
     stat = fs.statSync(LOG_FILE);
   } catch (err) {
+    // Right after nightly rotation, Apache doesn't recreate this file until
+    // its first request of the new day — a brief window where it legitimately
+    // doesn't exist yet. Not an error, just nothing to scan this run.
+    if (err.code === 'ENOENT') return [];
     throw new Error('Cannot stat log file: ' + err.message);
   }
 
