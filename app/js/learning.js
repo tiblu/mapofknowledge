@@ -668,12 +668,15 @@
       (item.entries || []).forEach(function (e) {
         eras.push({ date: e.date || '', text: e.text || '', prologue: false });
       });
+      if (item.future && item.future.text) {
+        eras.push({ date: item.future.era || '', text: item.future.text, future: true });
+      }
       html += '<div class="lb-tm-wrap">';
       html += '<button type="button" class="lb-tm-nav lb-tm-nav-prev" id="lb-tm-prev" aria-label="Previous era">' +
         '<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
       html += '<div class="lb-tm-viewport" id="lb-tm-viewport" tabindex="0">';
       eras.forEach(function (e) {
-        html += '<div class="lb-tm-era' + (e.prologue ? ' lb-tm-prologue' : '') + '">' +
+        html += '<div class="lb-tm-era' + (e.prologue ? ' lb-tm-prologue' : '') + (e.future ? ' lb-tm-future' : '') + '">' +
           '<div class="lb-tm-era-date">' + _escHtml(e.date) + '</div>' +
           '<div class="lb-tm-era-text">' + _escHtml(e.text) + '</div>' +
           '</div>';
