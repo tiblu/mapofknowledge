@@ -194,6 +194,20 @@
 </div>
 
 <!-- ════════════════════════════════════════
+     DISCONNECT SSO PROVIDER CONFIRMATION
+     ════════════════════════════════════════ -->
+<div id="disconnect-modal" class="acct-modal">
+  <div class="acct-modal-box">
+    <div class="acct-modal-title" id="disconnect-modal-title" data-i18n="account.disconnect_confirm_title">Disconnect this sign-in method?</div>
+    <div class="acct-modal-text" id="disconnect-modal-text"></div>
+    <div class="acct-modal-btns">
+      <button class="acct-modal-confirm acct-modal-confirm-danger" id="disconnect-modal-confirm" data-i18n="btn.disconnect">Disconnect</button>
+      <button class="acct-modal-cancel" id="disconnect-modal-cancel" data-i18n="btn.cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
      ANNE — MENTOR CHAT WIDGET
      ════════════════════════════════════════ -->
 <div id="anne-widget">
@@ -252,7 +266,7 @@
         .forEach(function (p) {
           if (!a[p[0]]) return;
           ssoBadges += '<span class="acct-badge acct-badge-sso">' + p[2] +
-            '<button type="button" class="acct-badge-disconnect" data-provider="' + p[1] + '" title="' +
+            '<button type="button" class="acct-badge-disconnect" data-provider="' + p[1] + '" data-name="' + p[2] + '" title="' +
             t('btn.disconnect') + '" aria-label="' + t('btn.disconnect') + '">×</button></span> ';
         });
       var otherBadges = '';
@@ -262,15 +276,7 @@
 
       document.querySelectorAll('.acct-badge-disconnect').forEach(function (btn) {
         btn.addEventListener('click', function () {
-          btn.disabled = true;
-          fetch('/api/account/disconnect/' + btn.getAttribute('data-provider'), { method: 'POST' })
-            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-            .then(function (res) {
-              if (res.ok) { loadAccount(); return; }
-              btn.disabled = false;
-              alert(res.d && res.d.error === 'last_method' ? t('account.last_method_error') : t('account.disconnect_failed'));
-            })
-            .catch(function () { btn.disabled = false; });
+          _openDisconnectModal(btn.getAttribute('data-provider'), btn.getAttribute('data-name'));
         });
       });
 
@@ -288,6 +294,41 @@
     }).catch(function () {});
   }
   loadAccount();
+
+  /* ── Disconnect SSO provider — in-app confirmation, not a browser confirm() ── */
+  var disconnectModal = document.getElementById('disconnect-modal');
+  var _pendingDisconnectProvider = null;
+
+  function _openDisconnectModal(provider, name) {
+    _pendingDisconnectProvider = provider;
+    document.getElementById('disconnect-modal-text').textContent =
+      name + ' ' + t('account.disconnect_confirm_suffix');
+    disconnectModal.classList.add('active');
+  }
+  document.getElementById('disconnect-modal-cancel').addEventListener('click', function () {
+    disconnectModal.classList.remove('active');
+    _pendingDisconnectProvider = null;
+  });
+  document.getElementById('disconnect-modal-confirm').addEventListener('click', function () {
+    if (!_pendingDisconnectProvider) return;
+    var provider = _pendingDisconnectProvider;
+    var btn = document.getElementById('disconnect-modal-confirm');
+    btn.disabled = true;
+    fetch('/api/account/disconnect/' + provider, { method: 'POST' })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        disconnectModal.classList.remove('active');
+        _pendingDisconnectProvider = null;
+        if (res.ok) { loadAccount(); return; }
+        alert(res.d && res.d.error === 'last_method' ? t('account.last_method_error') : t('account.disconnect_failed'));
+      })
+      .catch(function () {
+        btn.disabled = false;
+        disconnectModal.classList.remove('active');
+        _pendingDisconnectProvider = null;
+      });
+  });
 
   /* ── Passkeys ── */
   function _guessDeviceLabel() {
@@ -309,9 +350,11 @@
       wrap.innerHTML = list.map(function (p) {
         var date = new Date(p.created_at).toLocaleDateString();
         return '<div class="acct-passkey-item">' +
+          '<div class="acct-passkey-info">' +
           '<span class="acct-passkey-name">' + (p.nickname || t('account.passkey_unnamed')) + '</span>' +
           '<span class="acct-passkey-date">' + t('account.added_on') + ' ' + date + '</span>' +
-          '<button class="acct-passkey-remove" data-id="' + p.id + '">' + t('btn.remove') + '</button>' +
+          '</div>' +
+          '<button class="acct-btn acct-btn-danger acct-passkey-remove" data-id="' + p.id + '">' + t('btn.remove') + '</button>' +
           '</div>';
       }).join('');
       wrap.querySelectorAll('.acct-passkey-remove').forEach(function (btn) {
