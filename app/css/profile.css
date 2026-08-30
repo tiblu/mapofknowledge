@@ -1108,3 +1108,21 @@ select.p-edit-input { cursor: pointer; }
   .p-card.span2, .p-card.span3 { grid-column: span 1; }
   .qst-ach-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 }
+
+/* ── Invite a friend modal ── */
+.p-modal {
+  position: fixed; inset: 0; z-index: 500;
+  background: var(--overlay);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.p-modal.active { display: flex; }
+.p-modal-box {
+  background: var(--bg); border-radius: 18px;
+  padding: 26px; max-width: 400px; width: 100%;
+  box-shadow: 0 8px 32px var(--i18);
+}
+.p-modal-title { font-size: 16px; font-weight: 700; color: var(--c1); margin-bottom: 8px; }
+.p-modal-text { font-size: 13px; color: var(--c3); line-height: 1.55; margin-bottom: 16px; }
+.p-modal-box .p-edit-input { margin-bottom: 10px; }
+.p-modal-error { font-size: 12px; color: #B5453D; min-height: 15px; margin-bottom: 4px; }
+.p-modal-btns { display: flex; gap: 8px; margin-top: 8px; }

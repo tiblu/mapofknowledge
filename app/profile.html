@@ -407,6 +407,23 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════════════
+     INVITE A FRIEND MODAL
+     ════════════════════════════════════════ -->
+<div id="invite-modal" class="p-modal">
+  <div class="p-modal-box">
+    <div class="p-modal-title" data-i18n="label.invite_friend_title">Invite a friend</div>
+    <div class="p-modal-text" data-i18n="msg.invite_explain">Your friend will receive an email with a link to join. You'll get +10 lumens right away, and +10 more if they sign up.</div>
+    <input id="invite-name-input" class="p-edit-input" data-i18n-placeholder="label.full_name" placeholder="Full name">
+    <input id="invite-email-input" class="p-edit-input" type="email" data-i18n-placeholder="placeholder.friend_email" placeholder="Friend's email">
+    <div class="p-modal-error" id="invite-modal-error"></div>
+    <div class="p-modal-btns">
+      <button class="p-edit-btn primary" id="invite-send-btn" onclick="window.sendInvite()" data-i18n="btn.send_invite">Send invite</button>
+      <button class="p-edit-btn" onclick="window.closeInviteModal()" data-i18n="btn.cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/topbar-notif.js?v=2"></script>
 <script src="js/nav-menu.js"></script>
 <script src="js/anne.js"></script>

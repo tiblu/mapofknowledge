@@ -188,6 +188,38 @@ async function run() {
       }
     }
 
+    // friend_invites — "Invite a friend" (Passport > Individuals). One row
+    // per invite sent; relationship_id links to the passport_relationships
+    // "Friend" entry created at the same time. status flips sent -> joined
+    // the moment anyone signs up with invitee_email, regardless of which of
+    // the 4 signup methods they use (see checkFriendJoinBonus in
+    // server/services/invites.js) — deliberately NOT a referral-token/link
+    // scheme, just a plain email match, so nothing needs threading through
+    // the OAuth redirect flows. If they join with a different email, the
+    // inviter simply doesn't get the second bonus — no tracking attempted.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS friend_invites (
+        id                   BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        inviter_passport_id  BIGINT UNSIGNED NOT NULL,
+        relationship_id      BIGINT UNSIGNED NOT NULL,
+        invitee_name         VARCHAR(255)    NOT NULL,
+        invitee_email        VARCHAR(255)    NOT NULL,
+        status               ENUM('sent','joined') NOT NULL DEFAULT 'sent',
+        created_at           DATETIME        NOT NULL DEFAULT NOW(),
+        joined_at            DATETIME        NULL,
+        PRIMARY KEY (id),
+        KEY idx_invite_email (invitee_email),
+        KEY idx_invite_inviter (inviter_passport_id),
+        CONSTRAINT fk_invite_passport
+          FOREIGN KEY (inviter_passport_id) REFERENCES learner_passports (id)
+          ON DELETE CASCADE,
+        CONSTRAINT fk_invite_relationship
+          FOREIGN KEY (relationship_id) REFERENCES passport_relationships (id)
+          ON DELETE CASCADE
+      )
+    `);
+    console.log('  · friend_invites table ready');
+
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
     if (cnt > 0) {

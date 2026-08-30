@@ -403,6 +403,20 @@
           {id:'f0-individual', label: t('label.full_name')},
           {id:'f1-individual', label: t('placeholder.individual_role')},
         ], t('btn.add'));
+
+      // "Invite" sits next to "+ Add" — spliced in after render rather than
+      // folded into the shared addForm() helper, since it's specific to
+      // Individuals only (groups/providers don't have an invite concept).
+      var indAddBtn = document.getElementById('rel-add-btn-individual');
+      if (indAddBtn) {
+        var inviteBtn = document.createElement('button');
+        inviteBtn.type = 'button';
+        inviteBtn.className = 'p-edit-btn p-rel-add-btn';
+        inviteBtn.id = 'invite-friend-btn';
+        inviteBtn.textContent = t('btn.invite');
+        inviteBtn.addEventListener('click', window.openInviteModal);
+        indAddBtn.insertAdjacentElement('afterend', inviteBtn);
+      }
     }
 
     // ── Study Groups ──
@@ -479,6 +493,57 @@
   window.deleteRelationship = function(id) {
     fetch('/api/profile/relationships/' + id, { method: 'DELETE' })
       .then(() => window.loadProfile()).catch(() => {});
+  };
+
+  /* ── Invite a friend ── */
+  window.openInviteModal = function() {
+    document.getElementById('invite-name-input').value = '';
+    document.getElementById('invite-email-input').value = '';
+    var errEl = document.getElementById('invite-modal-error');
+    errEl.textContent = '';
+    document.getElementById('invite-modal').classList.add('active');
+  };
+  window.closeInviteModal = function() {
+    document.getElementById('invite-modal').classList.remove('active');
+  };
+  window.sendInvite = function() {
+    var nameEl  = document.getElementById('invite-name-input');
+    var emailEl = document.getElementById('invite-email-input');
+    var errEl   = document.getElementById('invite-modal-error');
+    var name    = nameEl.value.trim();
+    var email   = emailEl.value.trim();
+    errEl.textContent = '';
+
+    if (!name) { nameEl.focus(); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errEl.textContent = t('msg.invalid_email');
+      emailEl.focus();
+      return;
+    }
+
+    var btn = document.getElementById('invite-send-btn');
+    btn.disabled = true;
+    fetch('/api/profile/invite-friend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, email: email }),
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        if (res.ok) {
+          window.closeInviteModal();
+          window.loadProfile();
+          alert(t('msg.invite_sent'));
+          return;
+        }
+        errEl.textContent = res.d && res.d.error === 'already_a_member' ? t('msg.already_a_member')
+          : res.status === 429 ? t('msg.slow_down')
+          : t('msg.invite_failed');
+      })
+      .catch(function () {
+        btn.disabled = false;
+        errEl.textContent = t('msg.invite_failed');
+      });
   };
 
   function renderCredentials(credentials, mapKnowledge) {

@@ -69,4 +69,11 @@ const resendVerifyRateLimit = _makeLimiter(3, 5 * 60 * 1000, _byUserId);
 // refilling 1 per 5 minutes, per IP.
 const resetPasswordRateLimit = _makeLimiter(5, 5 * 60 * 1000, _byIp);
 
-module.exports = { loginRateLimit, signupRateLimit, resendVerifyRateLimit, resetPasswordRateLimit };
+// Invite a friend: authenticated and self-scoped (only ever emails whoever
+// the caller types in), but still sends an email per call — 10 attempts,
+// refilling 1 per 10 minutes, per user.
+const inviteRateLimit = _makeLimiter(10, 10 * 60 * 1000, _byUserId);
+
+module.exports = {
+  loginRateLimit, signupRateLimit, resendVerifyRateLimit, resetPasswordRateLimit, inviteRateLimit,
+};

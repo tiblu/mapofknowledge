@@ -64,14 +64,20 @@ function _wrapText({ bodyText, footerNoteText }) {
     + COMPANY_NAME;
 }
 
-async function _send({ toEmail, subject, bodyHtml, bodyText, footerNoteHtml, footerNoteText }) {
+async function _send({ toEmail, subject, bodyHtml, bodyText, footerNoteHtml, footerNoteText, fromName }) {
   if (!transporter) {
     console.warn('[mailer] SMTP not configured — would send "' + subject + '" to', toEmail);
     return;
   }
   const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER;
   await transporter.sendMail({
-    from: '"Map of Knowledge" <' + fromAddr + '>',
+    // fromName lets a specific email (e.g. a friend invite) show "so-and-so
+    // via Map of Knowledge" as the sender without actually sending from
+    // their address — that would fail SPF/DKIM and look like spoofing.
+    // Passed as {name, address} rather than a hand-built string since
+    // fromName can be a user-editable display name — nodemailer escapes it
+    // safely; string concatenation would not (header-injection risk).
+    from: { name: fromName || 'Map of Knowledge', address: fromAddr },
     replyTo: CONTACT_EMAIL,
     to: toEmail,
     subject,
@@ -142,4 +148,40 @@ async function sendPasswordResetEmail(toEmail, token, locale) {
   await _send({ toEmail, subject, bodyHtml, bodyText, footerNoteHtml: footerNote, footerNoteText: footerNote });
 }
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail };
+// No referral link/token in the URL — join-bonus matching is plain email
+// match (see checkFriendJoinBonus in services/invites.js), so the link is
+// just the ordinary signup page.
+async function sendFriendInviteEmail(toEmail, friendName, inviterName, inviterEmail, locale) {
+  const link = `${process.env.BASE_URL}/signup.html`;
+  const subject = locale === 'et'
+    ? `${inviterName} kutsus sind liituma Map of Knowledge'iga`
+    : `${inviterName} invited you to Map of Knowledge`;
+
+  const bodyHtml = locale === 'et'
+    ? `<p style="margin:0 0 16px;font-size:15px;font-weight:650;color:#2C2820;">${_escHtml(inviterName)} arvab, et sulle meeldiks Map of Knowledge.</p>`
+      + '<p style="margin:0 0 8px;">See on viis kaardistada, mida sa juba tead, ja õppida tundma mis tahes sind huvitavat valdkonda.</p>'
+      + _btn(link, 'Ava Map of Knowledge')
+      + '<p style="margin:22px 0 0;font-size:11.5px;color:#9A8E86;">Või kopeeri see link oma brauserisse:<br>'
+      + '<a href="' + link + '" style="color:#C4826A;word-break:break-all;">' + link + '</a></p>'
+    : `<p style="margin:0 0 16px;font-size:15px;font-weight:650;color:#2C2820;">${_escHtml(inviterName)} thinks you'd enjoy Map of Knowledge.</p>`
+      + "<p style=\"margin:0 0 8px;\">It's a way to map what you know and learn any subject you're curious about.</p>"
+      + _btn(link, 'Explore Map of Knowledge')
+      + '<p style="margin:22px 0 0;font-size:11.5px;color:#9A8E86;">Or paste this link into your browser:<br>'
+      + '<a href="' + link + '" style="color:#C4826A;word-break:break-all;">' + link + '</a></p>';
+
+  const bodyText = locale === 'et'
+    ? `${inviterName} arvab, et sulle meeldiks Map of Knowledge.\n\nSee on viis kaardistada, mida sa juba tead, ja õppida tundma mis tahes sind huvitavat valdkonda.\n\n${link}`
+    : `${inviterName} thinks you'd enjoy Map of Knowledge.\n\nIt's a way to map what you know and learn any subject you're curious about.\n\n${link}`;
+
+  const footerNote = locale === 'et'
+    ? `Selle kutse saatis ${_escHtml(inviterName)} (${_escHtml(inviterEmail)}) Map of Knowledge kaudu. Kui sa seda ei oodanud, võid selle rahulikult eirata — ilma sinu tegevuseta kontot ei looda.`
+    : `This invitation was sent by ${_escHtml(inviterName)} (${_escHtml(inviterEmail)}) through Map of Knowledge. If you weren't expecting this, you can safely ignore it — no account is created without your action.`;
+
+  await _send({
+    toEmail, subject, bodyHtml, bodyText,
+    footerNoteHtml: footerNote, footerNoteText: footerNote,
+    fromName: `${inviterName} via Map of Knowledge`,
+  });
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail, sendFriendInviteEmail };

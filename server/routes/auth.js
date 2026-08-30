@@ -9,6 +9,7 @@ const db       = require('../db');
 const { notify } = require('../services/notifications');
 const { moderateTags } = require('../services/llm');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/mailer');
+const { checkFriendJoinBonus } = require('../services/invites');
 const { loginRateLimit, signupRateLimit, resendVerifyRateLimit, resetPasswordRateLimit } = require('../middleware/authRateLimit');
 const router   = express.Router();
 
@@ -170,6 +171,7 @@ async function handleOAuthLogin(req, email, provider, done) {
 
       req.session.pendingSignup = null;
       sendWelcomeNotification(userId);
+      checkFriendJoinBonus(email).catch(() => {});
 
       const [newUsers] = await conn.execute('SELECT * FROM users WHERE id = ?', [userId]);
       return done(null, newUsers[0]);
@@ -381,6 +383,7 @@ router.post('/signup/password', signupRateLimit, async (req, res) => {
     sendWelcomeNotification(userId);
     sendVerificationEmail(normEmail, verifyToken, 'en')
       .catch(err => console.error('[auth/signup/password] verification email failed:', err.message));
+    checkFriendJoinBonus(normEmail).catch(() => {});
 
     const [newUsers] = await conn.execute('SELECT * FROM users WHERE id = ?', [userId]);
     req.login(newUsers[0], (err) => {

@@ -7,7 +7,9 @@ const { notify } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
 const { renderPassportText } = require('../services/passportText');
 const { updateAncestorKnowledge } = require('../services/nodeKnowledge');
+const { sendFriendInviteEmail } = require('../services/mailer');
 const llmRateLimit = require('../middleware/llmRateLimit');
+const { inviteRateLimit } = require('../middleware/authRateLimit');
 
 // ── Free-text length cap ─────────────────────────────────────────────────────
 // Applies to every learner-typed field that flows into an LLM prompt (ask-bar
@@ -1579,6 +1581,56 @@ router.delete('/profile/relationships/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete relationship' });
+  }
+});
+
+// ── Invite a friend ───────────────────────────────────────────────────────────
+// Creates the "Friend" entry in Individuals immediately (regardless of
+// whether they ever join), sends the invite email, and awards the +10
+// "you invited someone" bonus right away. The second +10 ("they joined")
+// is awarded later, only on a plain email match — see checkFriendJoinBonus
+// in services/invites.js — never guaranteed here.
+router.post('/profile/invite-friend', inviteRateLimit, async (req, res) => {
+  const passportId = req.user?.passport_id;
+  const userId     = req.user?.id;
+  if (!passportId) return res.status(400).json({ error: 'No passport' });
+
+  const name  = typeof req.body.name === 'string' ? req.body.name.trim().slice(0, 255) : '';
+  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  if (!name) return res.status(400).json({ error: 'name_required' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'invalid_email' });
+
+  try {
+    const [existing] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+    if (existing.length) return res.status(400).json({ error: 'already_a_member' });
+
+    const [relResult] = await db.execute(
+      `INSERT INTO passport_relationships (passport_id, type, name, role_description, sort_order)
+       VALUES (?, 'individual', ?, 'Friend', 0)`,
+      [passportId, name]
+    );
+    const relationshipId = relResult.insertId;
+
+    await db.execute(
+      `INSERT INTO friend_invites (inviter_passport_id, relationship_id, invitee_name, invitee_email)
+       VALUES (?, ?, ?, ?)`,
+      [passportId, relationshipId, name, email]
+    );
+
+    const [[passportRow]] = await db.execute('SELECT display_name FROM learner_passports WHERE id = ?', [passportId]);
+    const inviterName = ((passportRow && passportRow.display_name) || req.user.email.split('@')[0])
+      .replace(/[\r\n]+/g, ' ').trim().slice(0, 100) || 'A Map of Knowledge user';
+    const locale = await getUserLocale(userId);
+
+    sendFriendInviteEmail(email, name, inviterName, req.user.email, locale)
+      .catch(err => console.error('[api/profile/invite-friend] email failed:', err.message));
+
+    const lumensAwarded = await game.awardLumens(passportId, userId, 10, 'friend_invited', relationshipId);
+
+    res.json({ ok: true, id: relationshipId, lumensAwarded });
+  } catch (err) {
+    console.error('[api/profile/invite-friend]', err.message);
+    res.status(500).json({ error: 'invite_failed' });
   }
 });
 
