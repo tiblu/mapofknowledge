@@ -18,6 +18,8 @@
     "mysql2": "^3.22.4",
     "nodemailer": "^9.0.5",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-discord": "^0.1.4",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-openidconnect": "^0.1.2"
   }
 }

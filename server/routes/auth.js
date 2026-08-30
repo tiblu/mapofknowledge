@@ -2,6 +2,8 @@ const express  = require('express');
 const passport = require('passport');
 const bcrypt   = require('bcryptjs'); // pure-JS — no native compile step, safer on shared hosting
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
+const { Strategy: DiscordStrategy } = require('passport-discord');
+const { Strategy: OpenIDConnectStrategy } = require('passport-openidconnect');
 const { randomUUID, randomBytes } = require('crypto');
 const db       = require('../db');
 const { notify } = require('../services/notifications');
@@ -127,6 +129,52 @@ function sendWelcomeNotification(userId) {
     'We\'re glad you\'re here. Start exploring the map and begin your journey of discovery. Happy learning!');
 }
 
+// ── Shared OAuth find-or-create — same logic for every SSO provider, since
+//    all of them are add-on-only: an SSO login only creates a NEW account
+//    when a signup flow (buildPendingSignup) was prepared for this session
+//    first. Otherwise it's just "log the existing account in", matched by
+//    email regardless of which provider it originally signed up with —
+//    e.g. a user can sign up via Google and later log in via Discord as
+//    long as both report the same email address. ─────────────────────────
+async function handleOAuthLogin(req, email, done) {
+  if (!email) return done(null, false, { message: 'no_email' });
+
+  const conn = await db.getConnection();
+  try {
+    const [users] = await conn.execute('SELECT * FROM users WHERE email = ?', [email]);
+
+    if (users.length === 0) {
+      // No existing account — only allow if a signup flow was prepared
+      const pending = req.session && req.session.pendingSignup;
+      if (!pending) return done(null, false);
+
+      const passportId = await createPassportFromPending(conn, pending);
+
+      const [ur] = await conn.execute(
+        `INSERT INTO users (email, role, email_verified, subscription_status, passport_id, last_login, created_at)
+         VALUES (?, ?, 1, 'free', ?, NOW(), NOW())`,
+        [email, ROLE_MAP[email] || 'learner', passportId]
+      );
+      const userId = ur.insertId;
+
+      req.session.pendingSignup = null;
+      sendWelcomeNotification(userId);
+
+      const [newUsers] = await conn.execute('SELECT * FROM users WHERE id = ?', [userId]);
+      return done(null, newUsers[0]);
+    }
+
+    // Existing user — normal login
+    const user = users[0];
+    const isFirstLogin = !user.last_login;
+    await conn.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    if (isFirstLogin) sendWelcomeNotification(user.id);
+    done(null, user);
+  } finally {
+    conn.release();
+  }
+}
+
 // ── Passport setup ────────────────────────────────────────────────────────────
 passport.use(new GoogleStrategy(
   {
@@ -137,51 +185,67 @@ passport.use(new GoogleStrategy(
   },
   async (req, accessToken, refreshToken, profile, done) => {
     try {
-      const email = profile.emails?.[0]?.value?.toLowerCase();
-      if (!email) return done(new Error('No email from Google'));
-
-      const conn = await db.getConnection();
-      try {
-        // Find or create user
-        const [users] = await conn.execute(
-          'SELECT * FROM users WHERE email = ?', [email]
-        );
-
-        if (users.length === 0) {
-          // No existing account — only allow if a signup flow was prepared
-          const pending = req.session && req.session.pendingSignup;
-          if (!pending) return done(null, false);
-
-          const passportId = await createPassportFromPending(conn, pending);
-
-          const [ur] = await conn.execute(
-            `INSERT INTO users (email, role, email_verified, subscription_status, passport_id, last_login, created_at)
-             VALUES (?, ?, 1, 'free', ?, NOW(), NOW())`,
-            [email, ROLE_MAP[email] || 'learner', passportId]
-          );
-          const userId = ur.insertId;
-
-          req.session.pendingSignup = null;
-          sendWelcomeNotification(userId);
-
-          const [newUsers] = await conn.execute('SELECT * FROM users WHERE id = ?', [userId]);
-          return done(null, newUsers[0]);
-        }
-
-        // Existing user — normal login
-        const user = users[0];
-        const isFirstLogin = !user.last_login;
-        await conn.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
-        if (isFirstLogin) sendWelcomeNotification(user.id);
-        done(null, user);
-      } finally {
-        conn.release();
-      }
+      await handleOAuthLogin(req, profile.emails?.[0]?.value?.toLowerCase(), done);
     } catch (err) {
       done(err);
     }
   }
 ));
+
+// Discord and LinkedIn are optional — only registered once their app
+// credentials exist in .env, so a fresh checkout or a deploy before those
+// credentials are configured can't crash the whole server (passport-oauth2-
+// based strategies throw synchronously in their constructor if clientID/
+// clientSecret are missing). The /discord and /linkedin routes below carry
+// the same guard so an unconfigured button fails as a clean redirect
+// instead of an "unknown strategy" error.
+const discordConfigured  = !!(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET);
+const linkedinConfigured = !!(process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET);
+
+if (discordConfigured) {
+  passport.use(new DiscordStrategy(
+    {
+      clientID:          process.env.DISCORD_CLIENT_ID,
+      clientSecret:      process.env.DISCORD_CLIENT_SECRET,
+      callbackURL:       process.env.BASE_URL + '/auth/discord/callback',
+      passReqToCallback: true,
+    },
+    async (req, accessToken, refreshToken, profile, done) => {
+      try {
+        // Discord's `verified` flag means the user has confirmed this
+        // address with Discord — an unverified email isn't a safe identity
+        // to match an account against.
+        const email = (profile.verified && profile.email) ? profile.email.toLowerCase() : null;
+        await handleOAuthLogin(req, email, done);
+      } catch (err) {
+        done(err);
+      }
+    }
+  ));
+}
+
+if (linkedinConfigured) {
+  passport.use('linkedin', new OpenIDConnectStrategy(
+    {
+      issuer:            'https://www.linkedin.com/oauth',
+      authorizationURL:  'https://www.linkedin.com/oauth/v2/authorization',
+      tokenURL:          'https://www.linkedin.com/oauth/v2/accessToken',
+      userInfoURL:       'https://api.linkedin.com/v2/userinfo',
+      clientID:          process.env.LINKEDIN_CLIENT_ID,
+      clientSecret:      process.env.LINKEDIN_CLIENT_SECRET,
+      callbackURL:       process.env.BASE_URL + '/auth/linkedin/callback',
+      scope:             ['profile', 'email'], // 'openid' is prefixed automatically
+      passReqToCallback: true,
+    },
+    async (req, issuer, profile, done) => {
+      try {
+        await handleOAuthLogin(req, profile.emails?.[0]?.value?.toLowerCase(), done);
+      } catch (err) {
+        done(err);
+      }
+    }
+  ));
+}
 
 passport.serializeUser((user, done) => done(null, user.id));
 
@@ -203,6 +267,37 @@ router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/?auth=failed' }),
   (req, res) => res.redirect('/app/')
 );
+
+// ── Routes — Discord ─────────────────────────────────────────────────────────
+router.get('/discord', (req, res, next) => {
+  if (!discordConfigured) return res.redirect('/?auth=unavailable');
+  passport.authenticate('discord', { scope: ['identify', 'email'] })(req, res, next);
+});
+
+router.get('/discord/callback',
+  (req, res, next) => discordConfigured ? next() : res.redirect('/?auth=unavailable'),
+  passport.authenticate('discord', { failureRedirect: '/?auth=failed' }),
+  (req, res) => res.redirect('/app/')
+);
+
+// ── Routes — LinkedIn ────────────────────────────────────────────────────────
+router.get('/linkedin', (req, res, next) => {
+  if (!linkedinConfigured) return res.redirect('/?auth=unavailable');
+  passport.authenticate('linkedin')(req, res, next);
+});
+
+router.get('/linkedin/callback',
+  (req, res, next) => linkedinConfigured ? next() : res.redirect('/?auth=unavailable'),
+  passport.authenticate('linkedin', { failureRedirect: '/?auth=failed' }),
+  (req, res) => res.redirect('/app/')
+);
+
+// Lets the login page show only the SSO buttons that actually work —
+// buttons for a provider with no app credentials in .env stay hidden
+// rather than leading somewhere that just bounces back with an error.
+router.get('/sso-providers', (req, res) => {
+  res.json({ discord: discordConfigured, linkedin: linkedinConfigured });
+});
 
 router.get('/logout', (req, res, next) => {
   req.logout(err => {
