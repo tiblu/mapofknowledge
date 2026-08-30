@@ -48,10 +48,6 @@
     const name  = passport.display_name || t('label.your_name');
     const about = passport.about || '';
 
-    // Top-bar banner
-    const banner = document.querySelector('.topbar-banner-inner');
-    if (banner) banner.innerHTML = `<span class="topbar-banner-dot"></span>${t('label.learner_passport')} — ${esc(name)}`;
-
     // Left nav
     const avatarCircle = document.querySelector('.pnav-avatar-circle');
     if (avatarCircle) avatarCircle.textContent = initials(name);
