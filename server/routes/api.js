@@ -576,7 +576,7 @@ router.get('/nodes/:id/next-recommendation', async (req, res) => {
     const params = [passportId, parentDbId];
     let excludeClause = '';
     if (excludeExternalId) { excludeClause = 'AND n.external_id != ?'; params.push(excludeExternalId); }
-    const [siblings] = await db.execute(
+    const [siblingsRaw] = await db.execute(
       `SELECT n.external_id, n.label,
               COUNT(k.id) AS total,
               COALESCE(SUM(CASE WHEN kp.phase_reached = 'done' THEN 1 ELSE 0 END), 0) AS done
@@ -587,6 +587,11 @@ router.get('/nodes/:id/next-recommendation', async (req, res) => {
        GROUP BY n.id, n.external_id, n.label`,
       params
     );
+    // mysql2 returns SUM()/COALESCE(SUM()) results as strings (unlike
+    // COUNT(), which comes back as a real number) — every === comparison
+    // below silently failed against that string until this normalizes it,
+    // which is why this never actually recommended anything.
+    const siblings = siblingsRaw.map(s => ({ ...s, total: Number(s.total), done: Number(s.done) }));
     // Not fully done (covers never-generated nodes too, where total = 0).
     const eligible = siblings.filter(s => !(s.total > 0 && s.done === s.total));
     if (!eligible.length) return null;
