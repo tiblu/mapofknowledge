@@ -1207,19 +1207,19 @@ Here is your learner overview:`,
 const ANNE_SYSTEM_PROMPTS = {
   et: `Sa oled Anne - sõbralik abiline, kes aitab õppida. Sa arvestad kõikide kaasaegsete õppimise uuringute ja teadmistega ning oled õppijale abiks, et ta saaks kõige efektiivsemalt õppida. Vajadusel aitad seada ka eesmärke, aga ei tee tema eest asju ette ära. Suunad ja juhendad. Võid õppijaga positiivse kontakti loomiseks suhelda temaga ka mõnel teisel teemal, aga nii, nagu mentor seda teeks - tasapisi õppimise juurde tagasi juhatades. Kui õppija on seadnud omale eesmärke, võid tema käest nende kohta küsida. Kui ta ei ole eesmärke seadnud, võid küsida, mida ta tahaks õppida.
 
-Sul on tööriist "search_map", millega saad otsida Map of Knowledge kaardilt (kõik tasemed L1-L5). Kasuta seda alati, kui õppija küsib midagi, mis eeldab teadmist, kas ja kus mingi teema kaardil olemas on, või palub teemasoovitusi mingis valdkonnas — ära arva ega väida vastust ilma otsimata.
+Sul on kaks tööriista Map of Knowledge kaardi jaoks (kõik tasemed L1-L5): "search_map" otsib teemasid märksõna järgi, "list_map_children" näitab, mis täpselt on mingi konkreetse sõlme all (kasuta search_map tulemusest saadud node_id väärtust). Kui õppija küsib, mis on mingi teema all, mitu alamteemat/mõistet sellel on, või millises järjekorras midagi õppida, ÄRA arva otsingutulemuse põhjal — kasuta list_map_children, et saada täielik ja õige nimekiri. Otsing üksi leiab ainult sõlmi, mille OMA nimi märksõnaga kokku sobib, mitte selle alamsõlmi.
 
 ${ANNE_APP_HELP.et}`,
   en: `You are Anne — a friendly assistant who helps with learning. You draw on current learning research to help the learner learn as effectively as possible. When needed you help set goals, but you don't do things for them — you guide and direct. You may chat about other topics too, to build a positive connection, but the way a mentor would — gently steering back toward learning. If the learner has set goals, you can ask about those; if not, you can ask what they'd like to learn.
 
-You have a "search_map" tool that searches the actual Map of Knowledge (every level, L1-L5). Use it whenever the learner asks something that depends on knowing whether/where a topic exists on the map, or asks for topic suggestions in some area — don't guess or answer from assumption without searching first.
+You have two tools for the Map of Knowledge (every level, L1-L5): "search_map" finds topics by keyword, and "list_map_children" shows exactly what's under a specific node (use the node_id a search_map result gave you). If the learner asks what's under a topic, how many subtopics/concepts it has, or what order to learn them in, do NOT infer that from a search result — call list_map_children to get the real, complete list. Search alone only ever finds nodes whose OWN name matches the keyword, never that node's children.
 
 ${ANNE_APP_HELP.en}`,
 };
 
 const SEARCH_MAP_TOOL = {
   name: 'search_map',
-  description: 'Search the Map of Knowledge\'s topic map by keyword or phrase, across all five levels (L1 broad domains down to L5 individual concepts). Returns matching topics with their level and full breadcrumb path. Use this whenever answering requires knowing whether, or where, something exists on the map.',
+  description: 'Search the Map of Knowledge\'s topic map by keyword or phrase, across all five levels (L1 broad domains down to L5 individual concepts). Returns matching topics with their level, full breadcrumb path, and a node_id. Use this whenever answering requires knowing whether, or where, something exists on the map. This only matches a node\'s OWN label — it will never find a node by searching for its parent\'s name. To see what\'s actually underneath a node you found, call list_map_children instead of assuming from these results.',
   input_schema: {
     type: 'object',
     properties: {
@@ -1228,6 +1228,20 @@ const SEARCH_MAP_TOOL = {
     required: ['query'],
   },
 };
+
+const LIST_MAP_CHILDREN_TOOL = {
+  name: 'list_map_children',
+  description: 'Lists the direct child nodes of one specific map node, in the order they appear in the curriculum. Use this whenever a learner asks what\'s under a topic, how many subtopics/concepts it contains, or what order to learn them in — search_map alone cannot answer that, since it only matches a node\'s own label, never its children.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      node_id: { type: 'string', description: 'The node_id of the parent node, as returned by a search_map result.' },
+    },
+    required: ['node_id'],
+  },
+};
+
+const ANNE_TOOLS = [SEARCH_MAP_TOOL, LIST_MAP_CHILDREN_TOOL];
 
 function _safeParseToolJSON(raw) {
   try { return JSON.parse(raw || '{}'); } catch { return {}; }
@@ -1249,9 +1263,10 @@ function _anneSystem(passportText, locale) {
 }
 
 function _anneToolExecutor(locale) {
-  const { searchMapNodes } = require('./mapSearch');
+  const { searchMapNodes, listMapChildren } = require('./mapSearch');
   return async (name, input) => {
     if (name === 'search_map') return searchMapNodes(input && input.query, locale);
+    if (name === 'list_map_children') return listMapChildren(input && input.node_id, locale);
     return `Unknown tool: ${name}`;
   };
 }
@@ -1262,7 +1277,7 @@ async function generateAnneReply(passportText, history, userMessage, locale, use
     max_tokens: locale === 'en' ? 350 : 600,
     system: _anneSystem(passportText, locale),
     messages: _anneMessages(history, userMessage),
-  }, [SEARCH_MAP_TOOL], _anneToolExecutor(locale), userId, 'anne_reply');
+  }, ANNE_TOOLS, _anneToolExecutor(locale), userId, 'anne_reply');
   return text.trim();
 }
 
@@ -1272,7 +1287,7 @@ function streamAnneReply(passportText, history, userMessage, locale, userId, onC
     max_tokens: 350,
     system: _anneSystem(passportText, locale),
     messages: _anneMessages(history, userMessage),
-  }, [SEARCH_MAP_TOOL], _anneToolExecutor(locale), userId, 'anne_reply', onChunk);
+  }, ANNE_TOOLS, _anneToolExecutor(locale), userId, 'anne_reply', onChunk);
 }
 
 // ── Knowledge estimation from qualifications ────────────────────────────────
