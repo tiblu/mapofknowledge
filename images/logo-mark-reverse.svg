@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="-880 -880 1760 1760">
+  <title>Map of Knowledge — mark (reverse, for dark backgrounds)</title>
+  <g fill="#fdfcfa" fill-opacity="0.4">
+    <circle cx="0" cy="-640" r="158"></circle><circle cx="-560" cy="-320" r="158"></circle><circle cx="560" cy="-320" r="158"></circle>
+    <circle cx="-560" cy="320" r="158"></circle><circle cx="560" cy="320" r="158"></circle><circle cx="0" cy="640" r="158"></circle>
+  </g>
+  <g fill="#fdfcfa">
+    <circle cx="0" cy="-320" r="158"></circle><circle cx="-280" cy="-160" r="158"></circle><circle cx="280" cy="-160" r="158"></circle>
+    <circle cx="-280" cy="160" r="158"></circle><circle cx="280" cy="160" r="158"></circle><circle cx="0" cy="320" r="158"></circle>
+  </g>
+  <circle cx="0" cy="0" r="158" fill="#0f9ca5"></circle>
+</svg>
