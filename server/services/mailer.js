@@ -113,4 +113,33 @@ async function sendVerificationEmail(toEmail, token, locale) {
   await _send({ toEmail, subject, bodyHtml, bodyText, footerNoteHtml: footerNote, footerNoteText: footerNote });
 }
 
-module.exports = { sendVerificationEmail };
+async function sendPasswordResetEmail(toEmail, token, locale) {
+  const link = `${process.env.BASE_URL}/signup.html?resetToken=${token}`;
+  const subject = locale === 'et' ? 'Lähtesta oma Map of Knowledge parool' : 'Reset your Map of Knowledge password';
+
+  const bodyHtml = locale === 'et'
+    ? '<p style="margin:0 0 16px;font-size:15px;font-weight:650;color:#2C2820;">Parooli lähtestamine</p>'
+      + '<p style="margin:0 0 8px;">Saime taotluse lähtestada sinu Map of Knowledge konto parool. Uue parooli määramiseks kliki alloleval nupul.</p>'
+      + _btn(link, 'Määra uus parool')
+      + '<p style="margin:22px 0 0;font-size:11.5px;color:#9A8E86;">Või kopeeri see link oma brauserisse:<br>'
+      + '<a href="' + link + '" style="color:#C4826A;word-break:break-all;">' + link + '</a></p>'
+      + '<p style="margin:14px 0 0;font-size:11.5px;color:#9A8E86;">Link aegub 1 tunni pärast.</p>'
+    : '<p style="margin:0 0 16px;font-size:15px;font-weight:650;color:#2C2820;">Reset your password</p>'
+      + '<p style="margin:0 0 8px;">We received a request to reset the password on your Map of Knowledge account. Click the button below to set a new one.</p>'
+      + _btn(link, 'Set a new password')
+      + '<p style="margin:22px 0 0;font-size:11.5px;color:#9A8E86;">Or paste this link into your browser:<br>'
+      + '<a href="' + link + '" style="color:#C4826A;word-break:break-all;">' + link + '</a></p>'
+      + '<p style="margin:14px 0 0;font-size:11.5px;color:#9A8E86;">This link expires in 1 hour.</p>';
+
+  const bodyText = locale === 'et'
+    ? `Parooli lähtestamine\n\nSaime taotluse lähtestada sinu Map of Knowledge konto parool. Uue parooli määramiseks ava see link:\n\n${link}\n\nLink aegub 1 tunni pärast.`
+    : `Reset your password\n\nWe received a request to reset the password on your Map of Knowledge account. Open the link below to set a new one:\n\n${link}\n\nThis link expires in 1 hour.`;
+
+  const footerNote = locale === 'et'
+    ? 'Kui sa seda taotlust ei esitanud, võid seda kirja rahulikult eirata — su parool jääb samaks.'
+    : "If you didn't request this, you can safely ignore this email — your password won't change.";
+
+  await _send({ toEmail, subject, bodyHtml, bodyText, footerNoteHtml: footerNote, footerNoteText: footerNote });
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail };

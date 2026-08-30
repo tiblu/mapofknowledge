@@ -64,4 +64,9 @@ const signupRateLimit = _makeLimiter(5, 5 * 60 * 1000, _byIp);
 // keyed by user id, 3 attempts refilling 1 per 5 minutes.
 const resendVerifyRateLimit = _makeLimiter(3, 5 * 60 * 1000, _byUserId);
 
-module.exports = { loginRateLimit, signupRateLimit, resendVerifyRateLimit };
+// Password-reset request: unauthenticated by definition (that's the whole
+// point) and sends an email, same shape of risk as signup — 5 attempts,
+// refilling 1 per 5 minutes, per IP.
+const resetPasswordRateLimit = _makeLimiter(5, 5 * 60 * 1000, _byIp);
+
+module.exports = { loginRateLimit, signupRateLimit, resendVerifyRateLimit, resetPasswordRateLimit };

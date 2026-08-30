@@ -252,8 +252,8 @@
         .forEach(function (p) {
           if (!a[p[0]]) return;
           ssoBadges += '<span class="acct-badge acct-badge-sso">' + p[2] +
-            '<button type="button" class="acct-badge-disconnect" data-provider="' + p[1] + '">' +
-            t('btn.disconnect') + '</button></span> ';
+            '<button type="button" class="acct-badge-disconnect" data-provider="' + p[1] + '" title="' +
+            t('btn.disconnect') + '" aria-label="' + t('btn.disconnect') + '">×</button></span> ';
         });
       var otherBadges = '';
       if (_hasPassword) otherBadges += '<span class="acct-badge">' + t('account.login_method_password') + '</span> ';

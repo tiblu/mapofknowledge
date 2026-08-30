@@ -172,6 +172,22 @@ async function run() {
     );
     console.log(`  · Backfilled google_linked for ${backfill.affectedRows} passwordless pre-existing account(s)`);
 
+    // users.password_reset_token / _expires — "Forgot password?" flow, same
+    // shape as the existing email_verify_token/_expires pair.
+    for (const col of ['password_reset_token', 'password_reset_expires']) {
+      const [resetCols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = '${col}'`
+      );
+      if (!resetCols.length) {
+        const def = col === 'password_reset_token' ? 'VARCHAR(64) NULL' : 'DATETIME NULL';
+        await conn.execute(`ALTER TABLE users ADD COLUMN ${col} ${def}`);
+        console.log(`  + Added users.${col} column`);
+      } else {
+        console.log(`  · users.${col} already exists`);
+      }
+    }
+
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
     if (cnt > 0) {

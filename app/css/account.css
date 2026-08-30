@@ -31,8 +31,8 @@
 }
 .acct-badge-disconnect {
   background: none; border: none; cursor: pointer;
-  color: var(--c7); font-size: 10.5px; font-weight: 600;
-  padding: 0; text-decoration: underline;
+  color: var(--c7); font-size: 14px; line-height: 1;
+  padding: 0 0 0 2px;
 }
 .acct-badge-disconnect:hover { color: #B5453D; }
 .acct-badge-plan {

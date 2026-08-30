@@ -8,8 +8,8 @@ const { randomUUID, randomBytes } = require('crypto');
 const db       = require('../db');
 const { notify } = require('../services/notifications');
 const { moderateTags } = require('../services/llm');
-const { sendVerificationEmail } = require('../services/mailer');
-const { loginRateLimit, signupRateLimit, resendVerifyRateLimit } = require('../middleware/authRateLimit');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../services/mailer');
+const { loginRateLimit, signupRateLimit, resendVerifyRateLimit, resetPasswordRateLimit } = require('../middleware/authRateLimit');
 const router   = express.Router();
 
 // ── Cloudflare Turnstile ─────────────────────────────────────────────────────
@@ -460,6 +460,73 @@ router.post('/verify-email/resend', resendVerifyRateLimit, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'resend_failed' });
+  }
+});
+
+// ── Forgot password ────────────────────────────────────────────────────────
+// Two-step, and deliberately gives the exact same response either way so a
+// caller can't use this to find out whether a given email has an account:
+//   POST /reset-password/request — always {ok:true}; only actually emails
+//                                   a link when the address matches a real
+//                                   account with a password to reset.
+//   POST /reset-password/confirm — sets the new password if the token is
+//                                   valid and unexpired, then logs the user
+//                                   straight in (they just proved account
+//                                   ownership via the emailed link).
+router.post('/reset-password/request', resetPasswordRateLimit, async (req, res) => {
+  if (!(await _verifyTurnstile(req.body.turnstileToken, req.ip))) {
+    return res.status(400).json({ error: 'captcha_failed' });
+  }
+  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  if (email) {
+    try {
+      const [rows] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+      if (rows.length) {
+        const userId = rows[0].id;
+        const token  = randomBytes(32).toString('hex');
+        await db.execute(
+          'UPDATE users SET password_reset_token = ?, password_reset_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?',
+          [token, userId]
+        );
+        const locale = await _getUserLocale(userId);
+        sendPasswordResetEmail(email, token, locale)
+          .catch(err => console.error('[auth/reset-password/request] email failed:', err.message));
+      }
+    } catch (err) {
+      console.error('[auth/reset-password/request]', err.message);
+      // fall through to the same generic response — never reveal failure detail
+    }
+  }
+  res.json({ ok: true });
+});
+
+router.post('/reset-password/confirm', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (typeof token !== 'string' || !token) return res.status(400).json({ error: 'invalid_token' });
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ error: 'weak_password' });
+  }
+  try {
+    const [rows] = await db.execute(
+      'SELECT * FROM users WHERE password_reset_token = ? AND password_reset_expires > NOW()',
+      [token]
+    );
+    if (!rows.length) return res.status(400).json({ error: 'invalid_or_expired_token' });
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await db.execute(
+      'UPDATE users SET password_hash = ?, password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?',
+      [passwordHash, rows[0].id]
+    );
+
+    const [updated] = await db.execute('SELECT * FROM users WHERE id = ?', [rows[0].id]);
+    req.login(updated[0], (err) => {
+      if (err) return res.json({ ok: true }); // password is set either way; login is just a convenience
+      res.json({ ok: true, redirect: '/app/' });
+    });
+  } catch (err) {
+    console.error('[auth/reset-password/confirm]', err.message);
+    res.status(500).json({ error: 'reset_failed' });
   }
 });
 

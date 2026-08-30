@@ -570,7 +570,49 @@ a { color: inherit; text-decoration: none; }
     <div class="cf-turnstile" id="turnstile-login" data-sitekey="0x4AAAAAAEePtb0M5x8ykETN" data-callback="_onTurnstileLogin" style="margin:10px 0;"></div>
     <button class="btn-primary btn-block" id="login-btn">Log in</button>
 
-    <button type="button" class="su-login-link" id="back-to-signup-link" style="display:block;margin-top:16px;text-align:center;width:100%;">← Don't have an account? Start here</button>
+    <button type="button" class="su-login-link" id="forgot-password-link" style="display:block;margin-top:12px;text-align:center;width:100%;">Forgot your password?</button>
+    <button type="button" class="su-login-link" id="back-to-signup-link" style="display:block;margin-top:8px;text-align:center;width:100%;">← Don't have an account? Start here</button>
+  </div>
+
+  <!-- ── Forgot password — request a reset link ─────────────────────── -->
+  <div class="wizard su-hidden" id="reset-request-panel">
+    <div class="google-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="10" rx="2"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+    </div>
+    <h2>Reset your password</h2>
+    <p class="step-hint" id="reset-request-hint">Enter your email and we'll send you a link to set a new password.</p>
+
+    <input class="su-input" id="reset-email-input" type="email"
+           placeholder="Email address" autocomplete="email" spellcheck="false">
+    <div class="field-error" id="reset-request-error"></div>
+    <div class="cf-turnstile" id="turnstile-reset" data-sitekey="0x4AAAAAAEePtb0M5x8ykETN" data-callback="_onTurnstileReset" style="margin:10px 0;"></div>
+    <button class="btn-primary btn-block" id="reset-request-btn">Send reset link</button>
+
+    <button type="button" class="su-login-link" id="back-to-login-from-request" style="display:block;margin-top:16px;text-align:center;width:100%;">← Back to login</button>
+  </div>
+
+  <!-- ── Forgot password — set the new password (arrived via emailed link) ── -->
+  <div class="wizard su-hidden" id="reset-confirm-panel">
+    <div class="google-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="10" rx="2"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+    </div>
+    <h2>Set a new password</h2>
+    <p class="step-hint" id="reset-confirm-hint">Choose a new password for your account.</p>
+
+    <input class="su-input" id="reset-new-password-input" type="password"
+           placeholder="New password (at least 8 characters)" autocomplete="new-password">
+    <input class="su-input" id="reset-confirm-password-input" type="password"
+           placeholder="Confirm new password" autocomplete="new-password">
+    <div class="field-error" id="reset-confirm-error"></div>
+    <button class="btn-primary btn-block" id="reset-confirm-btn">Set new password</button>
+
+    <button type="button" class="su-login-link" id="back-to-login-from-confirm" style="display:block;margin-top:16px;text-align:center;width:100%;">← Back to login</button>
   </div>
 </main>
 
@@ -807,9 +849,10 @@ a { color: inherit; text-decoration: none; }
   // (which was hitting some widget/browser-specific failure on the Google
   // button's path — this sidesteps it by never calling into Turnstile's API
   // at click-time at all).
-  var _turnstileTokens = { signup: '', login: '' };
+  var _turnstileTokens = { signup: '', login: '', reset: '' };
   window._onTurnstileSignup = function (token) { _turnstileTokens.signup = token; };
   window._onTurnstileLogin  = function (token) { _turnstileTokens.login  = token; };
+  window._onTurnstileReset  = function (token) { _turnstileTokens.reset  = token; };
 
   function buildSignupPayload() {
     return {
@@ -947,25 +990,30 @@ a { color: inherit; text-decoration: none; }
   });
 
   // ── Returning-user login panel ───────────────────────────────────────
-  var signupWizardEl = document.getElementById('signup-wizard');
-  var loginPanelEl   = document.getElementById('login-panel');
+  var signupWizardEl      = document.getElementById('signup-wizard');
+  var loginPanelEl        = document.getElementById('login-panel');
+  var resetRequestPanelEl = document.getElementById('reset-request-panel');
+  var resetConfirmPanelEl = document.getElementById('reset-confirm-panel');
+  var ALL_PANELS = [signupWizardEl, loginPanelEl, resetRequestPanelEl, resetConfirmPanelEl];
   var loginEmailInput    = document.getElementById('login-email-input');
   var loginPasswordInput = document.getElementById('login-password-input');
   var loginBtn           = document.getElementById('login-btn');
   var loginError         = document.getElementById('login-error');
 
-  function showLoginPanel() {
-    signupWizardEl.classList.add('su-hidden');
-    loginPanelEl.classList.remove('su-hidden');
+  function showPanel(el) {
+    ALL_PANELS.forEach(function (p) { p.classList.add('su-hidden'); });
+    el.classList.remove('su-hidden');
   }
-  function showSignupWizard() {
-    loginPanelEl.classList.add('su-hidden');
-    signupWizardEl.classList.remove('su-hidden');
-    window.location.hash = '';
-  }
+  function showLoginPanel() { showPanel(loginPanelEl); }
+  function showSignupWizard() { showPanel(signupWizardEl); window.location.hash = ''; }
+  function showResetRequestPanel() { showPanel(resetRequestPanelEl); }
+  function showResetConfirmPanel() { showPanel(resetConfirmPanelEl); }
 
   document.getElementById('nav-login-link').addEventListener('click', showLoginPanel);
   document.getElementById('back-to-signup-link').addEventListener('click', showSignupWizard);
+  document.getElementById('forgot-password-link').addEventListener('click', showResetRequestPanel);
+  document.getElementById('back-to-login-from-request').addEventListener('click', showLoginPanel);
+  document.getElementById('back-to-login-from-confirm').addEventListener('click', showLoginPanel);
   if (window.location.hash === '#login') showLoginPanel();
 
   // ── Passkey login — usernameless, no Turnstile needed (a hardware-backed
@@ -1053,6 +1101,105 @@ a { color: inherit; text-decoration: none; }
       loginBtn.textContent = orig;
       loginError.textContent = 'Login failed. Please try again.';
       loginError.classList.add('show');
+    });
+  });
+
+  // ── Forgot password — request a reset link ───────────────────────────
+  var resetEmailInput   = document.getElementById('reset-email-input');
+  var resetRequestBtn   = document.getElementById('reset-request-btn');
+  var resetRequestError = document.getElementById('reset-request-error');
+  var resetRequestHint  = document.getElementById('reset-request-hint');
+  var resetTurnstileWrap = document.getElementById('turnstile-reset');
+
+  resetRequestBtn.addEventListener('click', function () {
+    var email = resetEmailInput.value.trim();
+    resetRequestError.classList.remove('show');
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      resetRequestError.textContent = 'Enter a valid email address.';
+      resetRequestError.classList.add('show');
+      return;
+    }
+
+    resetRequestBtn.disabled = true;
+    fetch('/auth/reset-password/request', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email: email, turnstileToken: _turnstileTokens.reset }),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        resetEmailInput.style.display = 'none';
+        resetTurnstileWrap.style.display = 'none';
+        resetRequestBtn.style.display = 'none';
+        resetRequestHint.textContent = 'If an account exists for that email, we’ve sent a link to reset your password. Check your inbox.';
+        return;
+      }
+      resetRequestBtn.disabled = false;
+      _turnstileTokens.reset = '';
+      if (window.turnstile) window.turnstile.reset('turnstile-reset');
+      resetRequestError.textContent = res.status === 429
+        ? 'Too many attempts — please wait a few minutes and try again.'
+        : (res.d && res.d.error === 'captcha_failed')
+        ? 'Verification failed — please try again.'
+        : 'Something went wrong. Please try again.';
+      resetRequestError.classList.add('show');
+    })
+    .catch(function () {
+      resetRequestBtn.disabled = false;
+      resetRequestError.textContent = 'Something went wrong. Please try again.';
+      resetRequestError.classList.add('show');
+    });
+  });
+
+  // ── Forgot password — set new password (arrived via emailed link) ────
+  var resetToken = new URLSearchParams(window.location.search).get('resetToken');
+  if (resetToken) showResetConfirmPanel();
+
+  var resetNewPasswordInput     = document.getElementById('reset-new-password-input');
+  var resetConfirmPasswordInput = document.getElementById('reset-confirm-password-input');
+  var resetConfirmBtn           = document.getElementById('reset-confirm-btn');
+  var resetConfirmError         = document.getElementById('reset-confirm-error');
+
+  resetConfirmBtn.addEventListener('click', function () {
+    var newPassword     = resetNewPasswordInput.value;
+    var confirmPassword = resetConfirmPasswordInput.value;
+    resetConfirmError.classList.remove('show');
+
+    if (newPassword.length < 8) {
+      resetConfirmError.textContent = 'Password must be at least 8 characters.';
+      resetConfirmError.classList.add('show');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      resetConfirmError.textContent = 'Passwords do not match.';
+      resetConfirmError.classList.add('show');
+      return;
+    }
+
+    resetConfirmBtn.disabled = true;
+    fetch('/auth/reset-password/confirm', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ token: resetToken, newPassword: newPassword }),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        window.location.href = res.d.redirect || '/app/';
+        return;
+      }
+      resetConfirmBtn.disabled = false;
+      resetConfirmError.textContent = res.d && res.d.error === 'invalid_or_expired_token'
+        ? 'This reset link is invalid or has expired. Please request a new one.'
+        : 'Something went wrong. Please try again.';
+      resetConfirmError.classList.add('show');
+    })
+    .catch(function () {
+      resetConfirmBtn.disabled = false;
+      resetConfirmError.textContent = 'Something went wrong. Please try again.';
+      resetConfirmError.classList.add('show');
     });
   });
 
