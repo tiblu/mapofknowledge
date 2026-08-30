@@ -40,6 +40,25 @@
   var _lastDemoBody    = '';   // previous example's body, sent so the next example doesn't repeat it
   var _noteMode        = false; // ask-bar is composing a personal note instead of asking Anne
 
+  // The Practice chip's help-hint content is static markup (index.html),
+  // but its text is translated and window.t() only resolves once
+  // strings.js's async fetch lands — poll briefly rather than wire this to
+  // strings.js itself, since nothing else in the app needs a "translations
+  // ready" event.
+  (function _setPracticeHintText(triesLeft) {
+    var wrap = document.getElementById('chip-practice');
+    if (!wrap) return;
+    var text = window.t ? window.t('hh.practice_text') : 'hh.practice_text';
+    if (text === 'hh.practice_text' && triesLeft > 0) {
+      setTimeout(function () { _setPracticeHintText(triesLeft - 1); }, 150);
+      return;
+    }
+    var content = wrap.querySelector('.hh-content');
+    if (content) content.innerHTML = text;
+    var btn = wrap.querySelector('.hh-btn');
+    if (btn && window.t) btn.setAttribute('aria-label', window.t('hh.more_info'));
+  })(20);
+
   var _PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
   // Fallback for knobits generated before target_bytes existed, and an
   // absolute safety ceiling regardless of what the server sends.

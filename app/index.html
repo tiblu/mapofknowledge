@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="css/anne.css">
 <link rel="stylesheet" href="css/font-scale.css">
 <link rel="stylesheet" href="css/knowledge-estimate.css">
+<link rel="stylesheet" href="css/help-hint.css">
 <script src="js/strings.js"></script>
 </head>
 <body>
@@ -363,7 +364,9 @@
       <div class="kn-phase-chips">
         <span class="kn-chip locked-chip" id="chip-explain"     data-phase="explain"     data-i18n="phase.explain">Explain</span>
         <span class="kn-chip locked-chip" id="chip-demonstrate" data-phase="demonstrate" data-i18n="phase.demo">Demo</span>
-        <span class="kn-chip locked-chip" id="chip-practice"    data-phase="practice"    data-i18n="phase.practice">Practice</span>
+        <span class="kn-chip locked-chip" id="chip-practice"    data-phase="practice">
+          <span data-i18n="phase.practice">Practice</span><button type="button" class="hh-btn" aria-label="More info">?</button><span class="hh-content" hidden></span>
+        </span>
         <span class="kn-chip locked-chip" id="chip-meaning"     data-phase="meaning"     data-i18n="phase.meaning">Meaning</span>
       </div>
       <div class="lm-focus-timer" id="lm-focus-timer" style="display:none" data-i18n-title="lm.focus_timer_title" title="Focus timer">
@@ -777,6 +780,7 @@
 <script src="js/nav-menu.js"></script>
 <script src="js/tour.js"></script>
 <script src="js/knowledge-estimate.js"></script>
+<script src="js/help-hint.js"></script>
 <script src="js/learning.js?v=20"></script>
 <script src="js/testing.js?v=1"></script>
 <script src="js/layers.js?v=4"></script>
