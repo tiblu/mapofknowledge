@@ -136,8 +136,19 @@ function sendWelcomeNotification(userId) {
 //    email regardless of which provider it originally signed up with —
 //    e.g. a user can sign up via Google and later log in via Discord as
 //    long as both report the same email address. ─────────────────────────
-async function handleOAuthLogin(req, email, done) {
+// provider -> the users column tracking whether this account has ever
+// signed in via that provider (see users.google_linked/discord_linked/
+// linkedin_linked, added in migrate.js). Purely for the Account page's
+// "Sign-in method" badges — never used for auth decisions.
+const PROVIDER_LINKED_COLUMN = {
+  google:   'google_linked',
+  discord:  'discord_linked',
+  linkedin: 'linkedin_linked',
+};
+
+async function handleOAuthLogin(req, email, provider, done) {
   if (!email) return done(null, false, { message: 'no_email' });
+  const linkedColumn = PROVIDER_LINKED_COLUMN[provider];
 
   const conn = await db.getConnection();
   try {
@@ -151,8 +162,8 @@ async function handleOAuthLogin(req, email, done) {
       const passportId = await createPassportFromPending(conn, pending);
 
       const [ur] = await conn.execute(
-        `INSERT INTO users (email, role, email_verified, subscription_status, passport_id, last_login, created_at)
-         VALUES (?, ?, 1, 'free', ?, NOW(), NOW())`,
+        `INSERT INTO users (email, role, email_verified, subscription_status, passport_id, last_login, created_at, ${linkedColumn})
+         VALUES (?, ?, 1, 'free', ?, NOW(), NOW(), 1)`,
         [email, ROLE_MAP[email] || 'learner', passportId]
       );
       const userId = ur.insertId;
@@ -167,7 +178,10 @@ async function handleOAuthLogin(req, email, done) {
     // Existing user — normal login
     const user = users[0];
     const isFirstLogin = !user.last_login;
-    await conn.execute('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    await conn.execute(
+      `UPDATE users SET last_login = NOW(), ${linkedColumn} = 1 WHERE id = ?`,
+      [user.id]
+    );
     if (isFirstLogin) sendWelcomeNotification(user.id);
     done(null, user);
   } finally {
@@ -185,7 +199,7 @@ passport.use(new GoogleStrategy(
   },
   async (req, accessToken, refreshToken, profile, done) => {
     try {
-      await handleOAuthLogin(req, profile.emails?.[0]?.value?.toLowerCase(), done);
+      await handleOAuthLogin(req, profile.emails?.[0]?.value?.toLowerCase(), 'google', done);
     } catch (err) {
       done(err);
     }
@@ -216,7 +230,7 @@ if (discordConfigured) {
         // address with Discord — an unverified email isn't a safe identity
         // to match an account against.
         const email = (profile.verified && profile.email) ? profile.email.toLowerCase() : null;
-        await handleOAuthLogin(req, email, done);
+        await handleOAuthLogin(req, email, 'discord', done);
       } catch (err) {
         done(err);
       }
@@ -239,7 +253,7 @@ if (linkedinConfigured) {
     },
     async (req, issuer, profile, done) => {
       try {
-        await handleOAuthLogin(req, profile.emails?.[0]?.value?.toLowerCase(), done);
+        await handleOAuthLogin(req, profile.emails?.[0]?.value?.toLowerCase(), 'linkedin', done);
       } catch (err) {
         done(err);
       }

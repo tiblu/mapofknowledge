@@ -247,7 +247,10 @@
       document.getElementById('acct-email').textContent = a.email || '—';
       _hasPassword = !!a.hasPassword;
 
-      var methods = ['Google'];
+      var methods = [];
+      if (a.hasGoogle) methods.push('Google');
+      if (a.hasDiscord) methods.push('Discord');
+      if (a.hasLinkedin) methods.push('LinkedIn');
       if (_hasPassword) methods.push(t('account.login_method_password'));
       if (a.hasPasskey) methods.push(t('account.login_method_passkey'));
       document.getElementById('acct-login-methods').innerHTML = methods.map(function (m) {

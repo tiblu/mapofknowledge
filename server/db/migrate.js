@@ -149,6 +149,29 @@ async function run() {
     `);
     console.log('  · webauthn_credentials table ready');
 
+    // users.*_linked — tracks which SSO providers an account has actually
+    // signed in with, purely for the Account page's "Sign-in method"
+    // badges (see handleOAuthLogin in auth.js, which sets these on every
+    // successful login/signup via that provider). Backfill: before Discord/
+    // LinkedIn existed, Google was the only way to get an account with no
+    // password, so any such existing row must have used Google.
+    for (const col of ['google_linked', 'discord_linked', 'linkedin_linked']) {
+      const [linkedCols] = await conn.execute(
+        `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = '${col}'`
+      );
+      if (!linkedCols.length) {
+        await conn.execute(`ALTER TABLE users ADD COLUMN ${col} TINYINT(1) NOT NULL DEFAULT 0`);
+        console.log(`  + Added users.${col} column`);
+      } else {
+        console.log(`  · users.${col} already exists`);
+      }
+    }
+    const [backfill] = await conn.execute(
+      'UPDATE users SET google_linked = 1 WHERE password_hash IS NULL AND google_linked = 0'
+    );
+    console.log(`  · Backfilled google_linked for ${backfill.affectedRows} passwordless pre-existing account(s)`);
+
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
     if (cnt > 0) {

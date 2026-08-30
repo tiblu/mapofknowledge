@@ -7,7 +7,9 @@ const router  = express.Router();
 router.get('/', async (req, res) => {
   try {
     const [[user]] = await db.execute(
-      'SELECT email, password_hash, subscription_status, created_at, email_verified FROM users WHERE id = ?',
+      `SELECT email, password_hash, subscription_status, created_at, email_verified,
+              google_linked, discord_linked, linkedin_linked
+       FROM users WHERE id = ?`,
       [req.user.id]
     );
     const [[{ passkeyCount }]] = await db.execute(
@@ -18,6 +20,9 @@ router.get('/', async (req, res) => {
       email:              user.email,
       hasPassword:        !!user.password_hash,
       hasPasskey:         passkeyCount > 0,
+      hasGoogle:          !!user.google_linked,
+      hasDiscord:         !!user.discord_linked,
+      hasLinkedin:        !!user.linkedin_linked,
       subscriptionStatus: user.subscription_status,
       memberSince:        user.created_at,
       emailVerified:      !!user.email_verified,
