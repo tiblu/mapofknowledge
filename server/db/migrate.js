@@ -220,6 +220,24 @@ async function run() {
     `);
     console.log('  · friend_invites table ready');
 
+    // users.avatar_url / avatar_source — profile photo pulled from Google at
+    // login (profile.photos[0].value from its userinfo response). Kept as a
+    // separate source flag so a future user-upload feature can overwrite
+    // avatar_url and never get silently clobbered by the next Google
+    // login — see the conditional UPDATE in handleOAuthLogin (auth.js),
+    // which only touches these columns when avatar_source isn't 'upload'.
+    const [avatarCols] = await conn.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'avatar_url'`
+    );
+    if (!avatarCols.length) {
+      await conn.execute("ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) NULL");
+      await conn.execute("ALTER TABLE users ADD COLUMN avatar_source ENUM('upload','google') NULL");
+      console.log('  + Added users.avatar_url / avatar_source columns');
+    } else {
+      console.log('  · users.avatar_url already exists');
+    }
+
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
     if (cnt > 0) {

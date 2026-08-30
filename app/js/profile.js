@@ -48,9 +48,21 @@
     const name  = passport.display_name || t('label.your_name');
     const about = passport.about || '';
 
-    // Left nav
+    // Left nav — a Google-linked account's photo is preferred whenever
+    // present (see users.avatar_url/avatar_source, set in handleOAuthLogin);
+    // falls back to the initials circle otherwise.
     const avatarCircle = document.querySelector('.pnav-avatar-circle');
-    if (avatarCircle) avatarCircle.textContent = initials(name);
+    if (avatarCircle) {
+      if (passport.avatar_url) {
+        avatarCircle.style.backgroundImage = `url('${passport.avatar_url}')`;
+        avatarCircle.style.backgroundSize = 'cover';
+        avatarCircle.style.backgroundPosition = 'center';
+        avatarCircle.textContent = '';
+      } else {
+        avatarCircle.style.backgroundImage = '';
+        avatarCircle.textContent = initials(name);
+      }
+    }
     const navName = document.querySelector('.pnav-name');
     if (navName) navName.textContent = name;
 

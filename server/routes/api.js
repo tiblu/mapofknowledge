@@ -70,6 +70,14 @@ async function _fetchFullPassport(passportId) {
     'SELECT * FROM learner_passports WHERE id = ?', [passportId]
   );
 
+  // avatar_url lives on users (it's an auth-provider attribute, not a
+  // passport one), joined back in here since every consumer of this
+  // function renders identity from the passport object.
+  const [[avatarRow]] = await db.execute(
+    'SELECT avatar_url FROM users WHERE passport_id = ?', [passportId]
+  );
+  if (passport) passport.avatar_url = avatarRow ? avatarRow.avatar_url : null;
+
   const [credentials] = await db.execute(
     `SELECT * FROM passport_credentials WHERE passport_id = ? ORDER BY awarded_date DESC, id DESC`,
     [passportId]

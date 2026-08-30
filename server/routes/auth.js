@@ -147,7 +147,7 @@ const PROVIDER_LINKED_COLUMN = {
   linkedin: 'linkedin_linked',
 };
 
-async function handleOAuthLogin(req, email, provider, done) {
+async function handleOAuthLogin(req, email, provider, done, avatarUrl) {
   if (!email) return done(null, false, { message: 'no_email' });
   const linkedColumn = PROVIDER_LINKED_COLUMN[provider];
 
@@ -163,9 +163,9 @@ async function handleOAuthLogin(req, email, provider, done) {
       const passportId = await createPassportFromPending(conn, pending);
 
       const [ur] = await conn.execute(
-        `INSERT INTO users (email, role, email_verified, subscription_status, passport_id, last_login, created_at, ${linkedColumn})
-         VALUES (?, ?, 1, 'free', ?, NOW(), NOW(), 1)`,
-        [email, ROLE_MAP[email] || 'learner', passportId]
+        `INSERT INTO users (email, role, email_verified, subscription_status, passport_id, last_login, created_at, ${linkedColumn}, avatar_url, avatar_source)
+         VALUES (?, ?, 1, 'free', ?, NOW(), NOW(), 1, ?, ?)`,
+        [email, ROLE_MAP[email] || 'learner', passportId, avatarUrl || null, avatarUrl ? provider : null]
       );
       const userId = ur.insertId;
 
@@ -184,6 +184,15 @@ async function handleOAuthLogin(req, email, provider, done) {
       `UPDATE users SET last_login = NOW(), ${linkedColumn} = 1 WHERE id = ?`,
       [user.id]
     );
+    // Never clobber a user-uploaded photo with a provider's — only refresh
+    // avatar_url here when the account doesn't currently have an upload.
+    if (avatarUrl) {
+      await conn.execute(
+        `UPDATE users SET avatar_url = ?, avatar_source = ?
+         WHERE id = ? AND (avatar_source IS NULL OR avatar_source != 'upload')`,
+        [avatarUrl, provider, user.id]
+      );
+    }
     if (isFirstLogin) sendWelcomeNotification(user.id);
     done(null, user);
   } finally {
@@ -201,7 +210,8 @@ passport.use(new GoogleStrategy(
   },
   async (req, accessToken, refreshToken, profile, done) => {
     try {
-      await handleOAuthLogin(req, profile.emails?.[0]?.value?.toLowerCase(), 'google', done);
+      const avatarUrl = profile.photos?.[0]?.value || null;
+      await handleOAuthLogin(req, profile.emails?.[0]?.value?.toLowerCase(), 'google', done, avatarUrl);
     } catch (err) {
       done(err);
     }
