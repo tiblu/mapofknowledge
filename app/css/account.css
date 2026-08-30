@@ -26,6 +26,15 @@
   padding: 3px 9px;
   margin-top: 4px;
 }
+.acct-badge-sso {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.acct-badge-disconnect {
+  background: none; border: none; cursor: pointer;
+  color: var(--c7); font-size: 10.5px; font-weight: 600;
+  padding: 0; text-decoration: underline;
+}
+.acct-badge-disconnect:hover { color: #B5453D; }
 .acct-badge-plan {
   font-size: 12px; font-weight: 700;
   color: #fff;

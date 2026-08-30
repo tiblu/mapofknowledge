@@ -33,6 +33,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
 const { loginRateLimit } = require('../middleware/authRateLimit');
+const { countAuthMethods } = require('../services/authMethods');
 const {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -150,6 +151,12 @@ router.get('/credentials', async (req, res) => {
 router.delete('/credentials/:id', async (req, res) => {
   if (!_requireAuth(req, res)) return;
   try {
+    // Same last-method protection as /api/account/disconnect — a passkey
+    // can be this account's only remaining way in just as easily as an
+    // SSO provider can.
+    const total = await countAuthMethods(req.user.id);
+    if (total <= 1) return res.status(400).json({ error: 'last_method' });
+
     await db.execute(
       'DELETE FROM webauthn_credentials WHERE id = ? AND user_id = ?',
       [req.params.id, req.user.id]

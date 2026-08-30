@@ -1,7 +1,10 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs'); // pure-JS, matches server/routes/auth.js — no native compile step
 const db      = require('../db');
+const { countAuthMethods } = require('../services/authMethods');
 const router  = express.Router();
+
+const SSO_LINKED_COLUMN = { google: 'google_linked', discord: 'discord_linked', linkedin: 'linkedin_linked' };
 
 // ── GET /api/account — Security/Data/Billing page bootstrap ─────────────────
 router.get('/', async (req, res) => {
@@ -55,6 +58,28 @@ router.post('/password', async (req, res) => {
   } catch (err) {
     console.error('[api/account/password]', err.message);
     res.status(500).json({ error: 'update_failed' });
+  }
+});
+
+// ── POST /api/account/disconnect/:provider — unlink an SSO provider ─────────
+// Refuses to remove the account's last remaining sign-in method (password,
+// any other linked provider, or a passkey) — there's no password-reset
+// flow yet, so hitting zero methods would mean permanent lockout.
+router.post('/disconnect/:provider', async (req, res) => {
+  const column = SSO_LINKED_COLUMN[req.params.provider];
+  if (!column) return res.status(400).json({ error: 'unknown_provider' });
+  try {
+    const [[user]] = await db.execute(`SELECT ${column} AS linked FROM users WHERE id = ?`, [req.user.id]);
+    if (!user.linked) return res.json({ ok: true }); // already disconnected
+
+    const total = await countAuthMethods(req.user.id);
+    if (total <= 1) return res.status(400).json({ error: 'last_method' });
+
+    await db.execute(`UPDATE users SET ${column} = 0 WHERE id = ?`, [req.user.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[api/account/disconnect]', err.message);
+    res.status(500).json({ error: 'disconnect_failed' });
   }
 });
 

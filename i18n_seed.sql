@@ -470,6 +470,8 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('msg.add_one_node',             'en', 'Please add at least one node.'),
 ('msg.upload_file_first',        'en', 'Please upload a JSON or CSV file first.'),
 ('btn.remove',                   'en', 'Remove'),
+('btn.disconnect',               'en', 'Disconnect'),
+('btn.disconnect',               'et', 'Ühenda lahti'),
 
 -- Anne mentor chat widget (2026-07-29, ported from KnobitMap).
 ('anne.input_placeholder',       'en', 'Ask Anne...'),
@@ -532,6 +534,10 @@ INSERT INTO ui_strings (key_name, locale, value) VALUES
 ('account.passkeys_unsupported',  'et', 'Sinu brauser ei toeta pääsuvõtmeid.'),
 ('account.passkey_add_failed',    'en', 'Could not add the passkey. Please try again.'),
 ('account.passkey_add_failed',    'et', 'Pääsuvõtme lisamine ebaõnnestus. Palun proovi uuesti.'),
+('account.disconnect_failed',     'en', 'Could not disconnect. Please try again.'),
+('account.disconnect_failed',     'et', 'Lahtiühendamine ebaõnnestus. Palun proovi uuesti.'),
+('account.last_method_error',     'en', 'This is your only way to sign in — add another method (a password, a different provider, or a passkey) before removing this one.'),
+('account.last_method_error',     'et', 'See on sinu ainus sisselogimisviis — lisa enne selle eemaldamist mõni teine viis (parool, mõni teine teenus või pääsuvõti).'),
 ('account.current_password',     'en', 'Current password'),
 ('account.new_password',         'en', 'New password'),
 ('account.confirm_password',     'en', 'Confirm new password'),

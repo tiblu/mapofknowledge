@@ -247,15 +247,32 @@
       document.getElementById('acct-email').textContent = a.email || '—';
       _hasPassword = !!a.hasPassword;
 
-      var methods = [];
-      if (a.hasGoogle) methods.push('Google');
-      if (a.hasDiscord) methods.push('Discord');
-      if (a.hasLinkedin) methods.push('LinkedIn');
-      if (_hasPassword) methods.push(t('account.login_method_password'));
-      if (a.hasPasskey) methods.push(t('account.login_method_passkey'));
-      document.getElementById('acct-login-methods').innerHTML = methods.map(function (m) {
-        return '<span class="acct-badge">' + m + '</span>';
-      }).join(' ');
+      var ssoBadges = '';
+      [['hasGoogle', 'google', 'Google'], ['hasDiscord', 'discord', 'Discord'], ['hasLinkedin', 'linkedin', 'LinkedIn']]
+        .forEach(function (p) {
+          if (!a[p[0]]) return;
+          ssoBadges += '<span class="acct-badge acct-badge-sso">' + p[2] +
+            '<button type="button" class="acct-badge-disconnect" data-provider="' + p[1] + '">' +
+            t('btn.disconnect') + '</button></span> ';
+        });
+      var otherBadges = '';
+      if (_hasPassword) otherBadges += '<span class="acct-badge">' + t('account.login_method_password') + '</span> ';
+      if (a.hasPasskey) otherBadges += '<span class="acct-badge">' + t('account.login_method_passkey') + '</span> ';
+      document.getElementById('acct-login-methods').innerHTML = ssoBadges + otherBadges;
+
+      document.querySelectorAll('.acct-badge-disconnect').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          fetch('/api/account/disconnect/' + btn.getAttribute('data-provider'), { method: 'POST' })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+              if (res.ok) { loadAccount(); return; }
+              btn.disabled = false;
+              alert(res.d && res.d.error === 'last_method' ? t('account.last_method_error') : t('account.disconnect_failed'));
+            })
+            .catch(function () { btn.disabled = false; });
+        });
+      });
 
       var label = _hasPassword ? t('account.change_password') : t('account.set_password');
       document.getElementById('acct-password-label').textContent = label;
@@ -301,7 +318,12 @@
         btn.addEventListener('click', function () {
           btn.disabled = true;
           fetch('/auth/webauthn/credentials/' + btn.getAttribute('data-id'), { method: 'DELETE' })
-            .then(function () { loadPasskeys(); loadAccount(); })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+              if (res.ok) { loadPasskeys(); loadAccount(); return; }
+              btn.disabled = false;
+              alert(res.d && res.d.error === 'last_method' ? t('account.last_method_error') : t('account.disconnect_failed'));
+            })
             .catch(function () { btn.disabled = false; });
         });
       });
