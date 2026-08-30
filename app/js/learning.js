@@ -40,25 +40,6 @@
   var _lastDemoBody    = '';   // previous example's body, sent so the next example doesn't repeat it
   var _noteMode        = false; // ask-bar is composing a personal note instead of asking Anne
 
-  // The Practice chip's help-hint content is static markup (index.html),
-  // but its text is translated and window.t() only resolves once
-  // strings.js's async fetch lands — poll briefly rather than wire this to
-  // strings.js itself, since nothing else in the app needs a "translations
-  // ready" event.
-  (function _setPracticeHintText(triesLeft) {
-    var wrap = document.getElementById('chip-practice');
-    if (!wrap) return;
-    var text = window.t ? window.t('hh.practice_text') : 'hh.practice_text';
-    if (text === 'hh.practice_text' && triesLeft > 0) {
-      setTimeout(function () { _setPracticeHintText(triesLeft - 1); }, 150);
-      return;
-    }
-    var content = wrap.querySelector('.hh-content');
-    if (content) content.innerHTML = text;
-    var btn = wrap.querySelector('.hh-btn');
-    if (btn && window.t) btn.setAttribute('aria-label', window.t('hh.more_info'));
-  })(20);
-
   var _PHASES = ['explain', 'demonstrate', 'practice', 'meaning'];
   // Fallback for knobits generated before target_bytes existed, and an
   // absolute safety ceiling regardless of what the server sends.
@@ -932,7 +913,7 @@
 
     blocks.forEach(function (row) {
       if (row.phase !== lastPhase) {
-        _appendPhaseDivider(t('phase.step_' + (_PHASES.indexOf(row.phase) + 1)));
+        _appendPhaseDivider(t('phase.step_' + (_PHASES.indexOf(row.phase) + 1)), row.phase);
         _setPhase(row.phase);
         lastPhase = row.phase;
       }
@@ -1191,7 +1172,7 @@
 
   /* ─── Practice ────────────────────────────────────────────────── */
   function _enterPractice() {
-    _appendPhaseDivider(t('phase.step_3'));
+    _appendPhaseDivider(t('phase.step_3'), 'practice');
     _practiceIdx = 0;
     _setPhase('practice');
     _fetchPractice();
@@ -1553,7 +1534,7 @@
   };
 
   /* ─── Block stream ────────────────────────────────────────────── */
-  function _appendPhaseDivider(name) {
+  function _appendPhaseDivider(name, phaseKey) {
     var s = document.getElementById('kn-stream');
     if (!s) return;
     var d    = document.createElement('div');
@@ -1561,6 +1542,19 @@
     var span = document.createElement('span');
     span.textContent = name;
     d.appendChild(span);
+    if (phaseKey === 'practice') {
+      var hhBtn = document.createElement('button');
+      hhBtn.type = 'button';
+      hhBtn.className = 'hh-btn';
+      hhBtn.setAttribute('aria-label', window.t ? window.t('hh.more_info') : 'More info');
+      hhBtn.textContent = '?';
+      var hhContent = document.createElement('span');
+      hhContent.className = 'hh-content';
+      hhContent.hidden = true;
+      hhContent.innerHTML = window.t ? window.t('hh.practice_text') : '';
+      d.appendChild(hhBtn);
+      d.appendChild(hhContent);
+    }
     s.appendChild(d);
     _scrollStream();
   }
