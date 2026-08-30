@@ -823,7 +823,7 @@
          </button>`
       : '';
 
-    card.innerHTML = `<div class="p-card-title">${t('section.reflections')}</div>
+    card.innerHTML = `<div class="p-card-title">${t('section.reflections')}<button type="button" class="hh-btn" aria-label="${esc(t('hh.more_info'))}">?</button><span class="hh-content" hidden>${t('hh.reflections_text')}</span></div>
       <div class="p-scroll-lg">${rowsHtml}</div>` + moreBtn;
   }
 

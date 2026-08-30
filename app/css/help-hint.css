@@ -1,0 +1,35 @@
+/* ── Help hints — small "?" markers scattered through the app, each one
+   explaining the reasoning/research behind a feature. Deliberately quiet:
+   sits inline next to whatever it's attached to, low-contrast until
+   hovered/focused, no visual weight competing with real UI.
+
+   Markup convention (see help-hint.js — fully event-delegated, so no
+   per-instance JS wiring is ever needed, just drop this pair in anywhere):
+     <button type="button" class="hh-btn" aria-label="More info">?</button>
+     <span class="hh-content" hidden>Explanation text, links allowed.</span>
+   The two elements must be adjacent siblings. ── */
+.hh-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 1px solid var(--i14);
+  background: transparent; color: var(--c7);
+  font-size: 9.5px; font-weight: 700; font-family: Georgia, serif;
+  line-height: 1; cursor: pointer;
+  margin-left: 5px; vertical-align: middle;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+.hh-btn:hover, .hh-btn:focus-visible { border-color: var(--accent, var(--lm-accent)); color: var(--accent, var(--lm-accent)); background: var(--i04); outline: none; }
+
+.hh-popover {
+  position: fixed; z-index: 800;
+  width: 260px; max-width: calc(100vw - 32px);
+  background: var(--bg); border: 1px solid var(--i09); border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(44,40,32,0.18);
+  padding: 13px 15px;
+  font-size: 12px; line-height: 1.55; color: var(--c3);
+  display: none;
+}
+.hh-popover.active { display: block; }
+.hh-popover a { color: var(--accent, var(--lm-accent)); text-decoration: none; }
+.hh-popover a:hover { text-decoration: underline; }
