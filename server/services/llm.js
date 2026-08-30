@@ -139,6 +139,116 @@ async function _callWithWebSearch(config) {
   return tally(await client.messages.create({ ...config, messages }));
 }
 
+// Generic non-streaming tool-use loop: calls toolExecutor(name, input) for
+// each tool_use block Claude emits, feeds the result back, and repeats until
+// Claude stops calling tools (or MAX_TURNS is hit — a well-behaved tool
+// shouldn't need more than 1-2 round trips). Returns the final text only.
+async function _createWithTools(config, tools, toolExecutor, userId, callType) {
+  const messages = [...config.messages];
+  const MAX_TURNS = 4;
+  let totalInput = 0, totalOutput = 0;
+
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const resp = await client.messages.create({ ...config, messages, tools });
+    totalInput += resp.usage?.input_tokens || 0;
+    totalOutput += resp.usage?.output_tokens || 0;
+
+    if (resp.stop_reason !== 'tool_use') {
+      _logUsage(userId, callType, { input_tokens: totalInput, output_tokens: totalOutput }, config.model);
+      const textBlock = resp.content.find(b => b.type === 'text');
+      return textBlock ? textBlock.text : '';
+    }
+
+    messages.push({ role: 'assistant', content: resp.content });
+    const toolResults = [];
+    for (const b of resp.content.filter(b => b.type === 'tool_use')) {
+      let result;
+      try { result = await toolExecutor(b.name, b.input); }
+      catch (err) { result = `Tool error: ${err.message}`; }
+      toolResults.push({ type: 'tool_result', tool_use_id: b.id, content: String(result) });
+    }
+    messages.push({ role: 'user', content: toolResults });
+  }
+  _logUsage(userId, callType, { input_tokens: totalInput, output_tokens: totalOutput }, config.model);
+  return ''; // exhausted MAX_TURNS without a final text answer — shouldn't happen in practice
+}
+
+// Streaming counterpart to _createWithTools: forwards only text_delta events
+// to onChunk (tool-call JSON is never shown to the learner), accumulates
+// tool_use input via input_json_delta per Anthropic's documented streaming
+// pattern, then — once a turn's stop_reason is 'tool_use' — resolves every
+// tool call and starts a fresh stream for the next turn. Retries a turn
+// silently on a connection drop, but only while nothing has reached the
+// caller's onChunk yet, same rule _streamText uses for the same reason
+// (recurring "Premature close" on this host — see _streamText's comment).
+async function _streamTextWithTools(config, tools, toolExecutor, userId, callType, onChunk) {
+  const messages = [...config.messages];
+  const MAX_TURNS = 4;
+  let totalInput = 0, totalOutput = 0;
+
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const MAX_ATTEMPTS = 3;
+    let stopReason = null;
+    let blocks = [];
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      let emittedAny = false;
+      blocks = [];
+      try {
+        const stream = await client.messages.create({ ...config, messages, tools, stream: true });
+        for await (const event of stream) {
+          if (event.type === 'content_block_start') {
+            blocks[event.index] = event.content_block.type === 'tool_use'
+              ? { type: 'tool_use', id: event.content_block.id, name: event.content_block.name, inputJson: '' }
+              : { type: 'text', text: '' };
+          } else if (event.type === 'content_block_delta') {
+            const b = blocks[event.index];
+            if (event.delta.type === 'text_delta') {
+              emittedAny = true;
+              b.text += event.delta.text;
+              onChunk(event.delta.text);
+            } else if (event.delta.type === 'input_json_delta') {
+              b.inputJson += event.delta.partial_json;
+            }
+          } else if (event.type === 'message_start' && event.message?.usage) {
+            totalInput += event.message.usage.input_tokens || 0;
+          } else if (event.type === 'message_delta') {
+            if (event.usage) totalOutput += event.usage.output_tokens || 0;
+            if (event.delta?.stop_reason) stopReason = event.delta.stop_reason;
+          }
+        }
+        break;
+      } catch (err) {
+        if (emittedAny || attempt === MAX_ATTEMPTS) throw err;
+        console.error(`[anne stream] attempt ${attempt}/${MAX_ATTEMPTS} failed before any output (${err.message}) — retrying silently`);
+      }
+    }
+
+    const toolUses = blocks.filter(b => b && b.type === 'tool_use');
+    if (stopReason !== 'tool_use' || !toolUses.length) {
+      _logUsage(userId, callType, { input_tokens: totalInput, output_tokens: totalOutput }, config.model);
+      return;
+    }
+
+    const assistantContent = blocks.filter(Boolean).map(b =>
+      b.type === 'tool_use'
+        ? { type: 'tool_use', id: b.id, name: b.name, input: _safeParseToolJSON(b.inputJson) }
+        : { type: 'text', text: b.text }
+    );
+    messages.push({ role: 'assistant', content: assistantContent });
+
+    const toolResults = [];
+    for (const b of toolUses) {
+      let result;
+      try { result = await toolExecutor(b.name, _safeParseToolJSON(b.inputJson)); }
+      catch (err) { result = `Tool error: ${err.message}`; }
+      toolResults.push({ type: 'tool_result', tool_use_id: b.id, content: String(result) });
+    }
+    messages.push({ role: 'user', content: toolResults });
+  }
+  _logUsage(userId, callType, { input_tokens: totalInput, output_tokens: totalOutput }, config.model);
+}
+
 function langText(locale) {
   if (!locale || locale === 'en') return '';
   const name = LANG_NAMES[locale] || locale;
@@ -1097,26 +1207,31 @@ Here is your learner overview:`,
 const ANNE_SYSTEM_PROMPTS = {
   et: `Sa oled Anne - sõbralik abiline, kes aitab õppida. Sa arvestad kõikide kaasaegsete õppimise uuringute ja teadmistega ning oled õppijale abiks, et ta saaks kõige efektiivsemalt õppida. Vajadusel aitad seada ka eesmärke, aga ei tee tema eest asju ette ära. Suunad ja juhendad. Võid õppijaga positiivse kontakti loomiseks suhelda temaga ka mõnel teisel teemal, aga nii, nagu mentor seda teeks - tasapisi õppimise juurde tagasi juhatades. Kui õppija on seadnud omale eesmärke, võid tema käest nende kohta küsida. Kui ta ei ole eesmärke seadnud, võid küsida, mida ta tahaks õppida.
 
+Sul on tööriist "search_map", millega saad otsida Map of Knowledge kaardilt (kõik tasemed L1-L5). Kasuta seda alati, kui õppija küsib midagi, mis eeldab teadmist, kas ja kus mingi teema kaardil olemas on, või palub teemasoovitusi mingis valdkonnas — ära arva ega väida vastust ilma otsimata.
+
 ${ANNE_APP_HELP.et}`,
   en: `You are Anne — a friendly assistant who helps with learning. You draw on current learning research to help the learner learn as effectively as possible. When needed you help set goals, but you don't do things for them — you guide and direct. You may chat about other topics too, to build a positive connection, but the way a mentor would — gently steering back toward learning. If the learner has set goals, you can ask about those; if not, you can ask what they'd like to learn.
+
+You have a "search_map" tool that searches the actual Map of Knowledge (every level, L1-L5). Use it whenever the learner asks something that depends on knowing whether/where a topic exists on the map, or asks for topic suggestions in some area — don't guess or answer from assumption without searching first.
 
 ${ANNE_APP_HELP.en}`,
 };
 
-// MAP_OVERVIEW_INTRO: frames the L1→L3 tree (built by services/mapOverview.js)
-// that gets appended below it. Kept as its own cached system block, ahead of
-// the per-learner block, since the tree itself is identical for every
-// learner on a given locale — a separate cache_control boundary lets that
-// shared prefix actually get reused across different learners' requests
-// instead of being invalidated by each learner's own passport text.
-const MAP_OVERVIEW_INTRO = {
-  et: `Siin on Map of Knowledge kaardi struktuur — kõik hetkel kaardil olevad valdkonnad, teemad ja alamteemad (kolm taset: valdkond > teema > alamteema). Iga alamteema jaguneb kaardil edasi üksikuteks mõisteteks (kokku tuhandeid, siin liiga palju loetlemiseks) — kui õppija küsib millegi täpsema kohta, mis pole siin otse kirjas, eelda, et see tõenäoliselt on olemas lähima alamteema all, ja suuna ta seda kaardil otsingust vaatama, selle asemel, et väita, et seda pole olemas, lihtsalt sellepärast, et seda siin nimeliselt ei mainita.
-
-${'{{MAP_TREE}}'}`,
-  en: `Here is the structure of the Map of Knowledge map — every domain, topic, and subtopic it currently covers (three levels: domain > topic > subtopic). Each subtopic breaks down further into individual concepts on the actual map (thousands of them — too many to list here) — if a learner asks about something more specific that isn't spelled out below, assume it likely exists under the closest subtopic and point them to search for it on the map, rather than claiming it doesn't exist just because it isn't named here.
-
-${'{{MAP_TREE}}'}`,
+const SEARCH_MAP_TOOL = {
+  name: 'search_map',
+  description: 'Search the Map of Knowledge\'s topic map by keyword or phrase, across all five levels (L1 broad domains down to L5 individual concepts). Returns matching topics with their level and full breadcrumb path. Use this whenever answering requires knowing whether, or where, something exists on the map.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'Keyword or short phrase to search for, e.g. "photosynthesis" or "linear equations". Write it in the learner\'s own language.' },
+    },
+    required: ['query'],
+  },
 };
+
+function _safeParseToolJSON(raw) {
+  try { return JSON.parse(raw || '{}'); } catch { return {}; }
+}
 
 function _anneMessages(history, userMessage) {
   return [
@@ -1125,42 +1240,39 @@ function _anneMessages(history, userMessage) {
   ];
 }
 
-function _anneSystemBlocks(mapOverviewText, passportText, locale) {
-  const mapIntro = MAP_OVERVIEW_INTRO[locale] || MAP_OVERVIEW_INTRO.en;
-  const blocks = [];
-  if (mapOverviewText) {
-    blocks.push({
-      type: 'text',
-      text: mapIntro.replace('{{MAP_TREE}}', mapOverviewText),
-      cache_control: { type: 'ephemeral' },
-    });
-  }
-  blocks.push({
+function _anneSystem(passportText, locale) {
+  return [{
     type: 'text',
     text: (ANNE_SYSTEM_PROMPTS[locale] || ANNE_SYSTEM_PROMPTS.en) + passportText,
     cache_control: { type: 'ephemeral' },
-  });
-  return blocks;
+  }];
 }
 
-async function generateAnneReply(passportText, history, userMessage, locale, userId, mapOverviewText) {
-  const msg = await client.messages.create({
+function _anneToolExecutor(locale) {
+  const { searchMapNodes } = require('./mapSearch');
+  return async (name, input) => {
+    if (name === 'search_map') return searchMapNodes(input && input.query, locale);
+    return `Unknown tool: ${name}`;
+  };
+}
+
+async function generateAnneReply(passportText, history, userMessage, locale, userId) {
+  const text = await _createWithTools({
     model: SONNET,
     max_tokens: locale === 'en' ? 350 : 600,
-    system: _anneSystemBlocks(mapOverviewText, passportText, locale),
+    system: _anneSystem(passportText, locale),
     messages: _anneMessages(history, userMessage),
-  });
-  _logUsage(userId, 'anne_reply', msg.usage, SONNET);
-  return msg.content[0].text.trim();
+  }, [SEARCH_MAP_TOOL], _anneToolExecutor(locale), userId, 'anne_reply');
+  return text.trim();
 }
 
-function streamAnneReply(passportText, history, userMessage, locale, userId, onChunk, mapOverviewText) {
-  return _streamText({
+function streamAnneReply(passportText, history, userMessage, locale, userId, onChunk) {
+  return _streamTextWithTools({
     model: SONNET,
     max_tokens: 350,
-    system: _anneSystemBlocks(mapOverviewText, passportText, locale),
+    system: _anneSystem(passportText, locale),
     messages: _anneMessages(history, userMessage),
-  }, userId, 'anne_reply', onChunk);
+  }, [SEARCH_MAP_TOOL], _anneToolExecutor(locale), userId, 'anne_reply', onChunk);
 }
 
 // ── Knowledge estimation from qualifications ────────────────────────────────

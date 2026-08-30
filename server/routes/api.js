@@ -6,7 +6,6 @@ const game    = require('../services/game');
 const { notify } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
 const { renderPassportText } = require('../services/passportText');
-const { getMapOverviewText } = require('../services/mapOverview');
 const { updateAncestorKnowledge } = require('../services/nodeKnowledge');
 const { sendFriendInviteEmail } = require('../services/mailer');
 const llmRateLimit = require('../middleware/llmRateLimit');
@@ -1392,13 +1391,12 @@ router.post('/anne/message', llmRateLimit, async (req, res) => {
 
     const passportData = await _fetchFullPassport(passportId);
     const passportText = renderPassportText(passportData);
-    const mapOverviewText = await getMapOverviewText(locale).catch(() => '');
 
     let streamFn;
     if (locale !== 'en') {
-      streamFn = _editedStreamFn(() => llm.generateAnneReply(passportText, history, message, locale, uid, mapOverviewText), locale, uid, res);
+      streamFn = _editedStreamFn(() => llm.generateAnneReply(passportText, history, message, locale, uid), locale, uid, res);
     } else {
-      streamFn = (write) => llm.streamAnneReply(passportText, history, message, locale, uid, write, mapOverviewText);
+      streamFn = (write) => llm.streamAnneReply(passportText, history, message, locale, uid, write);
     }
     const onDone = (full) => db.execute(
       'INSERT INTO anne_messages (passport_id, role, content, locale) VALUES (?, "assistant", ?, ?)',
