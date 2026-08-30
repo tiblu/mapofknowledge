@@ -10,9 +10,14 @@ router.get('/', async (req, res) => {
       'SELECT email, password_hash, subscription_status, created_at, email_verified FROM users WHERE id = ?',
       [req.user.id]
     );
+    const [[{ passkeyCount }]] = await db.execute(
+      'SELECT COUNT(*) AS passkeyCount FROM webauthn_credentials WHERE user_id = ?',
+      [req.user.id]
+    );
     res.json({
       email:              user.email,
       hasPassword:        !!user.password_hash,
+      hasPasskey:         passkeyCount > 0,
       subscriptionStatus: user.subscription_status,
       memberSince:        user.created_at,
       emailVerified:      !!user.email_verified,

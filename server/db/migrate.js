@@ -123,6 +123,32 @@ async function run() {
       console.log('  · learner_passports.profile_bonus_awarded already exists');
     }
 
+    // webauthn_credentials table — passkeys (Face ID / Touch ID / Windows
+    // Hello / security keys) registered as an additional sign-in method on
+    // top of an existing password/Google account. See server/routes/webauthn.js.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS webauthn_credentials (
+        id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        user_id       BIGINT UNSIGNED NOT NULL,
+        credential_id VARCHAR(255)    NOT NULL,
+        public_key    TEXT            NOT NULL,
+        counter       BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        device_type   VARCHAR(32)     NULL,
+        backed_up     TINYINT(1)      NOT NULL DEFAULT 0,
+        transports    VARCHAR(255)    NULL,
+        nickname      VARCHAR(100)    NULL,
+        created_at    DATETIME        NOT NULL DEFAULT NOW(),
+        last_used_at  DATETIME        NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_webauthn_credential_id (credential_id),
+        KEY idx_webauthn_user (user_id),
+        CONSTRAINT fk_webauthn_user
+          FOREIGN KEY (user_id) REFERENCES users (id)
+          ON DELETE CASCADE
+      )
+    `);
+    console.log('  · webauthn_credentials table ready');
+
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
     if (cnt > 0) {

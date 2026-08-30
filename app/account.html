@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="css/anne.css">
 <script>fetch('/api/settings').then(function(r){return r.json();}).then(function(s){var f=s.font_size;if(f==='medium')document.documentElement.classList.add('fs-medium');if(f==='large')document.documentElement.classList.add('fs-large');var p=s.palette==='midnight'?'vampire':s.palette;if(p&&p!=='sunset')document.documentElement.classList.add('palette-'+p);if(s.ui_locale&&s.ui_locale!=='en'){window._uiLocale=s.ui_locale;window.reloadStrings&&window.reloadStrings();}window._loadedSettings=s;if(window._onSettingsLoaded)window._onSettingsLoaded(s);}).catch(function(){});</script>
 <script src="js/strings.js"></script>
+<script src="/vendor/simplewebauthn-browser.min.js"></script>
 </head>
 <body>
 
@@ -89,6 +90,17 @@
         <div class="settings-row-desc" id="acct-password-desc" data-i18n="account.change_password_desc">Update the password you use to sign in.</div>
       </div>
       <button class="acct-btn" id="acct-password-btn" data-i18n="account.change_password">Change password</button>
+    </div>
+
+    <div class="settings-row settings-row-column">
+      <div class="acct-passkey-header">
+        <div class="settings-row-text">
+          <div class="settings-row-label" data-i18n="account.passkeys">Passkeys</div>
+          <div class="settings-row-desc" data-i18n="account.passkeys_desc">Sign in with your fingerprint, face, or a security key — no password needed.</div>
+        </div>
+        <button class="acct-btn" id="acct-passkey-add-btn" data-i18n="account.add_passkey">Add a passkey</button>
+      </div>
+      <div id="acct-passkey-list"></div>
     </div>
   </div>
 
@@ -237,6 +249,7 @@
 
       var methods = ['Google'];
       if (_hasPassword) methods.push(t('account.login_method_password'));
+      if (a.hasPasskey) methods.push(t('account.login_method_passkey'));
       document.getElementById('acct-login-methods').innerHTML = methods.map(function (m) {
         return '<span class="acct-badge">' + m + '</span>';
       }).join(' ');
@@ -255,6 +268,73 @@
     }).catch(function () {});
   }
   loadAccount();
+
+  /* ── Passkeys ── */
+  function _guessDeviceLabel() {
+    var ua = navigator.userAgent;
+    var browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' :
+      (/Safari\//.test(ua) && !/Chrome\//.test(ua)) ? 'Safari' : 'Browser';
+    var os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' :
+      /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : '';
+    return os ? (browser + ' · ' + os) : browser;
+  }
+
+  function loadPasskeys() {
+    fetch('/auth/webauthn/credentials').then(function (r) { return r.json(); }).then(function (list) {
+      var wrap = document.getElementById('acct-passkey-list');
+      if (!Array.isArray(list) || !list.length) {
+        wrap.innerHTML = '<div class="acct-passkey-list-empty">' + t('account.no_passkeys') + '</div>';
+        return;
+      }
+      wrap.innerHTML = list.map(function (p) {
+        var date = new Date(p.created_at).toLocaleDateString();
+        return '<div class="acct-passkey-item">' +
+          '<span class="acct-passkey-name">' + (p.nickname || t('account.passkey_unnamed')) + '</span>' +
+          '<span class="acct-passkey-date">' + t('account.added_on') + ' ' + date + '</span>' +
+          '<button class="acct-passkey-remove" data-id="' + p.id + '">' + t('btn.remove') + '</button>' +
+          '</div>';
+      }).join('');
+      wrap.querySelectorAll('.acct-passkey-remove').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          btn.disabled = true;
+          fetch('/auth/webauthn/credentials/' + btn.getAttribute('data-id'), { method: 'DELETE' })
+            .then(function () { loadPasskeys(); loadAccount(); })
+            .catch(function () { btn.disabled = false; });
+        });
+      });
+    }).catch(function () {});
+  }
+  loadPasskeys();
+
+  document.getElementById('acct-passkey-add-btn').addEventListener('click', function () {
+    if (!window.SimpleWebAuthnBrowser || !window.SimpleWebAuthnBrowser.browserSupportsWebAuthn()) {
+      alert(t('account.passkeys_unsupported'));
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    fetch('/auth/webauthn/register/options', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (options) {
+        return window.SimpleWebAuthnBrowser.startRegistration({ optionsJSON: options });
+      })
+      .then(function (attResp) {
+        return fetch('/auth/webauthn/register/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ response: attResp, nickname: _guessDeviceLabel() }),
+        }).then(function (r) { return { ok: r.ok }; });
+      })
+      .then(function (res) {
+        if (res.ok) { loadPasskeys(); loadAccount(); }
+        else alert(t('account.passkey_add_failed'));
+      })
+      .catch(function (err) {
+        // Cancelling the browser's own prompt throws NotAllowedError — not a real failure to surface.
+        if (err && err.name !== 'NotAllowedError') alert(t('account.passkey_add_failed'));
+      })
+      .finally(function () { btn.disabled = false; });
+  });
 
   /* ── Change / set password ── */
   var pwModal = document.getElementById('password-modal');

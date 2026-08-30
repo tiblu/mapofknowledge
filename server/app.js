@@ -11,6 +11,7 @@ const subsetsRouter  = require('./routes/subsets');
 const adminRouter    = require('./routes/admin');
 const accountRouter  = require('./routes/account');
 const knowledgeEstimateRouter = require('./routes/knowledgeEstimate');
+const webauthnRouter = require('./routes/webauthn');
 const requireAuth = require('./middleware/requireAuth');
 
 const app = express();
@@ -47,6 +48,7 @@ app.use(passport.session());
 // ── Routes ────────────────────────────────────────────────────────────────────
 // Public auth endpoints
 app.use('/auth', authRouter);
+app.use('/auth/webauthn', webauthnRouter);
 
 // Protected API
 app.use('/api', requireAuth, apiRouter);
