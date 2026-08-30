@@ -1103,6 +1103,21 @@ ${ANNE_APP_HELP.et}`,
 ${ANNE_APP_HELP.en}`,
 };
 
+// MAP_OVERVIEW_INTRO: frames the L1→L3 tree (built by services/mapOverview.js)
+// that gets appended below it. Kept as its own cached system block, ahead of
+// the per-learner block, since the tree itself is identical for every
+// learner on a given locale — a separate cache_control boundary lets that
+// shared prefix actually get reused across different learners' requests
+// instead of being invalidated by each learner's own passport text.
+const MAP_OVERVIEW_INTRO = {
+  et: `Siin on Map of Knowledge kaardi struktuur — kõik hetkel kaardil olevad valdkonnad, teemad ja alamteemad (kolm taset: valdkond > teema > alamteema). Iga alamteema jaguneb kaardil edasi üksikuteks mõisteteks (kokku tuhandeid, siin liiga palju loetlemiseks) — kui õppija küsib millegi täpsema kohta, mis pole siin otse kirjas, eelda, et see tõenäoliselt on olemas lähima alamteema all, ja suuna ta seda kaardil otsingust vaatama, selle asemel, et väita, et seda pole olemas, lihtsalt sellepärast, et seda siin nimeliselt ei mainita.
+
+${'{{MAP_TREE}}'}`,
+  en: `Here is the structure of the Map of Knowledge map — every domain, topic, and subtopic it currently covers (three levels: domain > topic > subtopic). Each subtopic breaks down further into individual concepts on the actual map (thousands of them — too many to list here) — if a learner asks about something more specific that isn't spelled out below, assume it likely exists under the closest subtopic and point them to search for it on the map, rather than claiming it doesn't exist just because it isn't named here.
+
+${'{{MAP_TREE}}'}`,
+};
+
 function _anneMessages(history, userMessage) {
   return [
     ...history.map(h => ({ role: h.role, content: h.content })),
@@ -1110,24 +1125,40 @@ function _anneMessages(history, userMessage) {
   ];
 }
 
-async function generateAnneReply(passportText, history, userMessage, locale, userId) {
-  const system = (ANNE_SYSTEM_PROMPTS[locale] || ANNE_SYSTEM_PROMPTS.en) + passportText;
+function _anneSystemBlocks(mapOverviewText, passportText, locale) {
+  const mapIntro = MAP_OVERVIEW_INTRO[locale] || MAP_OVERVIEW_INTRO.en;
+  const blocks = [];
+  if (mapOverviewText) {
+    blocks.push({
+      type: 'text',
+      text: mapIntro.replace('{{MAP_TREE}}', mapOverviewText),
+      cache_control: { type: 'ephemeral' },
+    });
+  }
+  blocks.push({
+    type: 'text',
+    text: (ANNE_SYSTEM_PROMPTS[locale] || ANNE_SYSTEM_PROMPTS.en) + passportText,
+    cache_control: { type: 'ephemeral' },
+  });
+  return blocks;
+}
+
+async function generateAnneReply(passportText, history, userMessage, locale, userId, mapOverviewText) {
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: locale === 'en' ? 350 : 600,
-    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+    system: _anneSystemBlocks(mapOverviewText, passportText, locale),
     messages: _anneMessages(history, userMessage),
   });
   _logUsage(userId, 'anne_reply', msg.usage, SONNET);
   return msg.content[0].text.trim();
 }
 
-function streamAnneReply(passportText, history, userMessage, locale, userId, onChunk) {
-  const system = (ANNE_SYSTEM_PROMPTS[locale] || ANNE_SYSTEM_PROMPTS.en) + passportText;
+function streamAnneReply(passportText, history, userMessage, locale, userId, onChunk, mapOverviewText) {
   return _streamText({
     model: SONNET,
     max_tokens: 350,
-    system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+    system: _anneSystemBlocks(mapOverviewText, passportText, locale),
     messages: _anneMessages(history, userMessage),
   }, userId, 'anne_reply', onChunk);
 }
