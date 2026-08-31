@@ -231,13 +231,15 @@ async function run() {
     console.log(`  Nodes: ${nodeCount.c}`);
     console.log(`  Edges: ${edgeCount.c}`);
 
-  } finally {
+  } catch (err) {
+    console.error('\nMigration failed:', err.message);
+    console.error(err);
     conn.release();
-    process.exit(0);
+    process.exit(1);
   }
+
+  conn.release();
+  process.exit(0);
 }
 
-run().catch(err => {
-  console.error('\nMigration failed:', err);
-  process.exit(1);
-});
+run();

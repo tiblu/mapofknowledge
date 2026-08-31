@@ -3,6 +3,7 @@ node_modules/
 *.pub.pub
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 docs/
