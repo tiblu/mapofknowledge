@@ -1,7 +1,6 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const https     = require('https');
 const db        = require('../db');
-const testlog   = require('../testlog'); // TESTLOG
 const { _wrapWithBillingAlert } = require('./_anthropicAlert');
 
 // keepAlive: false — pooled/reused connections to api.anthropic.com from this host
@@ -735,8 +734,7 @@ async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history,
     `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}\nCorrect: ${h.correct}`
   ).join('\n\n');
 
-  const _tqPrompt = `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}${_simplifyWordingNote(age)}`; // TESTLOG
-  testlog('llm_question_prompt', { userId, nodeLabel, questionNum, prompt: _tqPrompt }); // TESTLOG
+  const _tqPrompt = `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}${_simplifyWordingNote(age)}`;
 
   const msg = await client.messages.create({
     model: SONNET,
@@ -756,8 +754,7 @@ Do not add any explanation outside the JSON.`,
     messages: [{ role: 'user', content: _tqPrompt }],
   });
 
-  const _tqRaw = msg.content[0].text.trim(); // TESTLOG
-  testlog('llm_question_response', { userId, questionNum, raw: _tqRaw }); // TESTLOG
+  const _tqRaw = msg.content[0].text.trim();
   _logUsage(userId, 'test_question', msg.usage, SONNET);
   return parseJSON(_tqRaw);
 }
@@ -798,8 +795,7 @@ async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, 
     }],
   });
 
-  const _teRaw = msg.content[0].text.trim(); // TESTLOG
-  testlog('llm_evaluate_response', { userId, questionNum, raw: _teRaw }); // TESTLOG
+  const _teRaw = msg.content[0].text.trim();
   _logUsage(userId, 'test_evaluate', msg.usage, SONNET);
   return parseJSON(_teRaw);
 }
@@ -863,7 +859,6 @@ function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, 
 }
 
 function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, onChunk, age = null) {
-  testlog('llm_question_stream_start', { userId, nodeLabel, questionNum, historyLen: history.length }); // TESTLOG
   const tiers = [
     'Factual (Remember): one question on core terminology or a foundational definition.',
     'Conceptual (Understand): one question asking the learner to explain a mechanism or relationship. No calculations.',
@@ -905,10 +900,6 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
       : '';
     return `Q${i + 1}: ${h.question}\nAnswer: ${h.answer}${verdict}`;
   }).join('\n\n');
-  const _stePrompt = isLast // TESTLOG
-    ? `Topic: "${nodeLabel}" (${breadcrumb})\n\nFull Q&A:\n${historyText}\n\n[Q4 evaluation prompt — see correctIndex in route log]` // TESTLOG
-    : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nOptions: ${options ? options.map(function(o,i){return (i+1)+'. '+o;}).join(' | ') : 'none'}\nCorrectIndex: ${correctIndex}\nAnswer: "${userAnswer}"`; // TESTLOG
-  testlog('llm_evaluate_stream_prompt', { userId, questionNum, isLast, prompt: _stePrompt }); // TESTLOG
   return _streamText({
     model: SONNET,
     max_tokens: isLast ? 900 : 300,

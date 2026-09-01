@@ -7,16 +7,54 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../../.env') });
 
-const path = require('path');
-const fs   = require('fs');
-const db   = require('./index');
+const path  = require('path');
+const fs    = require('fs');
+const mysql = require('mysql2/promise');
+const db    = require('./index');
 
 const BASE_JSON     = path.join(__dirname, '../../app/knowledge_map.json');
 const EMERGENT_JSON = path.join(__dirname, '../../app/knowledge_map_emergent.json');
+const SCHEMA_SQL    = path.join(__dirname, 'schema.sql');
 
 const BATCH = 500;
 
+// Bootstraps a completely empty database from schema.sql — the ONLY thing
+// this touches is a database with no `users` table at all, i.e. genuinely
+// fresh. Everything else in this script is additive (ALTER/CREATE IF NOT
+// EXISTS) against tables assumed to already exist, which was previously
+// true only because the original schema-creation step lived nowhere in
+// this repo — a fresh clone had no way to bootstrap a database at all.
+// Ported from themapofknowledge.com's 2026-09-01 review, verified there
+// directly against its own production DB (detection query correctly
+// no-ops when tables exist; the mysql2 multipleStatements execution
+// mechanism proven against disposable throwaway tables) before porting.
+async function bootstrapSchemaIfNeeded() {
+  const [tables] = await db.query("SHOW TABLES LIKE 'users'");
+  if (tables.length) {
+    console.log('Base schema already present — skipping bootstrap from schema.sql.');
+    return;
+  }
+  console.log('No base schema detected (no `users` table) — bootstrapping from server/db/schema.sql...');
+  const conn = await mysql.createConnection({
+    host:     process.env.DB_HOST,
+    port:     parseInt(process.env.DB_PORT || '3306'),
+    user:     process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+    multipleStatements: true, // only ever used for this one-shot file, never the shared app pool
+  });
+  try {
+    const schemaSql = fs.readFileSync(SCHEMA_SQL, 'utf8');
+    await conn.query(schemaSql);
+    console.log('  + Base schema created from schema.sql.');
+  } finally {
+    await conn.end();
+  }
+}
+
 async function run() {
+  await bootstrapSchemaIfNeeded();
+
   const conn = await db.getConnection();
   try {
     console.log('=== KnoBitz — DB Migration ===\n');
@@ -122,6 +160,73 @@ async function run() {
     } else {
       console.log('  · learner_passports.profile_bonus_awarded already exists');
     }
+
+    // users.google_linked / discord_linked — tracks which SSO providers this
+    // account has ever signed in via (Discord SSO + passkeys ported from
+    // themapofknowledge.com). Backfilled below: any existing user with no
+    // password_hash only ever could have signed up via Google (Discord/
+    // passkeys didn't exist yet), so google_linked=1 is a safe inference —
+    // needed so countAuthMethods (webauthn.js's "don't delete the last
+    // sign-in method" guard) doesn't undercount pre-existing Google users.
+    const [googleLinkedCols] = await conn.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'google_linked'`
+    );
+    if (!googleLinkedCols.length) {
+      await conn.execute('ALTER TABLE users ADD COLUMN google_linked TINYINT(1) NOT NULL DEFAULT 0');
+      await conn.execute('UPDATE users SET google_linked = 1 WHERE password_hash IS NULL');
+      console.log('  + Added users.google_linked column (backfilled for existing password-less accounts)');
+    } else {
+      console.log('  · users.google_linked already exists');
+    }
+
+    const [discordLinkedCols] = await conn.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'discord_linked'`
+    );
+    if (!discordLinkedCols.length) {
+      await conn.execute('ALTER TABLE users ADD COLUMN discord_linked TINYINT(1) NOT NULL DEFAULT 0');
+      console.log('  + Added users.discord_linked column');
+    } else {
+      console.log('  · users.discord_linked already exists');
+    }
+
+    // users.password_reset_token / password_reset_expires — forgot-password
+    // flow, ported from themapofknowledge.com.
+    const [resetTokenCols] = await conn.execute(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'password_reset_token'`
+    );
+    if (!resetTokenCols.length) {
+      await conn.execute('ALTER TABLE users ADD COLUMN password_reset_token VARCHAR(64) DEFAULT NULL');
+      await conn.execute('ALTER TABLE users ADD COLUMN password_reset_expires DATETIME DEFAULT NULL');
+      console.log('  + Added users.password_reset_token / password_reset_expires columns');
+    } else {
+      console.log('  · users.password_reset_token already exists');
+    }
+
+    // webauthn_credentials table — passkey sign-in, ported from
+    // themapofknowledge.com.
+    await conn.execute(`
+      CREATE TABLE IF NOT EXISTS webauthn_credentials (
+        id            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        user_id       BIGINT UNSIGNED NOT NULL,
+        credential_id VARCHAR(255) NOT NULL,
+        public_key    TEXT NOT NULL,
+        counter       BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        device_type   VARCHAR(32) DEFAULT NULL,
+        backed_up     TINYINT(1) NOT NULL DEFAULT 0,
+        transports    VARCHAR(255) DEFAULT NULL,
+        nickname      VARCHAR(100) DEFAULT NULL,
+        created_at    DATETIME NOT NULL DEFAULT NOW(),
+        last_used_at  DATETIME DEFAULT NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY uq_webauthn_credential_id (credential_id),
+        KEY idx_webauthn_user (user_id),
+        CONSTRAINT fk_webauthn_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    `);
+    console.log('  · webauthn_credentials table ready');
 
     // ── 2. Check if already migrated ─────────────────────────────────────────
     const [[{ cnt }]] = await conn.execute('SELECT COUNT(*) AS cnt FROM nodes');
@@ -231,15 +336,13 @@ async function run() {
     console.log(`  Nodes: ${nodeCount.c}`);
     console.log(`  Edges: ${edgeCount.c}`);
 
-  } catch (err) {
-    console.error('\nMigration failed:', err.message);
-    console.error(err);
+  } finally {
     conn.release();
-    process.exit(1);
+    process.exit(0);
   }
-
-  conn.release();
-  process.exit(0);
 }
 
-run();
+run().catch(err => {
+  console.error('\nMigration failed:', err);
+  process.exit(1);
+});

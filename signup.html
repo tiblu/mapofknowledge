@@ -10,6 +10,9 @@
   gtag('js', new Date());
   gtag('config', 'G-TT09MWKB6X');
 </script>
+<!-- Cloudflare Turnstile — site key is public by design (like the GA id above). -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="/vendor/simplewebauthn-browser.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Loo konto — KnoBitz</title>
 <style>
@@ -440,6 +443,21 @@ a { color: inherit; text-decoration: none; }
 .btn-google:hover:not(:disabled) { box-shadow: 0 2px 8px rgba(0,0,0,0.22); }
 .btn-google:disabled { opacity: 0.45; cursor: not-allowed; }
 
+.btn-discord {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  color: #fff; background: #5865F2;
+  border: none; border-radius: 9px;
+  padding: 12px 20px; margin-top: 10px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  transition: opacity 0.15s;
+  text-decoration: none; box-sizing: border-box;
+}
+.btn-discord:hover:not(:disabled) { opacity: 0.88; }
+.btn-discord:disabled { opacity: 0.45; cursor: not-allowed; }
+.sso-hidden { display: none !important; }
+
 .su-hidden { display: none !important; }
 
 .auth-divider {
@@ -449,6 +467,8 @@ a { color: inherit; text-decoration: none; }
 .auth-divider::before, .auth-divider::after {
   content: ''; flex: 1; height: 1px; background: var(--border-hi);
 }
+
+.cf-turnstile { display: flex; justify-content: center; margin: 10px 0; }
 
 .btn-block { width: 100%; margin-top: 10px; }
 
@@ -703,6 +723,13 @@ a { color: inherit; text-decoration: none; }
         Jätka Google'iga
       </button>
 
+      <button class="btn-discord sso-hidden" id="discord-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+        </svg>
+        Jätka Discordiga
+      </button>
+
       <div class="auth-divider"><span>või</span></div>
 
       <input class="su-input" id="signup-email-input" type="email"
@@ -712,6 +739,7 @@ a { color: inherit; text-decoration: none; }
              placeholder="Parool (vähemalt 8 tähemärki)" autocomplete="new-password"
              style="font-size:16px; letter-spacing:normal;">
       <div class="id-error" id="password-signup-error"></div>
+      <div class="cf-turnstile" id="turnstile-signup"></div>
       <button class="btn-primary btn-block" id="password-signup-btn">Loo konto e-posti ja parooliga</button>
 
       <p class="terms-notice">
@@ -724,13 +752,7 @@ a { color: inherit; text-decoration: none; }
 
   <!-- ── Returning-user login ────────────────────────────────────────── -->
   <div class="wizard su-hidden" id="login-panel">
-    <div class="google-icon-wrap">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-        <polyline points="20 6 9 17 4 12"/>
-      </svg>
-    </div>
     <h2>Tere tulemast tagasi</h2>
-    <p class="step-hint">Logi sisse oma KnoBitzi kontoga.</p>
 
     <a href="/auth/google" class="btn-google">
       <svg width="18" height="18" viewBox="0 0 24 24">
@@ -742,6 +764,22 @@ a { color: inherit; text-decoration: none; }
       Jätka Google'iga
     </a>
 
+    <a href="/auth/discord" class="btn-discord sso-hidden" id="discord-login-link">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.076.076 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+      </svg>
+      Jätka Discordiga
+    </a>
+
+    <button type="button" class="btn-ghost btn-block" id="passkey-login-btn" style="display:none;margin-top:10px;">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" style="vertical-align:-3px;margin-right:7px;">
+        <path d="M10 2L3 6v5c0 4 3 6.5 7 7 4-0.5 7-3 7-7V6l-7-4z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+        <path d="M7 10l2 2 4-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Logi sisse turvavõtmega
+    </button>
+    <div class="id-error" id="passkey-login-error"></div>
+
     <div class="auth-divider"><span>või</span></div>
 
     <input class="su-input" id="login-email-input" type="email"
@@ -751,14 +789,90 @@ a { color: inherit; text-decoration: none; }
            placeholder="Parool" autocomplete="current-password"
            style="font-size:16px; letter-spacing:normal;">
     <div class="id-error" id="login-error"></div>
+    <div class="cf-turnstile" id="turnstile-login"></div>
     <button class="btn-primary btn-block" id="login-btn">Logi sisse</button>
 
+    <button type="button" class="id-mode-link" id="forgot-password-link" style="margin-top:12px;text-align:center;">Unustasid parooli?</button>
     <button type="button" class="id-mode-link" id="back-to-signup-link">← Pole veel kontot? Alusta siin</button>
+  </div>
+
+  <!-- ── Forgot password — request a reset link ─────────────────────── -->
+  <div class="wizard su-hidden" id="reset-request-panel">
+    <div class="google-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+    </div>
+    <h2>Lähtesta parool</h2>
+    <p class="step-hint" id="reset-request-hint">Sisesta oma e-posti aadress ja saadame sulle lingi uue parooli määramiseks.</p>
+
+    <input class="su-input" id="reset-email-input" type="email"
+           placeholder="E-posti aadress" autocomplete="email" spellcheck="false"
+           style="font-size:16px; letter-spacing:normal; margin-bottom:9px;">
+    <div class="id-error" id="reset-request-error"></div>
+    <div class="cf-turnstile" id="turnstile-reset"></div>
+    <button class="btn-primary btn-block" id="reset-request-btn">Saada link</button>
+
+    <button type="button" class="id-mode-link" id="back-to-login-from-request" style="margin-top:16px;text-align:center;">← Tagasi sisselogimise juurde</button>
+  </div>
+
+  <!-- ── Forgot password — set the new password (arrived via emailed link) ── -->
+  <div class="wizard su-hidden" id="reset-confirm-panel">
+    <div class="google-icon-wrap">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+      </svg>
+    </div>
+    <h2>Määra uus parool</h2>
+    <p class="step-hint" id="reset-confirm-hint">Vali oma kontole uus parool.</p>
+
+    <input class="su-input" id="reset-new-password-input" type="password"
+           placeholder="Uus parool (vähemalt 8 tähemärki)" autocomplete="new-password"
+           style="font-size:16px; letter-spacing:normal; margin-bottom:9px;">
+    <input class="su-input" id="reset-confirm-password-input" type="password"
+           placeholder="Korda uut parooli" autocomplete="new-password"
+           style="font-size:16px; letter-spacing:normal;">
+    <div class="id-error" id="reset-confirm-error"></div>
+    <button class="btn-primary btn-block" id="reset-confirm-btn">Määra uus parool</button>
+
+    <button type="button" class="id-mode-link" id="back-to-login-from-confirm" style="margin-top:16px;text-align:center;">← Tagasi sisselogimise juurde</button>
   </div>
 </main>
 
 <script>
 (function () {
+
+  // ── SSO buttons + Turnstile — hidden/inert until we know the provider
+  //    actually has app credentials configured server-side. An unconfigured
+  //    Turnstile widget would otherwise render a visible Cloudflare error,
+  //    so it's only ever created once a real site key comes back. ─────────
+  function _renderTurnstileWidgets(sitekey) {
+    if (!sitekey) return;
+    (function tryRender() {
+      if (!window.turnstile) { setTimeout(tryRender, 100); return; }
+      window.turnstile.render('#turnstile-signup', { sitekey: sitekey, callback: window._onTurnstileSignup });
+      window.turnstile.render('#turnstile-login',  { sitekey: sitekey, callback: window._onTurnstileLogin  });
+      window.turnstile.render('#turnstile-reset',  { sitekey: sitekey, callback: window._onTurnstileReset  });
+    }());
+  }
+
+  fetch('/auth/sso-providers').then(function (r) { return r.json(); }).then(function (p) {
+    if (p.discord) {
+      var d1 = document.getElementById('discord-btn');
+      var d2 = document.getElementById('discord-login-link');
+      if (d1) d1.classList.remove('sso-hidden');
+      if (d2) d2.classList.remove('sso-hidden');
+    }
+    _renderTurnstileWidgets(p.turnstileSiteKey);
+  }).catch(function () {});
+
+  // Cloudflare's own recommended pattern — data-callback (here, the callback
+  // option passed to turnstile.render above) fires the moment each widget
+  // solves, so the token is just a plain variable read at submit time.
+  var _turnstileTokens = { signup: '', login: '', reset: '' };
+  window._onTurnstileSignup = function (token) { _turnstileTokens.signup = token; };
+  window._onTurnstileLogin  = function (token) { _turnstileTokens.login  = token; };
+  window._onTurnstileReset  = function (token) { _turnstileTokens.reset  = token; };
 
   // ── State ─────────────────────────────────────────────────────────────
   var state = {
@@ -1355,6 +1469,7 @@ a { color: inherit; text-decoration: none; }
       linkCode:      buildLinkCode(),
       interests:     buildInterests(),
       values:        buildValues(),
+      turnstileToken: _turnstileTokens.signup,
     };
   }
 
@@ -1369,33 +1484,57 @@ a { color: inherit; text-decoration: none; }
     interestsError.classList.add('show');
   }
 
-  document.getElementById('google-btn').addEventListener('click', function () {
-    var btn = document.getElementById('google-btn');
-    btn.disabled = true;
-    var orig = btn.innerHTML;
-    btn.innerHTML = '<span>Ühendamine...</span>';
+  // Shared by every OAuth "Continue with X" button in the wizard's last
+  // step: stash the signup intent server-side first (buildPendingSignup),
+  // then hand off to that provider — mirrors handleOAuthLogin in auth.js,
+  // which only creates a new account when this prepare step ran first.
+  function wireOAuthSignupButton(btnId, provider) {
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      var orig = btn.innerHTML;
+      btn.innerHTML = '<span>Ühendamine...</span>';
 
-    fetch('/auth/signup/prepare', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(buildSignupPayload()),
-    })
-    .then(function (r) {
-      if (r.ok) {
-        window.location.href = '/auth/google';
-        return;
-      }
-      btn.disabled = false;
-      btn.innerHTML = orig;
-      r.json().then(function (d) {
-        if (d && d.error === 'flagged_content') showFlaggedContentError(d.flagged);
-      }).catch(function () {});
-    })
-    .catch(function () {
-      btn.disabled = false;
-      btn.innerHTML = orig;
+      fetch('/auth/signup/prepare', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(buildSignupPayload()),
+      })
+      .then(function (r) {
+        if (r.ok) {
+          window.location.href = '/auth/' + provider;
+          return;
+        }
+        btn.disabled = false;
+        btn.innerHTML = orig;
+        r.json().then(function (d) {
+          if (d && d.error === 'flagged_content') { showFlaggedContentError(d.flagged); return; }
+          _turnstileTokens.signup = '';
+          if (window.turnstile) window.turnstile.reset('#turnstile-signup');
+          if (r.status === 429) {
+            activeSteps = computeSteps();
+            renderDots();
+            goTo('interests');
+            interestsError.textContent = 'Liiga palju katseid — palun oota mõni minut ja proovi uuesti.';
+            interestsError.classList.add('show');
+          } else if (d && d.error === 'captcha_failed') {
+            activeSteps = computeSteps();
+            renderDots();
+            goTo('interests');
+            interestsError.textContent = 'Kontroll ebaõnnestus — palun proovi uuesti.';
+            interestsError.classList.add('show');
+          }
+        }).catch(function () {});
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.innerHTML = orig;
+      });
     });
-  });
+  }
+  wireOAuthSignupButton('google-btn',  'google');
+  wireOAuthSignupButton('discord-btn', 'discord');
 
   // ── Email + password signup ──────────────────────────────────────────
   var signupEmailInput    = document.getElementById('signup-email-input');
@@ -1445,10 +1584,14 @@ a { color: inherit; text-decoration: none; }
         return;
       }
       var messages = {
-        invalid_email: 'Sisesta korrektne e-posti aadress.',
-        weak_password: 'Parool peab olema vähemalt 8 tähemärki.',
-        email_taken:   'See e-posti aadress on juba kasutusel. Proovi sisse logida.',
+        invalid_email:  'Sisesta korrektne e-posti aadress.',
+        weak_password:  'Parool peab olema vähemalt 8 tähemärki.',
+        email_taken:    'See e-posti aadress on juba kasutusel. Proovi sisse logida.',
+        rate_limited:   'Liiga palju katseid — palun oota mõni minut ja proovi uuesti.',
+        captcha_failed: 'Kontroll ebaõnnestus — palun proovi uuesti.',
       };
+      _turnstileTokens.signup = '';
+      if (window.turnstile) window.turnstile.reset('#turnstile-signup');
       passwordSignupError.textContent = messages[res.d && res.d.error] || 'Konto loomine ebaõnnestus. Proovi uuesti.';
       passwordSignupError.classList.add('show');
     })
@@ -1461,29 +1604,77 @@ a { color: inherit; text-decoration: none; }
   });
 
   // ── Returning-user login panel ───────────────────────────────────────
-  var signupWizardEl = document.getElementById('signup-wizard');
-  var loginPanelEl   = document.getElementById('login-panel');
+  var signupWizardEl      = document.getElementById('signup-wizard');
+  var loginPanelEl        = document.getElementById('login-panel');
+  var resetRequestPanelEl = document.getElementById('reset-request-panel');
+  var resetConfirmPanelEl = document.getElementById('reset-confirm-panel');
+  var ALL_PANELS = [signupWizardEl, loginPanelEl, resetRequestPanelEl, resetConfirmPanelEl];
   var loginEmailInput    = document.getElementById('login-email-input');
   var loginPasswordInput = document.getElementById('login-password-input');
   var loginBtn            = document.getElementById('login-btn');
   var loginError           = document.getElementById('login-error');
 
-  function showLoginPanel() {
-    signupWizardEl.classList.add('su-hidden');
-    loginPanelEl.classList.remove('su-hidden');
+  function showPanel(el) {
+    ALL_PANELS.forEach(function (p) { p.classList.add('su-hidden'); });
+    el.classList.remove('su-hidden');
   }
-  function showSignupWizard() {
-    loginPanelEl.classList.add('su-hidden');
-    signupWizardEl.classList.remove('su-hidden');
-    window.location.hash = '';
-  }
+  function showLoginPanel() { showPanel(loginPanelEl); }
+  function showSignupWizard() { showPanel(signupWizardEl); window.location.hash = ''; }
+  function showResetRequestPanel() { showPanel(resetRequestPanelEl); }
+  function showResetConfirmPanel() { showPanel(resetConfirmPanelEl); }
 
   document.getElementById('nav-login-link').addEventListener('click', function (e) {
     e.preventDefault();
     showLoginPanel();
   });
   document.getElementById('back-to-signup-link').addEventListener('click', showSignupWizard);
+  document.getElementById('forgot-password-link').addEventListener('click', showResetRequestPanel);
+  document.getElementById('back-to-login-from-request').addEventListener('click', showLoginPanel);
+  document.getElementById('back-to-login-from-confirm').addEventListener('click', showLoginPanel);
   if (window.location.hash === '#login') showLoginPanel();
+
+  // ── Passkey login — usernameless, no Turnstile needed (a hardware-backed
+  //    assertion can't be scripted the way a form submit can). Hidden by
+  //    default; only shown once we know the browser actually supports it.
+  var passkeyBtn   = document.getElementById('passkey-login-btn');
+  var passkeyError = document.getElementById('passkey-login-error');
+  if (window.SimpleWebAuthnBrowser && window.SimpleWebAuthnBrowser.browserSupportsWebAuthn()) {
+    passkeyBtn.style.display = '';
+  }
+  passkeyBtn.addEventListener('click', function () {
+    passkeyError.classList.remove('show');
+    passkeyBtn.disabled = true;
+
+    fetch('/auth/webauthn/login/options', { method: 'POST' })
+      .then(function (r) { return r.json(); })
+      .then(function (options) {
+        return window.SimpleWebAuthnBrowser.startAuthentication({ optionsJSON: options });
+      })
+      .then(function (assertion) {
+        return fetch('/auth/webauthn/login/verify', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ response: assertion }),
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); });
+      })
+      .then(function (res) {
+        if (res.ok) {
+          window.location.href = res.d.redirect || '/app/';
+          return;
+        }
+        passkeyBtn.disabled = false;
+        passkeyError.textContent = res.status === 429
+          ? 'Liiga palju katseid — palun oota mõni minut ja proovi uuesti.'
+          : 'Turvavõtmega sisselogimine ebaõnnestus. Proovi uuesti või kasuta parooli.';
+        passkeyError.classList.add('show');
+      })
+      .catch(function (err) {
+        passkeyBtn.disabled = false;
+        if (err && err.name === 'NotAllowedError') return; // user cancelled the browser's own prompt
+        passkeyError.textContent = 'Turvavõtmega sisselogimine ebaõnnestus. Proovi uuesti või kasuta parooli.';
+        passkeyError.classList.add('show');
+      });
+  });
 
   loginBtn.addEventListener('click', function () {
     var email    = loginEmailInput.value.trim();
@@ -1503,9 +1694,9 @@ a { color: inherit; text-decoration: none; }
     fetch('/auth/login', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email: email, password: password }),
+      body:    JSON.stringify({ email: email, password: password, turnstileToken: _turnstileTokens.login }),
     })
-    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
     .then(function (res) {
       if (res.ok) {
         window.location.href = res.d.redirect || '/app/';
@@ -1513,7 +1704,13 @@ a { color: inherit; text-decoration: none; }
       }
       loginBtn.disabled = false;
       loginBtn.textContent = orig;
-      loginError.textContent = 'Vale e-posti aadress või parool.';
+      _turnstileTokens.login = '';
+      if (window.turnstile) window.turnstile.reset('#turnstile-login');
+      loginError.textContent = res.status === 429
+        ? 'Liiga palju katseid — palun oota mõni minut ja proovi uuesti.'
+        : (res.d && res.d.error === 'captcha_failed')
+        ? 'Kontroll ebaõnnestus — palun proovi uuesti.'
+        : 'Vale e-posti aadress või parool.';
       loginError.classList.add('show');
     })
     .catch(function () {
@@ -1521,6 +1718,105 @@ a { color: inherit; text-decoration: none; }
       loginBtn.textContent = orig;
       loginError.textContent = 'Sisselogimine ebaõnnestus. Proovi uuesti.';
       loginError.classList.add('show');
+    });
+  });
+
+  // ── Forgot password — request a reset link ───────────────────────────
+  var resetEmailInput    = document.getElementById('reset-email-input');
+  var resetRequestBtn    = document.getElementById('reset-request-btn');
+  var resetRequestError  = document.getElementById('reset-request-error');
+  var resetRequestHint   = document.getElementById('reset-request-hint');
+  var resetTurnstileWrap = document.getElementById('turnstile-reset');
+
+  resetRequestBtn.addEventListener('click', function () {
+    var email = resetEmailInput.value.trim();
+    resetRequestError.classList.remove('show');
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      resetRequestError.textContent = 'Sisesta korrektne e-posti aadress.';
+      resetRequestError.classList.add('show');
+      return;
+    }
+
+    resetRequestBtn.disabled = true;
+    fetch('/auth/reset-password/request', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email: email, turnstileToken: _turnstileTokens.reset }),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        resetEmailInput.style.display = 'none';
+        resetTurnstileWrap.style.display = 'none';
+        resetRequestBtn.style.display = 'none';
+        resetRequestHint.textContent = 'Kui sellele aadressile vastab konto, saatsime lingi parooli lähtestamiseks. Kontrolli oma postkasti.';
+        return;
+      }
+      resetRequestBtn.disabled = false;
+      _turnstileTokens.reset = '';
+      if (window.turnstile) window.turnstile.reset('#turnstile-reset');
+      resetRequestError.textContent = res.status === 429
+        ? 'Liiga palju katseid — palun oota mõni minut ja proovi uuesti.'
+        : (res.d && res.d.error === 'captcha_failed')
+        ? 'Kontroll ebaõnnestus — palun proovi uuesti.'
+        : 'Midagi läks valesti. Proovi uuesti.';
+      resetRequestError.classList.add('show');
+    })
+    .catch(function () {
+      resetRequestBtn.disabled = false;
+      resetRequestError.textContent = 'Midagi läks valesti. Proovi uuesti.';
+      resetRequestError.classList.add('show');
+    });
+  });
+
+  // ── Forgot password — set new password (arrived via emailed link) ────
+  var resetToken = new URLSearchParams(window.location.search).get('resetToken');
+  if (resetToken) showResetConfirmPanel();
+
+  var resetNewPasswordInput     = document.getElementById('reset-new-password-input');
+  var resetConfirmPasswordInput = document.getElementById('reset-confirm-password-input');
+  var resetConfirmBtn           = document.getElementById('reset-confirm-btn');
+  var resetConfirmError         = document.getElementById('reset-confirm-error');
+
+  resetConfirmBtn.addEventListener('click', function () {
+    var newPassword     = resetNewPasswordInput.value;
+    var confirmPassword = resetConfirmPasswordInput.value;
+    resetConfirmError.classList.remove('show');
+
+    if (newPassword.length < 8) {
+      resetConfirmError.textContent = 'Parool peab olema vähemalt 8 tähemärki.';
+      resetConfirmError.classList.add('show');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      resetConfirmError.textContent = 'Paroolid ei kattu.';
+      resetConfirmError.classList.add('show');
+      return;
+    }
+
+    resetConfirmBtn.disabled = true;
+    fetch('/auth/reset-password/confirm', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ token: resetToken, newPassword: newPassword }),
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+    .then(function (res) {
+      if (res.ok) {
+        window.location.href = res.d.redirect || '/app/';
+        return;
+      }
+      resetConfirmBtn.disabled = false;
+      resetConfirmError.textContent = res.d && res.d.error === 'invalid_or_expired_token'
+        ? 'See link on vigane või aegunud. Palun küsi uus.'
+        : 'Midagi läks valesti. Proovi uuesti.';
+      resetConfirmError.classList.add('show');
+    })
+    .catch(function () {
+      resetConfirmBtn.disabled = false;
+      resetConfirmError.textContent = 'Midagi läks valesti. Proovi uuesti.';
+      resetConfirmError.classList.add('show');
     });
   });
 

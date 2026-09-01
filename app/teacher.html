@@ -855,7 +855,6 @@ function renderDetailGroupChips(id) {
   container.innerHTML = REAL_GROUPS.map(function (g) {
     var active = memberIds.indexOf(g.id) !== -1;
     var style = active
-      ? 'background:' + g.color + '1a;color:' + g.color + ';border-color:' + g.color + '55'
       : 'background:transparent;color:var(--c5);border-color:var(--i18);border-style:dashed';
     return '<button type="button" class="ta-chip ta-detail-group-chip" data-id="' + g.id + '" style="' + style + ';cursor:pointer;font-family:inherit">' + (active ? '✓ ' : '+ ') + esc(g.label) + '</button>';
   }).join('');

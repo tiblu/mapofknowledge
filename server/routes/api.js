@@ -7,7 +7,7 @@ const { notify, getUserLocale } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
 const { renderPassportText } = require('../services/passportText');
 const { redeemLinkCode, sendChildInvite, acceptChildInvite, generateCode } = require('../services/links');
-const testlog = require('../testlog'); // TESTLOG
+const llmRateLimit = require('../middleware/llmRateLimit');
 
 // ── User profile helper ──────────────────────────────────────────────────────
 async function getUserProfile(userId) {
@@ -208,6 +208,9 @@ router.get('/map', async (req, res) => {
 
 // Bust cache when migration reruns or translations are updated
 router.post('/map/bust-cache', (req, res) => {
+  if (!['admin', 'super_admin'].includes(req.user?.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   Object.keys(mapCaches).forEach(k => delete mapCaches[k]);
   res.json({ ok: true });
 });
@@ -594,7 +597,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
 });
 
 // ── Generate / return knobits for a node ─────────────────────────────────────
-router.post('/nodes/:id/learn', async (req, res) => {
+router.post('/nodes/:id/learn', llmRateLimit, async (req, res) => {
   const { id }      = req.params;
   const locale      = await getUserLocale(req.user?.id);
   const passportId  = req.user?.passport_id;
@@ -951,7 +954,7 @@ async function _getPriorPracticeQuestions(passportId, knobitId) {
 }
 
 // ── LLM learning interactions ────────────────────────────────────────────────
-router.post('/learn/interact', async (req, res) => {
+router.post('/learn/interact', llmRateLimit, async (req, res) => {
   const {
     knobitId, phase, action,
     byteIndex = 0, answer, priorChoices = [],
@@ -1179,7 +1182,7 @@ async function _checkUrlAlive(url) {
   }
 }
 
-router.get('/learn/lootbox/:nodeId', async (req, res) => {
+router.get('/learn/lootbox/:nodeId', llmRateLimit, async (req, res) => {
   const { nodeId } = req.params;
   try {
     const [nodes] = await db.execute(
@@ -1520,7 +1523,7 @@ router.get('/anne/messages', async (req, res) => {
   }
 });
 
-router.post('/anne/message', async (req, res) => {
+router.post('/anne/message', llmRateLimit, async (req, res) => {
   const passportId = req.user?.passport_id;
   const uid = req.user?.id;
   if (!passportId) return res.status(400).json({ error: 'No passport' });
@@ -1978,7 +1981,7 @@ async function getNodeBreadcrumb(nodeDbId) {
 }
 
 // ── 4-tier diagnostic: generate question ─────────────────────────────────────
-router.post('/test/question', async (req, res) => {
+router.post('/test/question', llmRateLimit, async (req, res) => {
   const { nodeId, questionNum, history = [], stream: wantStream = false } = req.body;
   try {
     const [nodes] = await db.execute(
@@ -2003,7 +2006,6 @@ router.post('/test/question', async (req, res) => {
       const edited = await llm.editTranslatedText(editFields, locale, req.user?.id);
       result = { ...result, ...edited };
     }
-    testlog('route_question_generated', { userId: req.user?.id, nodeId, nodeLabel: label, questionNum, history, result }); // TESTLOG
     res.json(result);
   } catch (err) {
     console.error('[api/test/question]', err.message);
@@ -2011,14 +2013,8 @@ router.post('/test/question', async (req, res) => {
   }
 });
 
-// TESTLOG — client-side event logger (Q1-Q3 MCQ local evaluation). Remove with other TESTLOG markers.
-router.post('/test/log', (req, res) => {
-  testlog('client_mcq_local', { userId: req.user?.id, ...req.body });
-  res.json({ ok: true });
-});
-
 // ── 4-tier diagnostic: evaluate answer ───────────────────────────────────────
-router.post('/test/evaluate', async (req, res) => {
+router.post('/test/evaluate', llmRateLimit, async (req, res) => {
   const { nodeId, questionNum, question, options, userAnswer, correctIndex, history = [], stream: wantStream = false } = req.body;
   const passportId = req.user?.passport_id;
 
@@ -2033,8 +2029,6 @@ router.post('/test/evaluate', async (req, res) => {
     if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
     const { db_id, label, display_label } = nodes[0];
     const breadcrumb = await getNodeBreadcrumb(db_id);
-
-    testlog('route_evaluate_input', { userId: req.user?.id, nodeId, nodeLabel: label, questionNum, question, options, correctIndex, userAnswer, history }); // TESTLOG
 
     if (wantStream) {
       let streamFn;
@@ -2056,7 +2050,6 @@ router.post('/test/evaluate', async (req, res) => {
         );
       }
       const onDone = async (fullText) => {
-        testlog('route_evaluate_stream_response', { userId: req.user?.id, questionNum, raw: fullText }); // TESTLOG
         if (questionNum !== 4 || !passportId) return;
         try {
           const cleaned = fullText.trim()
@@ -2741,7 +2734,13 @@ router.post('/teacher/groups', async (req, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
   const label = (req.body.label || '').trim();
-  const color = (req.body.color || '#8BAD7E').trim();
+  // req.body.color is rendered client-side straight into an inline style="..."
+  // attribute string in at least one place (teacher.html's group chips) —
+  // validate the format here rather than trusting the client, since an
+  // unvalidated value stored now would be a stored-injection vector later
+  // regardless of how carefully any one render site escapes it.
+  const rawColor = (req.body.color || '').trim();
+  const color = /^#[0-9A-Fa-f]{6}$/.test(rawColor) ? rawColor : '#8BAD7E';
   if (!label) return res.status(400).json({ error: 'label required' });
   try {
     const [r] = await db.execute(

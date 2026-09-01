@@ -1065,9 +1065,23 @@ function init(data) {
     const hasDescriptors = activeFilterDescriptors.length > 0;
     const mkRingMode = activeFilterDescriptors.some(d => d.id === 'my-knowledge' && d.displayMode === 'ring');
 
+    // nodeFilterResult() walks up to 5 ancestor levels per active filter, and
+    // was being recomputed from scratch 5+ times per node below (fill,
+    // fill-opacity, pointer-events, label display, expander display all call
+    // it independently for the same node id) plus twice per edge endpoint.
+    // Memoize per call — activeFilterDescriptors/knowledgeFilterIds/
+    // knowledgePropMap are all fixed for the duration of one
+    // refreshNodeColors() invocation, so this cache is always fresh.
+    // Ported from themapofknowledge.com's 2026-09-01 performance review.
+    const filterResultCache = new Map();
+    const cachedFilterResult = (nodeId) => {
+      if (!filterResultCache.has(nodeId)) filterResultCache.set(nodeId, nodeFilterResult(nodeId));
+      return filterResultCache.get(nodeId);
+    };
+
     node
       .attr('fill', d => {
-        const result = nodeFilterResult(d.id);
+        const result = cachedFilterResult(d.id);
         if (result === 'hidden') return '#000000';
         if (result === 'dim')    return '#585858';
         if (result && result !== null) return result; // specific color
@@ -1075,7 +1089,7 @@ function init(data) {
       })
       .attr('fill-opacity', d => {
         const base = d.level === 1 ? 1 : d.level === 2 ? 0.85 : 0.7;
-        const result = nodeFilterResult(d.id);
+        const result = cachedFilterResult(d.id);
         if (result === 'hidden') return 1;
         if (result === 'dim')    return 0.18;
         // Proportional opacity for My Knowledge in color mode only
@@ -1087,20 +1101,20 @@ function init(data) {
         return base;
       })
       .attr('pointer-events', d => {
-        const result = nodeFilterResult(d.id);
+        const result = cachedFilterResult(d.id);
         return result === 'hidden' ? 'none' : null;
       });
 
-    if (label) label.attr('display', d => nodeFilterResult(d.id) === 'hidden' ? 'none' : null);
-    if (expander) expander.attr('display', d => nodeFilterResult(d.id) === 'hidden' ? 'none' : null);
+    if (label) label.attr('display', d => cachedFilterResult(d.id) === 'hidden' ? 'none' : null);
+    if (expander) expander.attr('display', d => cachedFilterResult(d.id) === 'hidden' ? 'none' : null);
 
     if (!link) return;
     link
       .attr('stroke', d => {
         const srcId = typeof d.source === 'object' ? d.source.id : d.source;
         const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
-        const rs = nodeFilterResult(srcId);
-        const rt = nodeFilterResult(tgtId);
+        const rs = cachedFilterResult(srcId);
+        const rt = cachedFilterResult(tgtId);
         if (rs === 'hidden' || rt === 'hidden') return '#000000';
         if (rs === 'dim'    || rt === 'dim')    return '#585858';
         const src = allNodes[srcId];
@@ -1109,8 +1123,8 @@ function init(data) {
       .attr('stroke-opacity', d => {
         const srcId = typeof d.source === 'object' ? d.source.id : d.source;
         const tgtId = typeof d.target === 'object' ? d.target.id : d.target;
-        const rs = nodeFilterResult(srcId);
-        const rt = nodeFilterResult(tgtId);
+        const rs = cachedFilterResult(srcId);
+        const rt = cachedFilterResult(tgtId);
         if (rs === 'hidden' || rt === 'hidden') return 0;
         if (rs === 'dim'    || rt === 'dim')    return 0.06;
         const src = allNodes[srcId];
