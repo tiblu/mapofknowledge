@@ -261,27 +261,18 @@ function langJson(locale) {
   return `\n\nIMPORTANT: Write all text content in ${name}. Keep JSON field names in English.`;
 }
 
-const PROFILE_INSTRUCTION = `Instructional relevance first. Use the profile where it makes bytes, examples, demonstration or practice tasks feel more natural — never to force a connection that isn't there. Age shapes vocabulary and analogy choice. Cultural background anchors examples in familiar territory (an Estonian and a Cairo-based learner studying fermentation will recognize different reference points — use the right ones). Learning needs adjust format and pace. Interests apply when a genuine bridge exists; if it would feel like a stretch, ignore it. Default rule: would a thoughtful human tutor who knew this person naturally reach for this example? If yes, use it. If not, don't.`;
+const PROFILE_INSTRUCTION = `Instructional relevance first. Use the learner context where it makes bytes, examples, demonstration or practice tasks feel more natural — never to force a connection that isn't there. Age shapes vocabulary and analogy choice. Cultural background anchors examples in familiar territory (an Estonian and a Cairo-based learner studying fermentation will recognize different reference points — use the right ones). Learning needs adjust format and pace. Interests apply when a genuine bridge exists; if it would feel like a stretch, ignore it. Default rule: would a thoughtful human tutor who knew this person naturally reach for this example? If yes, use it. If not, don't.`;
 
 const HATE = /\b(nazi|white.suprem|nigger|faggot|kike|slut|whore|chink|spic)\b/i;
 
-function profileBlock(profile) {
-  if (!profile) return '';
-  const safe = v => (v && !HATE.test(String(v))) ? v : null;
-  const parts = [];
-  if (profile.birth_year) {
-    const age = new Date().getFullYear() - profile.birth_year;
-    if (age > 5 && age < 120) parts.push(`Age: ${age}`);
-  }
-  const loc  = safe(profile.location);            if (loc)  parts.push(`Language/location: ${loc}`);
-  const cult = safe(profile.cultural_background); if (cult) parts.push(`Cultural background: ${cult}`);
-  const abt  = safe(profile.about);               if (abt)  parts.push(`Learning needs: ${abt}`);
-  const interests = (profile.interests || []).filter(s => !HATE.test(s));
-  if (interests.length) parts.push(`Interests: ${interests.join(', ')}`);
-  const values = (profile.values || []).filter(s => !HATE.test(s));
-  if (values.length) parts.push(`Values: ${values.join(', ')}`);
-  if (!parts.length) return '';
-  return `\n\nLearner profile: ${parts.join('. ')}.\n${PROFILE_INSTRUCTION}`;
+// whoisText is the learner's WHOIS block from services/whois.js's
+// getWhoisBlock() — already fully formatted ("\n\nLEARNER CONTEXT...") or ''
+// if none exists yet. This is the single point of truth for what a
+// generation prompt knows about the learner; nothing here is computed from
+// raw passport fields anymore (see whois.js for that).
+function whoisBlock(whoisText) {
+  if (!whoisText) return '';
+  return `${whoisText}\n${PROFILE_INSTRUCTION}`;
 }
 
 const TUTOR_SYSTEM = [
@@ -448,13 +439,13 @@ async function editTranslatedText(fields, locale, userId) {
 }
 
 // ── Explain phase — text only (fast, no web search) ──────────────────────────
-async function generateExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, profile, userId) {
+async function generateExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, whoisText, userId) {
   let prompt;
   if (byteIndex === 0 || !previousContent) {
     prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".
 
 Write the OPENING explanation (byte 1). Introduce the core concept clearly and simply.
-2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
+2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${whoisBlock(whoisText)}${langText(locale)}`;
   } else {
     prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".
 
@@ -464,7 +455,7 @@ ${previousContent}
 """
 
 Write the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase anything already covered above.
-2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
+2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${whoisBlock(whoisText)}${langText(locale)}`;
   }
 
   const msg = await client.messages.create({
@@ -526,7 +517,7 @@ Output ONLY a single JSON object — no markdown fences, no reasoning, no commen
 //   'rephrase' — "I don't understand": step back, explain from first principles
 //   'simpler'  — "Too simplistic": rephrase with professional/expert language
 //   'complex'  — "Too complex": rephrase with simpler words and analogies
-async function generateRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, profile, userId) {
+async function generateRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, whoisText, userId) {
   const instructions = {
     rephrase: `The learner did not understand this explanation. Step back further.
 Explain the same concept from first principles — start from something even more basic,
@@ -561,7 +552,7 @@ ${originalByte}
 
 ${instructions}
 
-Write the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead. Plain text only — no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`,
+Write the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead. Plain text only — no markdown formatting (no **bold**, no _italic_, no backticks).${whoisBlock(whoisText)}${langText(locale)}`,
     }],
   });
   _logUsage(userId, 'rephrase', msg.usage, SONNET);
@@ -569,7 +560,7 @@ Write the replacement text only — 2–4 sentences of plain prose by default, n
 }
 
 // ── Demonstrate phase ─────────────────────────────────────────────────────────
-async function generateDemonstrate(nodeLabel, knobitTitle, exampleIndex, locale, profile, userId, previousExample) {
+async function generateDemonstrate(nodeLabel, knobitTitle, exampleIndex, locale, whoisText, userId, previousExample) {
   const priorBlock = previousExample
     ? `\n\nPrevious example already shown to the learner:\n"""\n${previousExample}\n"""\n\nWrite a DIFFERENT example — a distinct scenario or context, not a variation or rewording of the same one.`
     : '';
@@ -589,7 +580,7 @@ Respond with valid JSON, two fields only:
 - "body": a step-by-step worked example (2–5 sentences)
 - "whatIDid": 1 sentence naming the key technique or insight used
 
-No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(locale)}`,
+No markdown fences. Just the JSON object.${whoisBlock(whoisText)}${langJson(locale)}`,
     }],
   });
   _logUsage(userId, 'demonstrate', msg.usage, SONNET);
@@ -601,7 +592,7 @@ No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(loca
 // session (see api.js's _getLearnedContent, sourced from knobit_interactions) —
 // grounds the question in what was really taught instead of inventing fresh,
 // possibly contradictory or ungrounded trivia about the topic.
-async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, profile, userId, learnedContent, priorQuestions = []) {
+async function generatePractice(nodeLabel, knobitTitle, problemIndex, locale, whoisText, userId, learnedContent, priorQuestions = []) {
   const difficulty = problemIndex === 0 ? 'straightforward' : problemIndex === 1 ? 'moderate' : 'challenging';
   const contentBlock = learnedContent
     ? `\n\nWhat the learner has actually studied so far in this knobit:\n"""\n${learnedContent}\n"""\n`
@@ -625,7 +616,7 @@ Respond with valid JSON, two fields only:
 - "question": the problem statement — one short setup (optional) plus exactly one question (1–3 sentences total)
 - "expected": the correct answer (brief — a number, term, or short phrase)
 
-No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(locale)}`,
+No markdown fences. Just the JSON object.${whoisBlock(whoisText)}${langJson(locale)}`,
     }],
   });
   _logUsage(userId, 'practice', msg.usage, SONNET);
@@ -633,7 +624,7 @@ No markdown fences. Just the JSON object.${profileBlock(profile)}${langJson(loca
 }
 
 // ── Grade a practice answer ───────────────────────────────────────────────────
-async function gradePractice(nodeLabel, knobitTitle, question, expected, userAnswer, locale, userId, learnedContent) {
+async function gradePractice(nodeLabel, knobitTitle, question, expected, userAnswer, locale, userId, learnedContent, whoisText) {
   const contentBlock = learnedContent
     ? `\n\nWhat the learner has actually studied so far in this knobit:\n"""\n${learnedContent}\n"""\n`
     : '';
@@ -654,7 +645,7 @@ Respond with valid JSON, two fields only:
 - "correct": boolean (true if the learner captures the essential idea)
 - "feedback": 1–2 sentences — confirm if correct, or explain what's wrong
 
-No markdown fences. Just the JSON object.${langJson(locale)}`,
+No markdown fences. Just the JSON object.${whoisText || ''}${langJson(locale)}`,
     }],
   });
   _logUsage(userId, 'grade_practice', msg.usage, SONNET);
@@ -662,7 +653,7 @@ No markdown fences. Just the JSON object.${langJson(locale)}`,
 }
 
 // ── Meaning phase ─────────────────────────────────────────────────────────────
-async function generateMeaning(nodeLabel, knobitTitle, locale, userId) {
+async function generateMeaning(nodeLabel, knobitTitle, locale, userId, whoisText) {
   const msg = await client.messages.create({
     model: SONNET,
     max_tokens: 300,
@@ -674,7 +665,7 @@ async function generateMeaning(nodeLabel, knobitTitle, locale, userId) {
 Write 2–3 sentences on why this matters in the real world.
 Pick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.
 Keep each sentence short and single-clause — one idea per sentence. Do NOT chain clauses with "because"/"since"/"if...then"/semicolons/dashes into one long compound sentence.
-No "In conclusion" — just the insight.${langText(locale)}`,
+No "In conclusion" — just the insight.${whoisBlock(whoisText)}${langText(locale)}`,
     }],
   });
   _logUsage(userId, 'meaning', msg.usage, SONNET);
@@ -682,7 +673,7 @@ No "In conclusion" — just the insight.${langText(locale)}`,
 }
 
 // ── Ask anything ─────────────────────────────────────────────────────────────
-async function answerQuestion(nodeLabel, knobitTitle, phase, question, context, locale, profile, userId) {
+async function answerQuestion(nodeLabel, knobitTitle, phase, question, context, locale, whoisText, userId) {
   const practiceRule = phase === 'practice'
     ? `\n\nPRACTICE PHASE — CRITICAL RULE: The learner is actively working on a practice problem. You must NEVER reveal, confirm, or strongly hint at the answer, even if asked directly. Instead offer a guiding question, point back to the relevant concept, or suggest a thinking approach. The learner must reach the answer themselves.`
     : '';
@@ -707,7 +698,7 @@ Rules:
       role: 'user',
       content: `Phase: ${phase}
 Recent content: "${context}"
-Question: "${question}"${profileBlock(profile)}${langText(locale)}`,
+Question: "${question}"${whoisBlock(whoisText)}${langText(locale)}`,
     }],
   });
   _logUsage(userId, 'ask', msg.usage, SONNET);
@@ -719,7 +710,7 @@ Question: "${question}"${profileBlock(profile)}${langText(locale)}`,
 // Returns: { question, type: 'open'|'mcq', options?: string[] }
 
 // Builds the Q4 (final) evaluation prompt. Shared by streaming and non-streaming paths.
-function _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale) {
+function _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale, whoisText) {
   const isMcq = Array.isArray(options) && typeof correctIndex === 'number';
   const q4Block = isMcq
     ? (() => {
@@ -759,7 +750,7 @@ Return JSON:
 - "partial": boolean — true if Q4 score is 1–24
 - "feedback": 2-3 sentences on the Q4 answer — acknowledge what was right, specify what was missing
 - "finalScore": integer 0–100
-- "scoreBreakdown": 2-4 sentences on overall performance — what the learner demonstrated, what they missed${langJson(locale)}`;
+- "scoreBreakdown": 2-4 sentences on overall performance — what the learner demonstrated, what they missed${whoisText || ''}${langJson(locale)}`;
 }
 
 // Builds an unambiguous MCQ context block for the evaluator prompt.
@@ -792,7 +783,7 @@ function _simplifyWordingNote(age) {
   return '\n\nIMPORTANT: This learner is young. Use simple wording — short sentences, everyday vocabulary, no unnecessarily complex phrasing. Ask the exact same thing, at the exact same difficulty and depth — only the wording should be simpler.';
 }
 
-async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, age = null) {
+async function generateTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, age = null, whoisText = null) {
   const tiers = [
     'Factual (Remember): one question on core terminology or a foundational definition.',
     'Conceptual (Understand): one question asking the learner to explain a mechanism or relationship. No calculations.',
@@ -835,7 +826,7 @@ ${adaptNote}
 ${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}
 
 Generate question ${questionNum}. Choose open or MCQ based on what best tests this tier.
-For MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}${_simplifyWordingNote(age)}`,
+For MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${whoisText || ''}${langJson(locale)}${_simplifyWordingNote(age)}`,
     }],
   });
 
@@ -845,7 +836,7 @@ For MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON on
 
 // Evaluate one answer and return feedback.
 // If questionNum === 4, also return final mastery score with breakdown.
-async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, userId) {
+async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, userId, whoisText = null) {
   const isLast = questionNum === 4;
   const allQA = [...history, { question, answer: userAnswer }];
   const historyText = allQA.map((h, i) => {
@@ -869,12 +860,12 @@ async function evaluateTestAnswer(nodeLabel, breadcrumb, questionNum, question, 
     messages: [{
       role: 'user',
       content: isLast
-        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale)
+        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale, whoisText)
         : (() => {
             const mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
             return mcq
-              ? `Topic: "${nodeLabel}"\nQuestion: "${question}"\n\n${mcq}\n\nReturn JSON with:\n- "correct": boolean (use the Verdict above — do not re-evaluate)\n- "partial": false (MCQ is always fully correct or incorrect)\n- "feedback": 1-2 sentences — if correct, confirm and briefly explain why; if incorrect, explain what the right answer means${langJson(locale)}`
-              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true if the answer reflects a good grasp and understanding of the issue\n- "partial": boolean — true if partially correct or noticeably incomplete\n- "score": integer 0–25 (25 = full understanding; 15–24 = good grasp with minor gaps; 8–14 = partial; 1–7 = surface only; 0 = incorrect)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`;
+              ? `Topic: "${nodeLabel}"\nQuestion: "${question}"\n\n${mcq}\n\nReturn JSON with:\n- "correct": boolean (use the Verdict above — do not re-evaluate)\n- "partial": false (MCQ is always fully correct or incorrect)\n- "feedback": 1-2 sentences — if correct, confirm and briefly explain why; if incorrect, explain what the right answer means${whoisText || ''}${langJson(locale)}`
+              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true if the answer reflects a good grasp and understanding of the issue\n- "partial": boolean — true if partially correct or noticeably incomplete\n- "score": integer 0–25 (25 = full understanding; 15–24 = good grasp with minor gaps; 8–14 = partial; 1–7 = surface only; 0 = incorrect)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${whoisText || ''}${langJson(locale)}`;
           })(),
     }],
   });
@@ -919,32 +910,32 @@ async function _streamText(config, userId, callType, onChunk) {
   }
 }
 
-function streamExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, profile, userId, onChunk) {
+function streamExplainByteText(nodeLabel, knobitTitle, byteIndex, previousContent, locale, whoisText, userId, onChunk) {
   let prompt;
   if (byteIndex === 0 || !previousContent) {
-    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nWrite the OPENING explanation (byte 1). Introduce the core concept clearly and simply.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
+    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nWrite the OPENING explanation (byte 1). Introduce the core concept clearly and simply.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${whoisBlock(whoisText)}${langText(locale)}`;
   } else {
-    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nEverything explained so far, which the learner has already read and understood (may be several paragraphs — this is the full explanation up to this point, not just the last bit):\n"""\n${previousContent}\n"""\n\nWrite the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase anything already covered above.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
+    prompt = `Teaching knobit "${knobitTitle}" within topic "${nodeLabel}".\n\nEverything explained so far, which the learner has already read and understood (may be several paragraphs — this is the full explanation up to this point, not just the last bit):\n"""\n${previousContent}\n"""\n\nWrite the NEXT step (byte ${byteIndex + 1}). Cover a new aspect or go one level deeper. Do NOT repeat or paraphrase anything already covered above.\n2–4 sentences of plain prose by default — no headings, no titles. If the content is genuine enumeration (distinct types, steps, or categories — not just multiple points about one idea), you may use a short bulleted or numbered list instead: bullets as lines starting with "- ", numbered items as lines starting with "1. ", "2. ", etc. Otherwise stay in flowing prose with no line breaks. Plain text only — no HTML tags, no markdown formatting (no **bold**, no _italic_, no backticks).${whoisBlock(whoisText)}${langText(locale)}`;
   }
   return _streamText({ model: SONNET, max_tokens: 300, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'explain_text', onChunk);
 }
 
-function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, profile, userId, onChunk) {
+function streamRephrase(nodeLabel, knobitTitle, originalByte, mode, locale, whoisText, userId, onChunk) {
   const instructions = {
     rephrase: `The learner did not understand this explanation. Step back further.\nExplain the same concept from first principles — start from something even more basic,\nuse a concrete real-world analogy, and build up slowly.\nDo NOT reuse the same wording. A different angle entirely.`,
     simpler:  `The learner found this too simplistic.\nRewrite using more precise, formal, expert-level vocabulary and phrasing — elevate the WORDING only.\nSTRICT rules: keep the SAME number of sentences as the original, do not add sentences.\nDo NOT introduce additional concepts, categories, sub-types, or examples beyond what the original already covered.\nSame core idea, same scope, same length — just phrased the way a domain expert would say it.`,
     complex:  `The learner found this too complex.\nRewrite using the simplest possible words. STRICT rules: every sentence must be at most 10 words long.\nMaximum 3 sentences per paragraph. No jargon — replace every technical term with a plain everyday word.\nUse one concrete real-life example (something a child could picture).\nSame core concept — maximally accessible.`,
   }[mode] || 'Rewrite this explanation from a different angle.';
-  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead. Plain text only — no markdown formatting (no **bold**, no _italic_, no backticks).${profileBlock(profile)}${langText(locale)}`;
+  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nCurrent explanation:\n"""\n${originalByte}\n"""\n\n${instructions}\n\nWrite the replacement text only — 2–4 sentences of plain prose by default, no headings or titles. If the content is genuine enumeration (distinct types, steps, or categories), you may use a short bulleted ("- item") or numbered ("1. item") list instead. Plain text only — no markdown formatting (no **bold**, no _italic_, no backticks).${whoisBlock(whoisText)}${langText(locale)}`;
   return _streamText({ model: SONNET, max_tokens: 350, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'rephrase', onChunk);
 }
 
-function streamMeaning(nodeLabel, knobitTitle, locale, userId, onChunk) {
-  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nWrite 2–3 sentences on why this matters in the real world.\nPick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.\nKeep each sentence short and single-clause — one idea per sentence. Do NOT chain clauses with "because"/"since"/"if...then"/semicolons/dashes into one long compound sentence.\nNo "In conclusion" — just the insight.${langText(locale)}`;
+function streamMeaning(nodeLabel, knobitTitle, locale, userId, onChunk, whoisText = null) {
+  const prompt = `Topic: "${nodeLabel}" — Knobit: "${knobitTitle}"\n\nWrite 2–3 sentences on why this matters in the real world.\nPick exactly ONE concrete anchor — a single profession, product, decision, or daily situation — where this directly applies. Do NOT cover more than one example or scenario.\nKeep each sentence short and single-clause — one idea per sentence. Do NOT chain clauses with "because"/"since"/"if...then"/semicolons/dashes into one long compound sentence.\nNo "In conclusion" — just the insight.${whoisBlock(whoisText)}${langText(locale)}`;
   return _streamText({ model: SONNET, max_tokens: 300, system: TUTOR_SYSTEM, messages: [{ role: 'user', content: prompt }] }, userId, 'meaning', onChunk);
 }
 
-function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, locale, profile, userId, onChunk) {
+function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, locale, whoisText, userId, onChunk) {
   const practiceRule = phase === 'practice'
     ? `\n\nPRACTICE PHASE — CRITICAL RULE: The learner is actively working on a practice problem. You must NEVER reveal, confirm, or strongly hint at the answer, even if asked directly. Instead offer a guiding question, point back to the relevant concept, or suggest a thinking approach. The learner must reach the answer themselves.`
     : '';
@@ -956,11 +947,11 @@ function streamAnswerQuestion(nodeLabel, knobitTitle, phase, question, context, 
       text: `You are a focused learning assistant inside the Map of Knowledge platform.\nYou help the learner with exactly one concept:\n  Knobit: "${knobitTitle}"\n  Topic: "${nodeLabel}"\n\nRules:\n1. Only answer questions relevant to this knobit or topic. If the question is clearly off-topic, reply warmly: "This chat is here to help you with '${knobitTitle}'. Happy to answer any questions about that!"\n2. Be concise: 2–4 sentences. Never repeat what is already in the context.\n3. No preamble — go straight to the helpful content.${practiceRule}`,
       cache_control: { type: 'ephemeral' },
     }],
-    messages: [{ role: 'user', content: `Phase: ${phase}\nRecent content: "${context}"\nQuestion: "${question}"${profileBlock(profile)}${langText(locale)}` }],
+    messages: [{ role: 'user', content: `Phase: ${phase}\nRecent content: "${context}"\nQuestion: "${question}"${whoisBlock(whoisText)}${langText(locale)}` }],
   }, userId, 'ask', onChunk);
 }
 
-function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, onChunk, age = null) {
+function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale, userId, onChunk, age = null, whoisText = null) {
   const tiers = [
     'Factual (Remember): one question on core terminology or a foundational definition.',
     'Conceptual (Understand): one question asking the learner to explain a mechanism or relationship. No calculations.',
@@ -985,12 +976,12 @@ function streamTestQuestion(nodeLabel, breadcrumb, questionNum, history, locale,
     }],
     messages: [{
       role: 'user',
-      content: `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${langJson(locale)}${_simplifyWordingNote(age)}`,
+      content: `Topic: "${nodeLabel}" (${breadcrumb})\nTier ${questionNum}: ${tiers[questionNum - 1]}\n${adaptNote}\n${historyText ? `\nPrevious Q&A:\n${historyText}` : ''}\n\nGenerate question ${questionNum}. Choose open or MCQ based on what best tests this tier.\nFor MCQ: provide exactly 4 options, include correctIndex (0–3). Return JSON only.${whoisText || ''}${langJson(locale)}${_simplifyWordingNote(age)}`,
     }],
   }, userId, 'test_question', onChunk);
 }
 
-function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, userId, onChunk) {
+function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, userId, onChunk, whoisText = null) {
   const isLast = questionNum === 4;
   const allQA = [...history, { question, answer: userAnswer }];
   const historyText = allQA.map(function (h, i) {
@@ -1013,12 +1004,12 @@ function streamTestEvaluate(nodeLabel, breadcrumb, questionNum, question, option
     messages: [{
       role: 'user',
       content: isLast
-        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale)
+        ? _buildLastEvalPrompt(nodeLabel, breadcrumb, historyText, options, correctIndex, userAnswer, locale, whoisText)
         : (function () {
             var mcq = _mcqEvalBlock(userAnswer, options, correctIndex);
             return mcq
-              ? `Topic: "${nodeLabel}"\nQuestion: "${question}"\n\n${mcq}\n\nReturn JSON with:\n- "correct": boolean (use the Verdict above — do not re-evaluate)\n- "partial": false (MCQ is always fully correct or incorrect)\n- "feedback": 1-2 sentences — if correct, confirm and briefly explain why; if incorrect, explain what the right answer means${langJson(locale)}`
-              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true if the answer reflects a good grasp and understanding of the issue\n- "partial": boolean — true if partially correct or noticeably incomplete\n- "score": integer 0–25 (25 = full understanding; 15–24 = good grasp with minor gaps; 8–14 = partial; 1–7 = surface only; 0 = incorrect)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${langJson(locale)}`;
+              ? `Topic: "${nodeLabel}"\nQuestion: "${question}"\n\n${mcq}\n\nReturn JSON with:\n- "correct": boolean (use the Verdict above — do not re-evaluate)\n- "partial": false (MCQ is always fully correct or incorrect)\n- "feedback": 1-2 sentences — if correct, confirm and briefly explain why; if incorrect, explain what the right answer means${whoisText || ''}${langJson(locale)}`
+              : `Topic: "${nodeLabel}"\nQuestion: "${question}"\nAnswer: "${userAnswer}"\n\nReturn JSON with:\n- "correct": boolean — true if the answer reflects a good grasp and understanding of the issue\n- "partial": boolean — true if partially correct or noticeably incomplete\n- "score": integer 0–25 (25 = full understanding; 15–24 = good grasp with minor gaps; 8–14 = partial; 1–7 = surface only; 0 = incorrect)\n- "feedback": 1-2 sentences — confirm if correct, note what's missing if partial, or explain the right answer if wrong${whoisText || ''}${langJson(locale)}`;
           })(),
     }],
   }, userId, 'test_evaluate', onChunk);
@@ -1254,10 +1245,10 @@ function _anneMessages(history, userMessage) {
   ];
 }
 
-function _anneSystem(passportText, locale) {
+function _anneSystem(whoisText, locale) {
   return [{
     type: 'text',
-    text: (ANNE_SYSTEM_PROMPTS[locale] || ANNE_SYSTEM_PROMPTS.en) + passportText,
+    text: (ANNE_SYSTEM_PROMPTS[locale] || ANNE_SYSTEM_PROMPTS.en) + (whoisText || ''),
     cache_control: { type: 'ephemeral' },
   }];
 }
@@ -1271,23 +1262,50 @@ function _anneToolExecutor(locale) {
   };
 }
 
-async function generateAnneReply(passportText, history, userMessage, locale, userId) {
+async function generateAnneReply(whoisText, history, userMessage, locale, userId) {
   const text = await _createWithTools({
     model: SONNET,
     max_tokens: locale === 'en' ? 350 : 600,
-    system: _anneSystem(passportText, locale),
+    system: _anneSystem(whoisText, locale),
     messages: _anneMessages(history, userMessage),
   }, ANNE_TOOLS, _anneToolExecutor(locale), userId, 'anne_reply');
   return text.trim();
 }
 
-function streamAnneReply(passportText, history, userMessage, locale, userId, onChunk) {
+function streamAnneReply(whoisText, history, userMessage, locale, userId, onChunk) {
   return _streamTextWithTools({
     model: SONNET,
     max_tokens: 350,
-    system: _anneSystem(passportText, locale),
+    system: _anneSystem(whoisText, locale),
     messages: _anneMessages(history, userMessage),
   }, ANNE_TOOLS, _anneToolExecutor(locale), userId, 'anne_reply', onChunk);
+}
+
+// ── WHOIS narrative — see services/whois.js ─────────────────────────────────
+// The one LLM call behind the whole feature: reads everything on record for
+// a learner (rendered via services/passportText.js) plus the prior narrative
+// (if any) and writes an updated ~400-600 token dossier. Feeding the prior
+// version back in is what makes this a continuously-updated entry rather
+// than an unrelated fresh essay every time it regenerates.
+async function generateWhoisNarrative(passportRenderedText, priorNarrative, userId) {
+  const priorBlock = priorNarrative
+    ? `\n\nYour previous assessment of this learner (UPDATE it: preserve what's still accurate, revise or drop what's changed or no longer relevant, add genuinely new observations — do not just restate this word for word):\n"""\n${priorNarrative}\n"""\n`
+    : '';
+  const msg = await client.messages.create({
+    model: SONNET,
+    max_tokens: 1000,
+    system: [{
+      type: 'text',
+      text: `You maintain a single, continuously-updated dossier on a learner using the Map of Knowledge platform, read by every other AI tutor/assistant on the platform before it interacts with them. Write roughly 400-600 tokens of dense, genuinely useful prose — not a data dump of the fields you're given, but real synthesis: learning patterns, apparent strengths and gaps, what topics/domains they're actually engaged with right now, how they seem to respond to different kinds of content, anything notable from their own reflections, and what a tutor should keep in mind when teaching them. Be concrete and specific, never generic praise or platitudes. If the learner has very little history yet, say so briefly rather than padding with speculation. Plain prose, no headings, no bullet points.`,
+      cache_control: { type: 'ephemeral' },
+    }],
+    messages: [{
+      role: 'user',
+      content: `Here is everything currently on record for this learner:\n\n${passportRenderedText || '(No passport data recorded yet.)'}${priorBlock}\n\nWrite the updated dossier now.`,
+    }],
+  });
+  _logUsage(userId, 'whois_narrative', msg.usage, SONNET);
+  return msg.content[0].text.trim();
 }
 
 // ── Knowledge estimation from qualifications ────────────────────────────────
@@ -1409,6 +1427,7 @@ module.exports = {
   streamTestEvaluate,
   generateAnneReply,
   streamAnneReply,
+  generateWhoisNarrative,
   generateLootBox,
   LOOTBOX_URL_KEYS,
   estimateKnowledgeAreas,

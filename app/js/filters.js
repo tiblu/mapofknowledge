@@ -34,24 +34,50 @@
   }
 
   function getRingColorOverride(filterId) {
-    try { return localStorage.getItem('kq_ring_color_' + filterId) || null; }
+    try { return localStorage.getItem(window.lsKey('kq_ring_color_' + filterId)) || null; }
     catch(e) { return null; }
   }
   function setRingColorOverride(filterId, color) {
-    try { localStorage.setItem('kq_ring_color_' + filterId, color); } catch(e) {}
+    try { localStorage.setItem(window.lsKey('kq_ring_color_' + filterId), color); } catch(e) {}
+    _syncToServer('kq_ring_color_' + filterId, color);
   }
 
   function getColorOverride(filterId) {
-    try { return localStorage.getItem('kq_color_' + filterId) || null; }
+    try { return localStorage.getItem(window.lsKey('kq_color_' + filterId)) || null; }
     catch(e) { return null; }
   }
   function setColorOverride(filterId, color) {
-    try { localStorage.setItem('kq_color_' + filterId, color); } catch(e) {}
+    try { localStorage.setItem(window.lsKey('kq_color_' + filterId), color); } catch(e) {}
+    _syncToServer('kq_color_' + filterId, color);
   }
 
-  (function loadDBSubsets() {
+  // Mirrors the corresponding /api/settings row into localStorage so a saved
+  // preference survives a cleared cache or a different browser, not just a
+  // refresh. /api/settings already exists and accepts arbitrary key/value
+  // pairs (used for locale/font-size/palette elsewhere) — no backend change
+  // needed. Ported from KnobitMap.
+  function _syncToServer(key, value) {
+    fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: key, value: value }),
+    }).catch(function() {});
+  }
+
+  function _primeFromServer(s) {
+    ['kq_filter_hidden', 'kq_base_filter'].forEach(function(k) {
+      if (s[k] !== undefined) { try { localStorage.setItem(window.lsKey(k), s[k]); } catch(e) {} }
+    });
+    Object.keys(s).forEach(function(k) {
+      if (k.indexOf('kq_ring_color_') === 0 || k.indexOf('kq_color_') === 0) {
+        try { localStorage.setItem(window.lsKey(k), s[k]); } catch(e) {}
+      }
+    });
+  }
+
+  function loadDBSubsets() {
     var hidden;
-    try { hidden = JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); }
+    try { hidden = JSON.parse(localStorage.getItem(window.lsKey('kq_filter_hidden')) || '[]'); }
     catch(e) { hidden = []; }
 
     fetch('/api/subsets')
@@ -83,14 +109,26 @@
                         + '<span class="fp-label">' + s.name + '</span>';
           list.appendChild(div);
         });
+
+        // Restore saved filter, if any. There's no universal default any
+        // more — subsets are one-per-grade/subject, so defaulting everyone
+        // to the first one would silently apply it to every brand-new
+        // account. Ported from KnobitMap.
+        var saved;
+        try { saved = localStorage.getItem(window.lsKey('kq_base_filter')); } catch(e) { saved = null; }
+        if (saved && saved !== 'none' && FILTERS[saved]) {
+          baseFilterId = saved;
+          ensureFilterLabels(saved, FILTERS[saved]);
+          updateActiveUI();
+        }
       })
       .catch(function() {});
-  })();
+  }
 
   /* ─── Apply visibility from localStorage ────────────────────────────── */
-  (function applyVisibility() {
+  function applyVisibility() {
     var hidden;
-    try { hidden = JSON.parse(localStorage.getItem('kq_filter_hidden') || '[]'); }
+    try { hidden = JSON.parse(localStorage.getItem(window.lsKey('kq_filter_hidden')) || '[]'); }
     catch(e) { hidden = []; }
     if (!hidden.length) return;
     document.querySelectorAll('.fp-item').forEach(function(item) {
@@ -98,7 +136,20 @@
         item.style.display = 'none';
       }
     });
-  })();
+  }
+
+  // Wait for user ID, then prime localStorage from server settings and
+  // initialise — ensures window.lsKey() uses the real user id (not the
+  // 'anon' fallback) before anything reads/writes a saved preference.
+  // Ported from KnobitMap.
+  Promise.all([
+    window._userIdReady,
+    fetch('/api/settings').then(function(r) { return r.json(); }).catch(function() { return {}; }),
+  ]).then(function(results) {
+    _primeFromServer(results[1]);
+    loadDBSubsets();
+    applyVisibility();
+  });
 
   /* ─── State ──────────────────────────────────────────────────────────── */
   var baseFilterId     = null;       // one non-overlay active filter or null
@@ -150,8 +201,10 @@
     } else {
       if (baseFilterId === fid) {
         baseFilterId = null;
+        saveBaseFilter('none');
       } else {
         baseFilterId = fid;
+        saveBaseFilter(fid);
         ensureFilterLabels(fid, filter);
       }
     }
@@ -203,9 +256,16 @@
       .catch(function() {});
   }
 
+  function saveBaseFilter(fid) {
+    var val = fid || 'none';
+    try { localStorage.setItem(window.lsKey('kq_base_filter'), val); } catch(e) {}
+    _syncToServer('kq_base_filter', val);
+  }
+
   function deactivateAll() {
     baseFilterId = null;
     overlayFilterIds.clear();
+    saveBaseFilter('none');
     updateActiveUI();
     pushToMap();
     if (typeof window.clearKnowledgeFilter === 'function') window.clearKnowledgeFilter();

@@ -45,9 +45,11 @@ async function _verifyTurnstile(token, remoteip) {
   }
 }
 
-// Mirrors getUserLocale in server/routes/api.js — not imported from there
-// since api.js only exports the router itself, not this helper.
-async function _getUserLocale(userId) {
+// Looks up locale for a user OTHER than the current session (e.g. a
+// password-reset request identifies a different account by email) —
+// req.user.locale (set at deserializeUser time) covers every same-user
+// case and replaced the old duplicate _getUserLocale used for those.
+async function _getLocaleForUserId(userId) {
   if (!userId) return 'en';
   try {
     const [rows] = await db.execute(
@@ -277,7 +279,21 @@ passport.serializeUser((user, done) => done(null, user.id));
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM users WHERE id = ?', [id]);
+    // Only the columns actually read from req.user anywhere in the app —
+    // was SELECT * before, which attached password_hash, password_reset_token,
+    // google_id-equivalent linked flags, etc. to req.user on every request.
+    // locale is joined in here too (was previously a separate getUserLocale()
+    // DB call repeated in ~13 places across api.js/auth.js/knowledgeEstimate.js) —
+    // this query already runs on every authenticated request regardless, so
+    // req.user.locale is one extra column, not one extra round trip.
+    const [rows] = await db.execute(
+      `SELECT u.id, u.email, u.passport_id, u.role, u.email_verified,
+              COALESCE(us.value, 'en') AS locale
+       FROM users u
+       LEFT JOIN user_settings us ON us.user_id = u.id AND us.key_name = 'ui_locale'
+       WHERE u.id = ?`,
+      [id]
+    );
     done(null, rows[0] || false);
   } catch (err) {
     done(err);
@@ -332,9 +348,22 @@ router.get('/logout', (req, res, next) => {
   });
 });
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (!req.isAuthenticated()) return res.json(null);
-  const { id, email, role, passport_id, subscription_status, password_hash, email_verified } = req.user;
+  const { id, email, role, passport_id, email_verified } = req.user;
+  // password_hash/subscription_status were dropped from deserializeUser's
+  // SELECT (2026-09-01 security fix — was SELECT * on every request); this
+  // is the one route that actually needs them, so fetch fresh here instead
+  // of re-widening what's attached to req.user for every request.
+  let password_hash = null, subscription_status = null;
+  try {
+    const [[row]] = await db.execute(
+      'SELECT password_hash, subscription_status FROM users WHERE id = ?', [id]
+    );
+    if (row) ({ password_hash, subscription_status } = row);
+  } catch (err) {
+    console.error('[auth/me]', err.message);
+  }
   res.json({
     id, email, role, passport_id, subscription_status,
     hasPassword:   !!password_hash,
@@ -468,8 +497,7 @@ router.post('/verify-email/resend', resendVerifyRateLimit, async (req, res) => {
       'UPDATE users SET email_verify_token = ?, email_verify_expires = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id = ?',
       [verifyToken, req.user.id]
     );
-    const locale = await _getUserLocale(req.user.id);
-    await sendVerificationEmail(req.user.email, verifyToken, locale);
+    await sendVerificationEmail(req.user.email, verifyToken, req.user.locale);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'resend_failed' });
@@ -501,7 +529,7 @@ router.post('/reset-password/request', resetPasswordRateLimit, async (req, res) 
           'UPDATE users SET password_reset_token = ?, password_reset_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?',
           [token, userId]
         );
-        const locale = await _getUserLocale(userId);
+        const locale = await _getLocaleForUserId(userId);
         sendPasswordResetEmail(email, token, locale)
           .catch(err => console.error('[auth/reset-password/request] email failed:', err.message));
       }

@@ -5,7 +5,8 @@ const llm     = require('../services/llm');
 const game    = require('../services/game');
 const { notify } = require('../services/notifications');
 const { buildKnobitDocx } = require('../services/knobitDocx');
-const { renderPassportText } = require('../services/passportText');
+const { fetchFullPassport } = require('../services/passportData');
+const { getWhoisBlock, refreshWhoisIfDue } = require('../services/whois');
 const { updateAncestorKnowledge } = require('../services/nodeKnowledge');
 const { sendFriendInviteEmail } = require('../services/mailer');
 const llmRateLimit = require('../middleware/llmRateLimit');
@@ -27,158 +28,19 @@ function _rejectTooLong(res) {
 }
 
 // ── User locale helper ───────────────────────────────────────────────────────
-async function getUserLocale(userId) {
-  if (!userId) return 'en';
-  try {
-    const [rows] = await db.execute(
-      'SELECT value FROM user_settings WHERE user_id = ? AND key_name = ?',
-      [userId, 'ui_locale']
-    );
-    return (rows.length && rows[0].value) ? rows[0].value : 'en';
-  } catch { return 'en'; }
-}
-
-// ── User profile helper ──────────────────────────────────────────────────────
-async function getUserProfile(userId) {
+// ── Birth year lookup — only remaining use is the test-question age-based
+//    wording simplification opt-in; everything else about the learner now
+//    goes through services/whois.js's getWhoisBlock instead. ─────────────────
+async function _getBirthYear(userId) {
   if (!userId) return null;
   try {
     const [users] = await db.execute('SELECT passport_id FROM users WHERE id = ?', [userId]);
     if (!users.length || !users[0].passport_id) return null;
-    const passportId = users[0].passport_id;
     const [[passport]] = await db.execute(
-      'SELECT birth_year, location, cultural_background, about FROM learner_passports WHERE id = ?',
-      [passportId]
+      'SELECT birth_year FROM learner_passports WHERE id = ?', [users[0].passport_id]
     );
-    const [tags] = await db.execute(
-      'SELECT type, text FROM passport_tags WHERE passport_id = ? ORDER BY sort_order',
-      [passportId]
-    );
-    return {
-      birth_year:          passport?.birth_year || null,
-      location:            passport?.location   || null,
-      cultural_background: passport?.cultural_background || null,
-      about:               passport?.about      || null,
-      interests: tags.filter(t => t.type === 'interest').map(t => t.text),
-      values:    tags.filter(t => t.type === 'value').map(t => t.text),
-    };
+    return passport?.birth_year || null;
   } catch { return null; }
-}
-
-// ── Full Learner Passport helper — shared by GET /profile and Anne's chat context ──
-async function _fetchFullPassport(passportId) {
-  const [[passport]] = await db.execute(
-    'SELECT * FROM learner_passports WHERE id = ?', [passportId]
-  );
-
-  // avatar_url lives on users (it's an auth-provider attribute, not a
-  // passport one), joined back in here since every consumer of this
-  // function renders identity from the passport object.
-  const [[avatarRow]] = await db.execute(
-    'SELECT avatar_url FROM users WHERE passport_id = ?', [passportId]
-  );
-  if (passport) passport.avatar_url = avatarRow ? avatarRow.avatar_url : null;
-
-  const [credentials] = await db.execute(
-    `SELECT * FROM passport_credentials WHERE passport_id = ? ORDER BY awarded_date DESC, id DESC`,
-    [passportId]
-  );
-
-  const [competence] = await db.execute(
-    `SELECT * FROM passport_competence WHERE passport_id = ? ORDER BY type, sort_order`,
-    [passportId]
-  );
-
-  // L4/L5 knowledge nodes with full breadcrumb
-  const [mapKnowledgeRaw] = await db.execute(
-    `SELECT n.label, n.level, u.percentage, u.source,
-            p1.label AS p1, p2.label AS p2, p3.label AS p3, p4.label AS p4
-     FROM user_node_knowledge u
-     JOIN nodes n ON n.external_id = u.node_external_id
-     LEFT JOIN nodes p1 ON p1.id = n.parent_id
-     LEFT JOIN nodes p2 ON p2.id = p1.parent_id
-     LEFT JOIN nodes p3 ON p3.id = p2.parent_id
-     LEFT JOIN nodes p4 ON p4.id = p3.parent_id
-     WHERE u.passport_id = ? AND n.level IN (4,5) AND u.percentage > 0
-     ORDER BY u.percentage DESC, n.level DESC
-     LIMIT 200`,
-    [passportId]
-  );
-  const mapKnowledge = mapKnowledgeRaw.map(r => ({
-    label:      r.label,
-    level:      r.level,
-    percentage: r.percentage,
-    source:     r.source,
-    breadcrumb: [r.p4, r.p3, r.p2, r.p1].filter(Boolean).join(' › '),
-    // Topmost ancestor (L1 domain) — used to group the Knowledge card "By domain".
-    domain:     r.p4 || r.p3 || r.p2 || r.p1 || r.label,
-  }));
-
-  const [events] = await db.execute(
-    `SELECT * FROM passport_events WHERE passport_id = ? ORDER BY event_date DESC, id DESC`,
-    [passportId]
-  );
-
-  const [tags] = await db.execute(
-    'SELECT * FROM passport_tags WHERE passport_id = ? ORDER BY sort_order',
-    [passportId]
-  );
-
-  const [relationships] = await db.execute(
-    `SELECT * FROM passport_relationships WHERE passport_id = ? ORDER BY type, sort_order, id`,
-    [passportId]
-  );
-
-  const [reflections] = await db.execute(
-    `SELECT r.id, r.text, r.created_at,
-            e.id AS event_id, e.title AS event_title, e.event_date
-     FROM passport_reflections r
-     LEFT JOIN passport_events e ON r.event_id = e.id
-     WHERE r.passport_id = ?
-     ORDER BY r.created_at DESC`,
-    [passportId]
-  );
-
-  const [learningStyle] = await db.execute(
-    'SELECT * FROM passport_learning_style WHERE passport_id = ?',
-    [passportId]
-  );
-
-  const [goals] = await db.execute(
-    `SELECT * FROM passport_goals WHERE passport_id = ?
-     ORDER BY status ASC, created_at DESC`,
-    [passportId]
-  );
-
-  const [aspirations] = await db.execute(
-    'SELECT * FROM passport_aspirations WHERE passport_id = ? ORDER BY sort_order',
-    [passportId]
-  );
-
-  const [objectives] = await db.execute(
-    'SELECT * FROM passport_objectives WHERE passport_id = ? ORDER BY sort_order',
-    [passportId]
-  );
-
-  const [plans] = await db.execute(
-    'SELECT * FROM passport_plans WHERE passport_id = ? ORDER BY sort_order',
-    [passportId]
-  );
-
-  return {
-    passport,
-    credentials,
-    competence,
-    mapKnowledge,
-    events,
-    tags,
-    relationships,
-    reflections,
-    learningStyle: learningStyle[0] || null,
-    goals,
-    aspirations,
-    objectives,
-    plans,
-  };
 }
 
 // ── In-memory map cache per locale (10k+ nodes — cache after first DB load) ───
@@ -186,7 +48,7 @@ const mapCaches = {};
 
 router.get('/map', async (req, res) => {
   try {
-    const locale = await getUserLocale(req.user?.id);
+    const locale = req.user?.locale || 'en';
     if (mapCaches[locale]) return res.json(mapCaches[locale]);
 
     const translatedNodeSql = (layer) =>
@@ -238,6 +100,9 @@ router.get('/map', async (req, res) => {
 
 // Bust cache when migration reruns or translations are updated
 router.post('/map/bust-cache', (req, res) => {
+  if (!['admin', 'super_admin'].includes(req.user?.role)) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   Object.keys(mapCaches).forEach(k => delete mapCaches[k]);
   res.json({ ok: true });
 });
@@ -252,7 +117,7 @@ router.get('/nodes/:id/overview', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'Node not found' });
     const node = rows[0];
 
-    const locale = await getUserLocale(req.user?.id);
+    const locale = req.user?.locale || 'en';
 
     if (node.overview && locale === 'en') return res.json({ overview: node.overview });
 
@@ -372,7 +237,7 @@ router.get('/nodes/:id/learn-progress', async (req, res) => {
       'SELECT id AS db_id FROM nodes WHERE external_id = ?', [id]
     );
     if (!nodes.length) return res.json({ done: 0, total: 0 });
-    const locale = await getUserLocale(req.user?.id);
+    const locale = req.user?.locale || 'en';
 
     const [[{ total }]] = await db.execute(
       'SELECT COUNT(*) AS total FROM knobits WHERE node_id = ? AND locale = ?',
@@ -482,7 +347,7 @@ router.post('/nodes/:id/knowledge', async (req, res) => {
 // ── Generate / return knobits for a node ─────────────────────────────────────
 router.post('/nodes/:id/learn', llmRateLimit, async (req, res) => {
   const { id }      = req.params;
-  const locale      = await getUserLocale(req.user?.id);
+  const locale      = req.user?.locale || 'en';
   const passportId  = req.user?.passport_id;
 
   try {
@@ -802,13 +667,10 @@ router.post('/learn/interact', llmRateLimit, async (req, res) => {
     );
     if (!rows.length) return res.status(404).json({ error: 'Knobit not found' });
     const { title, nodeLabel } = rows[0];
-    const [locale, profile] = await Promise.all([
-      getUserLocale(req.user?.id),
-      getUserProfile(req.user?.id),
-    ]);
-
     const uid = req.user?.id;
     const passportId = req.user?.passport_id;
+    const locale = req.user?.locale || 'en';
+    const whoisText = await getWhoisBlock(passportId);
 
     // ── Streaming branch: text-only phases ──────────────────────────────────
     if (wantStream) {
@@ -816,35 +678,35 @@ router.post('/learn/interact', llmRateLimit, async (req, res) => {
       if (phase === 'explain' && action !== 'visual') {
         const isRephrase = action === 'rephrase' || action === 'simpler' || action === 'complex';
         const generateFn = isRephrase
-          ? () => llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid)
-          : () => llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid);
+          ? () => llm.generateRephrase(nodeLabel, title, original, action, locale, whoisText, uid)
+          : () => llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, whoisText, uid);
         if (locale !== 'en') {
           streamFn = _editedStreamFn(generateFn, locale, uid, res);
         } else if (isRephrase) {
-          streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, profile, uid, cb);
+          streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, whoisText, uid, cb);
         } else {
-          streamFn = (cb) => llm.streamExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid, cb);
+          streamFn = (cb) => llm.streamExplainByteText(nodeLabel, title, byteIndex, original, locale, whoisText, uid, cb);
         }
         onDone = (full) => _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, action || 'ok', null, full);
       } else if (phase === 'meaning') {
         const isRephrase = action === 'rephrase' || action === 'simpler' || action === 'complex';
         const generateFn = isRephrase
-          ? () => llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid)
-          : () => llm.generateMeaning(nodeLabel, title, locale, uid);
+          ? () => llm.generateRephrase(nodeLabel, title, original, action, locale, whoisText, uid)
+          : () => llm.generateMeaning(nodeLabel, title, locale, uid, whoisText);
         if (locale !== 'en') {
           streamFn = _editedStreamFn(generateFn, locale, uid, res);
         } else if (isRephrase) {
-          streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, profile, uid, cb);
+          streamFn = (cb) => llm.streamRephrase(nodeLabel, title, original, action, locale, whoisText, uid, cb);
         } else {
-          streamFn = (cb) => llm.streamMeaning(nodeLabel, title, locale, uid, cb);
+          streamFn = (cb) => llm.streamMeaning(nodeLabel, title, locale, uid, cb, whoisText);
         }
         onDone = (full) => _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, action || 'ok', null, full);
       } else if (phase === 'ask') {
-        const generateFn = () => llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid);
+        const generateFn = () => llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, whoisText, uid);
         if (locale !== 'en') {
           streamFn = _editedStreamFn(generateFn, locale, uid, res);
         } else {
-          streamFn = (cb) => llm.streamAnswerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid, cb);
+          streamFn = (cb) => llm.streamAnswerQuestion(nodeLabel, title, action || 'general', question, context, locale, whoisText, uid, cb);
         }
         onDone = async (full) => {
           const dbPhase = _askDbPhase(action);
@@ -859,7 +721,7 @@ router.post('/learn/interact', llmRateLimit, async (req, res) => {
 
     if (phase === 'explain') {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
-        let text = await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid);
+        let text = await llm.generateRephrase(nodeLabel, title, original, action, locale, whoisText, uid);
         if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
         result = { text };
         await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, action, null, result.text);
@@ -874,13 +736,13 @@ router.post('/learn/interact', llmRateLimit, async (req, res) => {
           await _saveInteraction(passportId, knobitId, 'explain', 'visual', byteIndex, null, null, JSON.stringify(result.visual));
         }
       } else {
-        let text = await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, profile, uid);
+        let text = await llm.generateExplainByteText(nodeLabel, title, byteIndex, original, locale, whoisText, uid);
         if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
         result = { text };
         await _saveInteraction(passportId, knobitId, 'explain', 'byte', byteIndex, 'ok', null, result.text);
       }
     } else if (phase === 'demonstrate') {
-      let demonstrate = await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, profile, uid, previousExample);
+      let demonstrate = await llm.generateDemonstrate(nodeLabel, title, byteIndex, locale, whoisText, uid, previousExample);
       if (locale !== 'en') {
         const edited = await llm.editTranslatedText({ body: demonstrate.body, whatIDid: demonstrate.whatIDid }, locale, uid);
         demonstrate = { ...demonstrate, ...edited };
@@ -890,7 +752,7 @@ router.post('/learn/interact', llmRateLimit, async (req, res) => {
     } else if (phase === 'practice') {
       const learnedContent = await _getLearnedContent(passportId, knobitId);
       if (action === 'grade') {
-        let grade = await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid, learnedContent);
+        let grade = await llm.gradePractice(nodeLabel, title, question, expected, userAnswer, locale, uid, learnedContent, whoisText);
         if (locale !== 'en') {
           const edited = await llm.editTranslatedText({ feedback: grade.feedback }, locale, uid);
           grade = { ...grade, ...edited };
@@ -899,7 +761,7 @@ router.post('/learn/interact', llmRateLimit, async (req, res) => {
         await _saveInteraction(passportId, knobitId, 'practice', 'feedback', byteIndex, result.grade.correct ? 'correct' : 'incorrect', userAnswer, JSON.stringify(result.grade));
       } else {
         const priorQuestions = await _getPriorPracticeQuestions(passportId, knobitId);
-        let practice = await llm.generatePractice(nodeLabel, title, byteIndex, locale, profile, uid, learnedContent, priorQuestions);
+        let practice = await llm.generatePractice(nodeLabel, title, byteIndex, locale, whoisText, uid, learnedContent, priorQuestions);
         if (locale !== 'en') {
           const edited = await llm.editTranslatedText({ question: practice.question }, locale, uid);
           practice = { ...practice, ...edited };
@@ -909,18 +771,18 @@ router.post('/learn/interact', llmRateLimit, async (req, res) => {
       }
     } else if (phase === 'meaning') {
       if (action === 'rephrase' || action === 'simpler' || action === 'complex') {
-        let text = await llm.generateRephrase(nodeLabel, title, original, action, locale, profile, uid);
+        let text = await llm.generateRephrase(nodeLabel, title, original, action, locale, whoisText, uid);
         if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
         result = { text };
         await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, action, null, result.text);
       } else {
-        let text = await llm.generateMeaning(nodeLabel, title, locale, uid);
+        let text = await llm.generateMeaning(nodeLabel, title, locale, uid, whoisText);
         if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
         result = { text };
         await _saveInteraction(passportId, knobitId, 'meaning', 'meaning', 0, 'ok', null, result.text);
       }
     } else if (phase === 'ask') {
-      let text = await llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, profile, uid);
+      let text = await llm.answerQuestion(nodeLabel, title, action || 'general', question, context, locale, whoisText, uid);
       if (locale !== 'en') ({ text } = await llm.editTranslatedText({ text }, locale, uid));
       result = { text };
       const dbPhase = _askDbPhase(action);
@@ -963,7 +825,7 @@ router.get('/learn/knobit/:id/download', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
 
   try {
-    const locale = await getUserLocale(req.user?.id);
+    const locale = req.user?.locale || 'en';
 
     const [krows] = await db.execute(
       `SELECT k.title AS knobitTitle,
@@ -1028,7 +890,7 @@ router.get('/learn/lootbox/:nodeId', llmRateLimit, async (req, res) => {
     );
     if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
     const node   = nodes[0];
-    const locale = await getUserLocale(req.user?.id);
+    const locale = req.user?.locale || 'en';
 
     const [cacheRows] = await db.execute(
       'SELECT data, generated_at FROM lootbox_cache WHERE node_external_id = ? AND locale = ?',
@@ -1131,6 +993,7 @@ router.post('/learn/knobit/:id/complete', async (req, res) => {
         [passportId, nodeExtId, pct]
       );
       updateAncestorKnowledge(passportId, nodeExtId).catch(() => {});
+      refreshWhoisIfDue(passportId, userId, 'knobit_completed').catch(() => {});
 
       if (pct === 100) {
         const credTitle = `${nodeLabel} — Completed`;
@@ -1255,11 +1118,11 @@ router.get('/profile', async (req, res) => {
   if (!passportId) return res.status(400).json({ error: 'No passport' });
 
   try {
-    const data = await _fetchFullPassport(passportId);
+    const data = await fetchFullPassport(passportId);
 
-    // Suggestions (Section 7) — kept out of _fetchFullPassport since that
-    // helper also backs Anne's per-message chat context, and these two
-    // queries have no bearing on what Anne needs to answer a question.
+    // Suggestions (Section 7) — kept out of fetchFullPassport since that
+    // helper also backs the WHOIS narrative generator, and these two
+    // queries have no bearing on what the LLM needs to understand the learner.
     const [unfinishedKnobits] = await db.execute(
       `SELECT k.id, k.title, n.external_id AS nodeId, n.label AS nodeLabel,
               MAX(ki.created_at) AS last_activity
@@ -1375,7 +1238,7 @@ router.post('/anne/message', llmRateLimit, async (req, res) => {
   if (_tooLong(message)) return _rejectTooLong(res);
 
   try {
-    const locale = await getUserLocale(uid);
+    const locale = req.user?.locale || 'en';
 
     const [historyRows] = await db.execute(
       `SELECT role, content FROM anne_messages WHERE passport_id = ? ORDER BY id DESC LIMIT 20`,
@@ -1389,14 +1252,13 @@ router.post('/anne/message', llmRateLimit, async (req, res) => {
     );
     game.checkAchievements(passportId, uid, 'anne_chat', {}).catch(() => {});
 
-    const passportData = await _fetchFullPassport(passportId);
-    const passportText = renderPassportText(passportData);
+    const whoisText = await getWhoisBlock(passportId);
 
     let streamFn;
     if (locale !== 'en') {
-      streamFn = _editedStreamFn(() => llm.generateAnneReply(passportText, history, message, locale, uid), locale, uid, res);
+      streamFn = _editedStreamFn(() => llm.generateAnneReply(whoisText, history, message, locale, uid), locale, uid, res);
     } else {
-      streamFn = (write) => llm.streamAnneReply(passportText, history, message, locale, uid, write);
+      streamFn = (write) => llm.streamAnneReply(whoisText, history, message, locale, uid, write);
     }
     const onDone = (full) => db.execute(
       'INSERT INTO anne_messages (passport_id, role, content, locale) VALUES (?, "assistant", ?, ?)',
@@ -1452,6 +1314,7 @@ router.post('/profile/reflections', async (req, res) => {
     );
     game.awardLumens(passportId, req.user?.id, 5, 'reflection', null).catch(() => {});
     game.checkAchievements(passportId, req.user?.id, 'reflection', {}).catch(() => {});
+    refreshWhoisIfDue(passportId, req.user?.id, 'reflection_added').catch(() => {});
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save reflection' });
@@ -1485,6 +1348,7 @@ router.post('/profile/goals', async (req, res) => {
       [passportId, text.trim()]
     );
     game.checkAchievements(passportId, req.user?.id, 'goal_added', {}).catch(() => {});
+    refreshWhoisIfDue(passportId, req.user?.id, 'goal_added').catch(() => {});
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add goal' });
@@ -1508,6 +1372,7 @@ router.post('/profile/goals/:id/complete', async (req, res) => {
         `You completed: "${goals[0].text}"`);
     }
     game.checkAchievements(passportId, req.user?.id, 'goal_complete', {}).catch(() => {});
+    refreshWhoisIfDue(passportId, req.user?.id, 'goal_completed').catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to complete goal' });
@@ -1543,6 +1408,7 @@ router.post('/profile/credentials', async (req, res) => {
       [passportId, type, title.trim(), issuer || null,
        awarded_date ? awarded_date + '-01' : null, grade || null]
     );
+    refreshWhoisIfDue(passportId, req.user?.id, 'credential_added').catch(() => {});
     res.json({ id: result.insertId, ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to add credential' });
@@ -1633,7 +1499,7 @@ router.post('/profile/invite-friend', inviteRateLimit, async (req, res) => {
     const [[passportRow]] = await db.execute('SELECT display_name FROM learner_passports WHERE id = ?', [passportId]);
     const inviterName = ((passportRow && passportRow.display_name) || req.user.email.split('@')[0])
       .replace(/[\r\n]+/g, ' ').trim().slice(0, 100) || 'A Map of Knowledge user';
-    const locale = await getUserLocale(userId);
+    const locale = req.user?.locale || 'en';
 
     sendFriendInviteEmail(email, name, inviterName, req.user.email, locale)
       .catch(err => console.error('[api/profile/invite-friend] email failed:', err.message));
@@ -1691,9 +1557,9 @@ router.post('/profile/identity', async (req, res) => {
   ALLOWED.forEach(f => { if (req.body[f] !== undefined) updates[f] = req.body[f] || null; });
   if (!Object.keys(updates).length) return res.json({ ok: true });
   // "about" is the only free-form field here (the rest are short VARCHAR
-  // identity fields) and it's fed into every learning-prompt call as
-  // grounding context via getUserProfile() — capped for the same reason as
-  // the other LLM-facing fields above.
+  // identity fields) and it feeds into the learner's WHOIS entry (see
+  // services/whois.js) — capped for the same reason as the other LLM-facing
+  // fields above.
   if (_tooLong(updates.about)) return _rejectTooLong(res);
   try {
     const sets = Object.keys(updates).map(f => `${f} = ?`).join(', ');
@@ -1702,6 +1568,7 @@ router.post('/profile/identity', async (req, res) => {
       [...Object.values(updates), passportId]
     );
     game.maybeAwardProfileCompleteBonus(passportId, req.user?.id).catch(() => {});
+    refreshWhoisIfDue(passportId, req.user?.id, 'identity_updated').catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update identity' });
@@ -1808,15 +1675,16 @@ router.post('/test/question', llmRateLimit, async (req, res) => {
     const { db_id, label, level } = nodes[0];
     if (level < 4) return res.status(400).json({ error: 'Test only available for L4 and L5 nodes' });
     const breadcrumb = await getNodeBreadcrumb(db_id);
-    const locale = await getUserLocale(req.user?.id);
+    const locale = req.user?.locale || 'en';
     // Age-based wording simplification — opt-in only. Unknown age or 18+
     // leaves the prompt completely unchanged (age stays null/undefined).
-    const profile = await getUserProfile(req.user?.id);
-    const age = profile?.birth_year ? new Date().getFullYear() - profile.birth_year : null;
+    const birthYear = await _getBirthYear(req.user?.id);
+    const age = birthYear ? new Date().getFullYear() - birthYear : null;
+    const whoisText = await getWhoisBlock(req.user?.passport_id);
     if (wantStream) {
-      return _runStream((cb) => llm.streamTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, cb, age), res);
+      return _runStream((cb) => llm.streamTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, cb, age, whoisText), res);
     }
-    let result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, age);
+    let result = await llm.generateTestQuestion(label, breadcrumb, questionNum, history, locale, req.user?.id, age, whoisText);
     if (locale !== 'en') {
       const editFields = { question: result.question };
       if (result.type === 'mcq' && Array.isArray(result.options)) editFields.options = result.options;
@@ -1842,6 +1710,7 @@ async function _saveTestResult(passportId, userId, nodeId, label, evaluation) {
     [passportId, nodeId, evaluation.finalScore]
   );
   updateAncestorKnowledge(passportId, nodeId).catch(() => {});
+  refreshWhoisIfDue(passportId, userId, 'test_completed').catch(() => {});
   await db.execute(
     `INSERT INTO passport_events
        (passport_id, event_date, title, institution, result, node_external_id, type, sort_order)
@@ -1871,7 +1740,8 @@ router.post('/test/evaluate', llmRateLimit, async (req, res) => {
     if (!nodes.length) return res.status(404).json({ error: 'Node not found' });
     const { db_id, label } = nodes[0];
     const breadcrumb = await getNodeBreadcrumb(db_id);
-    const locale = await getUserLocale(req.user?.id);
+    const locale = req.user?.locale || 'en';
+    const whoisText = await getWhoisBlock(passportId);
 
     if (wantStream) {
       let streamFn;
@@ -1879,7 +1749,7 @@ router.post('/test/evaluate', llmRateLimit, async (req, res) => {
         streamFn = async (write, writeStatus) => {
           writeStatus('generating_text');
           const evaluation = await llm.evaluateTestAnswer(
-            label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id
+            label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, whoisText
           );
           writeStatus('checking_language');
           const editFields = { feedback: evaluation.feedback };
@@ -1889,7 +1759,7 @@ router.post('/test/evaluate', llmRateLimit, async (req, res) => {
         };
       } else {
         streamFn = (write) => llm.streamTestEvaluate(
-          label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, write
+          label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, write, whoisText
         );
       }
       const onDone = async (fullText) => {
@@ -1907,7 +1777,7 @@ router.post('/test/evaluate', llmRateLimit, async (req, res) => {
     }
 
     let evaluation = await llm.evaluateTestAnswer(
-      label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id
+      label, breadcrumb, questionNum, question, options, userAnswer, correctIndex, history, locale, req.user?.id, whoisText
     );
     if (locale !== 'en') {
       const editFields = { feedback: evaluation.feedback };

@@ -35,19 +35,6 @@ const llm     = require('../services/llm');
 const { updateAncestorKnowledge } = require('../services/nodeKnowledge');
 const llmRateLimit = require('../middleware/llmRateLimit');
 
-// Mirrors getUserLocale in api.js/auth.js — not imported since api.js only
-// exports its router.
-async function _getUserLocale(userId) {
-  if (!userId) return 'en';
-  try {
-    const [rows] = await db.execute(
-      'SELECT value FROM user_settings WHERE user_id = ? AND key_name = ?',
-      [userId, 'ui_locale']
-    );
-    return (rows.length && rows[0].value) ? rows[0].value : 'en';
-  } catch { return 'en'; }
-}
-
 const MAX_TITLE_LEN  = 255;
 const MAX_ISSUER_LEN = 255;
 const MAX_DETAILS_LEN = 500;
@@ -166,7 +153,7 @@ router.post('/prepare', llmRateLimit, async (req, res) => {
       alreadyKnown = new Set(existingRows.map(r => r.node_external_id));
     }
 
-    const locale = await _getUserLocale(userId);
+    const locale = req.user?.locale || 'en';
     let translations = {};
     if (locale !== 'en' && candidateIds.length) {
       const placeholders = candidateIds.map(() => '?').join(',');

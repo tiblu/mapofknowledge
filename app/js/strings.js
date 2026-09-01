@@ -54,4 +54,16 @@
 
   window.reloadStrings();
 
+  // Fetch user ID early so lsKey() is ready before any localStorage access.
+  // Namespaces per-user localStorage keys (filters.js's saved filter/color
+  // state) so two different accounts signed into the same browser don't
+  // silently share or clobber each other's map preferences. Ported from
+  // KnobitMap.
+  window._userIdReady = fetch('/auth/me')
+    .then(function (r) { return r.json(); })
+    .then(function (me) { window.KQ_USER_ID = me && me.id ? String(me.id) : 'anon'; })
+    .catch(function () { window.KQ_USER_ID = 'anon'; });
+
+  window.lsKey = function (k) { return (window.KQ_USER_ID || 'anon') + ':' + k; };
+
 })();

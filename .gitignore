@@ -7,3 +7,10 @@ node_modules/
 *.key
 docs/
 design/
+
+# Deploy SSH keypair — explicit, exact filename (not just an extension
+# pattern) since the private key has NO extension. This is exactly the gap
+# that let the previous key (misleadingly named mapofknowledge.pub) end up
+# tracked and leaked to a public repo.
+mapofknowledge_deploy
+mapofknowledge_deploy.pub
